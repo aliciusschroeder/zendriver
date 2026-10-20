@@ -781,3 +781,11 @@ async def test_element_get_returns_empty_attribute_value(browser: zd.Browser) ->
     button = await tab.select("#download_file")
 
     assert button.get("disabled") == ""
+
+
+async def test_get_timeout_raises(browser: zd.Browser) -> None:
+    tab = await browser.get("about:blank", new_tab=True)
+    with pytest.raises(asyncio.TimeoutError):
+        await tab.get(sample_file("groceries.html"), timeout=0)
+    with pytest.raises(asyncio.TimeoutError):
+        await browser.get(sample_file("groceries.html"), new_tab=True, timeout=0)
