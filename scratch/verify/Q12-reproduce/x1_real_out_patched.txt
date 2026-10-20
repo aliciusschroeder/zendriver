@@ -1,0 +1,17 @@
+python 3.13.16 zendriver from /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/pkg/zendriver/__init__.py
+
+=== CONTROL no handler (handler=False, zendriver.cdp.network.RequestWillBeSent)
+  3.00s: raised TimeoutError (correct)
+  enabled_domains: []
+
+=== new Network handler (handler=True, zendriver.cdp.network.RequestWillBeSent)
+  3.00s: raised TimeoutError (correct)
+  enabled_domains: ['zendriver.cdp.network']
+
+=== new Runtime handler (handler=True, zendriver.cdp.runtime.ConsoleAPICalled)
+  3.00s: raised TimeoutError (correct)
+  enabled_domains: ['zendriver.cdp.runtime']
+
+=== new Log handler (handler=True, zendriver.cdp.log.EntryAdded)
+  3.00s: raised TimeoutError (correct)
+  enabled_domains: ['zendriver.cdp.log']

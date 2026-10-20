@@ -1,0 +1,5 @@
+186:    _process: subprocess.Popen[bytes] | None
+187:    _process_pid: int | None
+265:        self._process = None
+266:        self._process_pid = None
+326:        return not (self._process and self._process.poll() is None)

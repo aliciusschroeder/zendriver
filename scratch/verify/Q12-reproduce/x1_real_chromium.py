@@ -34,17 +34,17 @@ async def busy_loop(tab, seconds):
     await asyncio.sleep(0.6)
 
 
-async def attempt(tab, label, with_handler):
-    if with_handler:
-        tab.add_handler(cdp.network.RequestWillBeSent, lambda ev: None)
+async def attempt(tab, label, with_handler, ev=cdp.network.RequestWillBeSent):
     await busy_loop(tab, 12)
+    if with_handler:
+        tab.add_handler(ev, lambda e: None)  # added AFTER the renderer got busy
     t0 = time.monotonic()
     task = asyncio.create_task(
         asyncio.wait_for(tab.send(cdp.runtime.evaluate("6*7")), 3)
     )
     done, _ = await asyncio.wait({task}, timeout=8)
     el = time.monotonic() - t0
-    print(f"\n=== {label} (handler={with_handler})")
+    print(f"\n=== {label} (handler={with_handler}, {ev.__module__}.{ev.__name__})")
     if not done:
         print(f"  {el:.2f}s: STILL RUNNING 8s after wait_for(..., 3) started (timeout ignored)")
         print("  task.cancelling() =", task.cancelling())
@@ -69,11 +69,17 @@ async def attempt(tab, label, with_handler):
 async def main():
     browser = await zendriver.start(headless=True)
     try:
-        tab = await browser.get("data:text/html,<h1>hi</h1>")
-        await attempt(tab, "CONTROL no handler", False)
-        await attempt(tab, "BUG new Network handler", True)
+        for label, wh, ev in [
+            ("CONTROL no handler", False, cdp.network.RequestWillBeSent),
+            ("new Network handler", True, cdp.network.RequestWillBeSent),
+            ("new Runtime handler", True, cdp.runtime.ConsoleAPICalled),
+            ("new Log handler", True, cdp.log.EntryAdded),
+        ]:
+            tab = await browser.get("data:text/html,<h1>hi</h1>", new_tab=True)
+            await attempt(tab, label, wh, ev)
+            await tab.close()
     finally:
         await browser.stop()
 
 
-asyncio.run(asyncio.wait_for(main(), 110))
+asyncio.run(asyncio.wait_for(main(), 160))

@@ -1,0 +1,59 @@
+python 3.13.16 zendriver from /home/user/zendriver/zendriver/__init__.py
+
+=== CONTROL Element.click() cancelled inside flash
+  cancelling while suspended at:
+      zendriver/core/element.py:432 in click
+      zendriver/core/element.py:940 in flash
+      zendriver/core/element.py:525 in get_position
+      zendriver/core/connection.py:662 in send
+  RESULT: task.cancelled() == True (CancelledError propagated) -- correct
+
+=== BUG Element.mouse_click() cancelled inside flash
+  cancelling while suspended at:
+      zendriver/core/element.py:575 in mouse_click
+      zendriver/core/element.py:940 in flash
+      zendriver/core/element.py:525 in get_position
+      zendriver/core/connection.py:662 in send
+  RESULT: returned normally (None); task.cancelled()=False cancelling()=1 -- CANCEL SWALLOWED
+
+=== CONTROL: async with asyncio.timeout(limit): while True: await el.click()
+  1.50s: finished with TimeoutError() after 652 clicks
+
+=== BUG run 0: async with asyncio.timeout(limit): while True: await el.mouse_click()
+  4.25s: STILL RUNNING (1237 clicks) -- asyncio.timeout(1.5) never fired (HANG)
+  task.cancelling() = 1
+  task.print_stack():
+Stack for <Task cancelling name='Task-13' coro=<loop_under_timeout.<locals>.body() running at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/x2_real_chromium.py:66> wait_for=<Transaction
+	method: Runtime.callFunctionOn
+	status: pending
+	success: True>> (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/x2_real_chromium.py", line 66, in body
+    await getattr(el, method)()
+  after 2nd cancel: done=False (2722 clicks total)
+  after 3rd cancel: done=False
+
+=== BUG run 1: async with asyncio.timeout(limit): while True: await el.mouse_click()
+  4.54s: STILL RUNNING (1326 clicks) -- asyncio.timeout(1.5) never fired (HANG)
+  task.cancelling() = 1
+  task.print_stack():
+Stack for <Task cancelling name='Task-14' coro=<loop_under_timeout.<locals>.body() running at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/x2_real_chromium.py:66> wait_for=<Transaction
+	method: Input.dispatchMouseEvent
+	status: pending
+	success: True>> (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/x2_real_chromium.py", line 66, in body
+    await getattr(el, method)()
+  after 2nd cancel: done=True (1326 clicks total)
+
+=== BUG run 2: async with asyncio.timeout(limit): while True: await el.mouse_click()
+  0.23s: finished with TimeoutError() after 67 clicks
+
+=== BUG run 3: async with asyncio.timeout(limit): while True: await el.mouse_click()
+  4.25s: STILL RUNNING (1279 clicks) -- asyncio.timeout(1.5) never fired (HANG)
+  task.cancelling() = 1
+  task.print_stack():
+Stack for <Task cancelling name='Task-16' coro=<loop_under_timeout.<locals>.body() running at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/x2_real_chromium.py:66> wait_for=<Transaction
+	method: DOM.getContentQuads
+	status: pending
+	success: True>> (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/x2_real_chromium.py", line 66, in body
+    await getattr(el, method)()

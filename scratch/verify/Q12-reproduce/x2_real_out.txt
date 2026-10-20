@@ -1,0 +1,31 @@
+python 3.13.16 zendriver from /home/user/zendriver/zendriver/__init__.py
+
+=== CONTROL Element.click() cancelled inside flash
+  cancelling while suspended at:
+      zendriver/core/element.py:432 in click
+      zendriver/core/element.py:940 in flash
+      zendriver/core/element.py:525 in get_position
+      zendriver/core/connection.py:662 in send
+  RESULT: task.cancelled() == True (CancelledError propagated) -- correct
+
+=== BUG Element.mouse_click() cancelled inside flash
+  cancelling while suspended at:
+      zendriver/core/element.py:575 in mouse_click
+      zendriver/core/element.py:940 in flash
+      zendriver/core/element.py:525 in get_position
+      zendriver/core/connection.py:662 in send
+  RESULT: returned normally (None); task.cancelled()=False cancelling()=1 -- CANCEL SWALLOWED
+
+=== CONTROL: async with asyncio.timeout(1.5): while True: await el.click()
+  1.50s: finished with TimeoutError() after 652 clicks
+
+=== BUG run 0: async with asyncio.timeout(1.5): while True: await el.mouse_click()
+  1.50s: finished with TimeoutError() after 436 clicks
+
+=== BUG run 1: async with asyncio.timeout(1.5): while True: await el.mouse_click()
+  1.50s: finished with TimeoutError() after 414 clicks
+
+=== BUG run 2: async with asyncio.timeout(1.5): while True: await el.mouse_click()
+  1.50s: finished with TimeoutError() after 394 clicks
+
+click counter in page: 653

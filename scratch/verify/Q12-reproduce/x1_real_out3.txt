@@ -1,0 +1,35 @@
+python 3.13.16 zendriver from /home/user/zendriver/zendriver/__init__.py
+
+=== CONTROL no handler (handler=False, zendriver.cdp.network.RequestWillBeSent)
+  3.00s: raised TimeoutError (correct)
+  enabled_domains: []
+
+=== new Network handler (handler=True, zendriver.cdp.network.RequestWillBeSent)
+  8.00s: STILL RUNNING 8s after wait_for(..., 3) started (timeout ignored)
+  task.cancelling() = 1
+      /usr/lib/python3.13/asyncio/tasks.py:514 in wait_for
+      zendriver/core/connection.py:654 in send
+      zendriver/core/connection.py:707 in _register_handlers
+      zendriver/core/connection.py:662 in send
+  later returned normally after 11.60s: (RemoteObject(type_='number', subtype=None, class_name=None, value=42, unserializable_value=None, description='42', deep_serialized_value=None, object_id=None, preview=None, custom_preview=None), None)
+  enabled_domains: ['zendriver.cdp.network']
+
+=== new Runtime handler (handler=True, zendriver.cdp.runtime.ConsoleAPICalled)
+  8.00s: STILL RUNNING 8s after wait_for(..., 3) started (timeout ignored)
+  task.cancelling() = 1
+      /usr/lib/python3.13/asyncio/tasks.py:514 in wait_for
+      zendriver/core/connection.py:654 in send
+      zendriver/core/connection.py:707 in _register_handlers
+      zendriver/core/connection.py:662 in send
+  later returned normally after 11.60s: (RemoteObject(type_='number', subtype=None, class_name=None, value=42, unserializable_value=None, description='42', deep_serialized_value=None, object_id=None, preview=None, custom_preview=None), None)
+  enabled_domains: ['zendriver.cdp.runtime']
+
+=== new Log handler (handler=True, zendriver.cdp.log.EntryAdded)
+  8.00s: STILL RUNNING 8s after wait_for(..., 3) started (timeout ignored)
+  task.cancelling() = 1
+      /usr/lib/python3.13/asyncio/tasks.py:514 in wait_for
+      zendriver/core/connection.py:654 in send
+      zendriver/core/connection.py:707 in _register_handlers
+      zendriver/core/connection.py:662 in send
+  later returned normally after 11.60s: (RemoteObject(type_='number', subtype=None, class_name=None, value=42, unserializable_value=None, description='42', deep_serialized_value=None, object_id=None, preview=None, custom_preview=None), None)
+  enabled_domains: ['zendriver.cdp.log']

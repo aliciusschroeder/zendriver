@@ -1,0 +1,41 @@
+python 3.13.16 zendriver from /home/user/zendriver/zendriver/__init__.py
+
+=== CONTROL no handler (handler=False, zendriver.cdp.network.RequestWillBeSent)
+  3.00s: raised TimeoutError (correct)
+  enabled_domains: []
+
+=== BUG new Runtime handler (handler=True, zendriver.cdp.runtime.ConsoleAPICalled)
+  3.00s: raised TimeoutError (correct)
+  enabled_domains: ['zendriver.cdp.runtime']
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/x1_real_chromium.py", line 80, in <module>
+    asyncio.run(asyncio.wait_for(main(), 110))
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/asyncio/runners.py", line 196, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.13/asyncio/runners.py", line 119, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.13/asyncio/base_events.py", line 726, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/x1_real_chromium.py", line 75, in main
+    await attempt(tab, "BUG new Log handler", True, cdp.log.EntryAdded)
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/x1_real_chromium.py", line 40, in attempt
+    await busy_loop(tab, 12)
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/x1_real_chromium.py", line 29, in busy_loop
+    await tab.send(
+    ...<3 lines>...
+    )
+  File "/home/user/zendriver/zendriver/core/connection.py", line 632, in send
+    await self.aopen()
+  File "/home/user/zendriver/zendriver/core/connection.py", line 458, in aopen
+    await self._register_handlers()
+  File "/home/user/zendriver/zendriver/core/connection.py", line 720, in _register_handlers
+    self.enabled_domains.remove(ed)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^
+ValueError: list.remove(x): x not in list
