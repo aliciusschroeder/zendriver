@@ -41,6 +41,10 @@ agent branches, regenerates `STATUS.md`, commits and pushes this branch.
   session (re)starts, and the supervisor also runs it whenever it wakes up.
 * Force a snapshot now: `python3 /home/user/bughunt-state/tools/sync.py`.
 * Background processes do not survive a container restart; that is why the hook exists.
+* The agent proxy refuses to **delete** remote branches (HTTP 403) from this session, so
+  `fix/*` and `wip/*` refs accumulate on `origin`; delete them by hand on GitHub once the
+  hunt is finished. (Two self-test refs, `fix/_sync-selftest` and `wip/fix/_sync-selftest`,
+  were left there by the sync self-test for that reason.)
 
 ## How to resume
 

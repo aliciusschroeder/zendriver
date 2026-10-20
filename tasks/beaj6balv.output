@@ -1,0 +1,6 @@
+160000 c19617655fdfbab88876dcc2f4d9fe0904c4a817 0	scratch/selftest-wt
+ M README.md
+ M STATUS.md
+ M claude/b2021b39-94e6-5220-9e66-7f33c0314a80.jsonl
+ M claude/b2021b39-94e6-5220-9e66-7f33c0314a80/ccr-tip.json
+ M claude/b2021b39-94e6-5220-9e66-7f33c0314a80/subagents/workflows/wf_2183e4a7-b84/agent-a18cc922ab40fc622.jsonl
