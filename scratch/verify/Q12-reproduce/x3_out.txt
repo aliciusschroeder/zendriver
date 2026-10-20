@@ -1,0 +1,78 @@
+python 3.13.16 proxy module from /home/user/zendriver/zendriver/core/proxy.py
+=== http: task.cancel() during handshake
+  suspended at: ['proxy.py:135 in _http_connect', 'streams.py:677 in readuntil', 'streams.py:539 in _wait_for_data']
+  0.70s: cancelled (CancelledError propagated)
+  ['upstream saw EOF from client after 0.50s']
+=== http: outer wait_for(0.5) during handshake
+  suspended at: ['base_events.py:1147 in create_connection', 'base_events.py:1046 in _connect_sock', 'selector_events.py:643 in sock_connect']
+  0.70s: raised TimeoutError()
+  ['upstream saw EOF from client after 0.50s']
+=== socks5: task.cancel() during handshake
+  suspended at: ['proxy.py:148 in _socks5_connect', 'streams.py:769 in readexactly', 'streams.py:539 in _wait_for_data']
+  0.70s: cancelled (CancelledError propagated)
+  ['upstream saw EOF from client after 0.50s']
+=== socks5: outer wait_for(0.5) during handshake
+  suspended at: ['base_events.py:1147 in create_connection', 'base_events.py:1046 in _connect_sock', 'selector_events.py:643 in sock_connect']
+  0.70s: raised TimeoutError()
+  ['upstream saw EOF from client after 0.50s']
+=== forwarder.close() while a client task is in open_tunnel
+  client task at: ['proxy.py:135 in _http_connect', 'streams.py:677 in readuntil', 'streams.py:539 in _wait_for_data']
+  close() returned after 0.00s; client task cancelled=True
+  ['upstream saw EOF from client after 0.50s', 'upstream saw EOF from client after 0.50s']
+=== inner TIMEOUT=0.3 expires (incidental message check)
+  suspended at: []
+  0.70s: raised ProxyError('proxy closed the connection: TimeoutError()')
+  ['upstream saw EOF from client after 0.30s']
+
+python 3.11.17 proxy module from /home/user/zendriver/zendriver/core/proxy.py
+=== http: task.cancel() during handshake
+  suspended at: ['proxy.py:107 in open_tunnel', 'tasks.py:476 in wait_for']
+  0.70s: cancelled (CancelledError propagated)
+  ['upstream saw EOF from client after 0.50s']
+=== http: outer wait_for(0.5) during handshake
+  suspended at: ['tasks.py:476 in wait_for']
+  0.70s: raised TimeoutError()
+  ['upstream saw EOF from client after 0.50s']
+=== socks5: task.cancel() during handshake
+  suspended at: ['proxy.py:103 in open_tunnel', 'tasks.py:476 in wait_for']
+  0.70s: cancelled (CancelledError propagated)
+  ['upstream saw EOF from client after 0.50s']
+=== socks5: outer wait_for(0.5) during handshake
+  suspended at: ['tasks.py:476 in wait_for']
+  0.70s: raised TimeoutError()
+  ['upstream saw EOF from client after 0.50s']
+=== forwarder.close() while a client task is in open_tunnel
+  client task at: ['proxy.py:256 in _forward', 'proxy.py:107 in open_tunnel', 'tasks.py:476 in wait_for']
+  close() returned after 0.00s; client task cancelled=True
+  ['upstream saw EOF from client after 0.50s', 'upstream saw EOF from client after 0.50s']
+=== inner TIMEOUT=0.3 expires (incidental message check)
+  suspended at: []
+  0.70s: raised ProxyError('proxy closed the connection: TimeoutError()')
+  ['upstream saw EOF from client after 0.30s']
+
+python 3.12.3 proxy module from /home/user/zendriver/zendriver/core/proxy.py
+=== http: task.cancel() during handshake
+  suspended at: ['proxy.py:135 in _http_connect', 'streams.py:660 in readuntil', 'streams.py:545 in _wait_for_data']
+  0.70s: cancelled (CancelledError propagated)
+  ['upstream saw EOF from client after 0.50s']
+=== http: outer wait_for(0.5) during handshake
+  suspended at: ['base_events.py:1104 in create_connection', 'base_events.py:1007 in _connect_sock', 'selector_events.py:651 in sock_connect']
+  0.70s: raised TimeoutError()
+  ['upstream saw EOF from client after 0.50s']
+=== socks5: task.cancel() during handshake
+  suspended at: ['proxy.py:148 in _socks5_connect', 'streams.py:752 in readexactly', 'streams.py:545 in _wait_for_data']
+  0.70s: cancelled (CancelledError propagated)
+  ['upstream saw EOF from client after 0.50s']
+=== socks5: outer wait_for(0.5) during handshake
+  suspended at: ['base_events.py:1104 in create_connection', 'base_events.py:1007 in _connect_sock', 'selector_events.py:651 in sock_connect']
+  0.70s: raised TimeoutError()
+  ['upstream saw EOF from client after 0.50s']
+=== forwarder.close() while a client task is in open_tunnel
+  client task at: ['proxy.py:135 in _http_connect', 'streams.py:660 in readuntil', 'streams.py:545 in _wait_for_data']
+  close() returned after 0.00s; client task cancelled=True
+  ['upstream saw EOF from client after 0.50s', 'upstream saw EOF from client after 0.50s']
+=== inner TIMEOUT=0.3 expires (incidental message check)
+  suspended at: []
+  0.70s: raised ProxyError('proxy closed the connection: TimeoutError()')
+  ['upstream saw EOF from client after 0.30s']
+

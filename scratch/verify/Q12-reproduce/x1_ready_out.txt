@@ -1,0 +1,65 @@
+python 3.13.16 zendriver from /home/user/zendriver/zendriver/__init__.py
+
+=== blocker=alert handler=False: wait_for_ready_state('loading', timeout=2)
+  2.00s: finished with TimeoutError('time ran out while waiting for load page until loading')
+
+=== blocker=alert handler=True: wait_for_ready_state('loading', timeout=2)
+  15.00s: STILL RUNNING 15s after a 2s timeout (HANG); cancelling()=1
+  task.print_stack():
+Stack for <Task cancelling name='Task-19' coro=<Tab.wait_for_ready_state() running at /home/user/zendriver/zendriver/core/tab.py:1351> wait_for=<Transaction
+	method: Log.enable
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/tab.py", line 1351, in wait_for_ready_state
+    return await asyncio.wait_for(_poll(), timeout)
+  cr_await chain:
+      zendriver/core/tab.py:1351 in wait_for_ready_state
+      /usr/lib/python3.13/asyncio/tasks.py:514 in wait_for
+      zendriver/core/tab.py:1342 in _poll
+      zendriver/core/tab.py:859 in evaluate
+      zendriver/core/connection.py:654 in send
+      zendriver/core/connection.py:707 in _register_handlers
+      zendriver/core/connection.py:662 in send
+  after a 2nd cancel: done=False
+Task exception was never retrieved
+future: <Task finished name='Task-19' coro=<Tab.wait_for_ready_state() done, defined at /home/user/zendriver/zendriver/core/tab.py:1326> exception=ProtocolException('target session was detached')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/tab.py", line 1351, in wait_for_ready_state
+    return await asyncio.wait_for(_poll(), timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/tab.py", line 1342, in _poll
+    ready_state = await self.evaluate("document.readyState")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/tab.py", line 859, in evaluate
+    remote_object, errors = await self.send(
+                            ^^^^^^^^^^^^^^^^
+    ...<8 lines>...
+    )
+    ^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 666, in send
+    raise e
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+           ^^^^^^^^
+zendriver.core.connection.ProtocolException: target session was detached
+command:Runtime.evaluate
+params:{'expression': 'document.readyState', 'returnByValue': True, 'userGesture': True, 'awaitPromise': False, 'allowUnsafeEvalBlockedByCSP': True}
+
+=== blocker=busy8s handler=False: wait_for_ready_state('loading', timeout=2)
+  2.00s: finished with TimeoutError('time ran out while waiting for load page until loading')
+
+=== blocker=busy8s handler=True: wait_for_ready_state('loading', timeout=2)
+  15.00s: STILL RUNNING 15s after a 2s timeout (HANG); cancelling()=1
+  task.print_stack():
+Stack for <Task cancelling name='Task-37' coro=<Tab.wait_for_ready_state() running at /home/user/zendriver/zendriver/core/tab.py:1351> wait_for=<Future pending cb=[Task.task_wakeup()]>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/tab.py", line 1351, in wait_for_ready_state
+    return await asyncio.wait_for(_poll(), timeout)
+  cr_await chain:
+      zendriver/core/tab.py:1351 in wait_for_ready_state
+      /usr/lib/python3.13/asyncio/tasks.py:514 in wait_for
+      zendriver/core/tab.py:1345 in _poll
+      /usr/lib/python3.13/asyncio/tasks.py:727 in sleep
+  after a 2nd cancel: done=True
