@@ -7,3 +7,15 @@ evaluate console.log 2KB                 n=20  +144 bytes  (7 B/op) 0.5s
 connection refused                       n=10  +0 bytes  (0 B/op) 1.6s
 dns failure                              n=10  +0 bytes  (0 B/op) 1.8s
 self-signed https                        n=10  +3458 bytes  (346 B/op) 25.8s
+self-signed https same url               n=10  +2736 bytes  (274 B/op) 31.6s
+new tab + close                          n=10  +0 bytes  (0 B/op) 0.9s
+total pending 11558
+    42 x   6048 B  ERROR:net/socket/ssl_client_socket_impl.cc:902
+    17 x   3156 B  ERROR:dbus/bus.cc:408
+    10 x   1819 B  ERROR:dbus/object_proxy.cc:573
+     2 x    294 B  ERROR:google_apis/gcm/engine/registration_request.cc:291
+     1 x      1 B  
+     1 x     97 B  DevTools listening on ws://127.0.0.1:34983/devtools/browser/7c2932ae-5925-44e7-8
+     1 x    143 B  ERROR:google_apis/gcm/engine/connection_factory_impl.cc:434
+stopped
+exit 0

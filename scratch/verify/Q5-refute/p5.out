@@ -1,0 +1,28 @@
+zendriver from /home/user/zendriver/zendriver/__init__.py 3.13.16
+udd /tmp/uc_2k5k8e7a args: []
+round 0 ok; stderr pending 5505
+round 10 ok; stderr pending 8673
+round 20 ok; stderr pending 12561
+round 30 ok; stderr pending 15585
+round 40 ok; stderr pending 18897
+round 50 ok; stderr pending 22065
+round 60 ok; stderr pending 25521
+round 70 ok; stderr pending 29121
+round 80 ok; stderr pending 32721
+round 90 ok; stderr pending 36033
+round 100 ok; stderr pending 40065
+round 110 ok; stderr pending 43521
+round 120 ok; stderr pending 46977
+round 130 ok; stderr pending 50865
+round 140 ok; stderr pending 54609
+round 150 ok; stderr pending 57777
+round 160 ok; stderr pending 61233
+round 169: fetch-batch evaluate TIMEOUT after 17s total; stderr pending 64401
+blocked writers: [(12910, '12942', 'Chrome_ChildIOT', '--type=utility')]
+  evaluate 1+1: OK
+  Browser.getVersion: OK
+  tab.get http (no TLS): TIMEOUT
+blocked writers now: [(12910, '12942', 'Chrome_ChildIOT', '--type=utility')]
+stop returned: None
+udd exists: False
+exit 0
