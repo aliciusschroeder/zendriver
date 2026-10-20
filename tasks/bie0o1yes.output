@@ -1,0 +1,23 @@
+===== MODE repr
+python: 3.13.16 | zendriver from: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R14-refute/pkg/zendriver/__init__.py
+template _user_data_dir: /tmp/r14rf_repr/uc_54q8q19g custom: False
+INFO:zendriver.core.browser:enabling autodiscover targets
+b1 pid 30796 udd /tmp/r14rf_repr/uc_54q8q19g custom False
+b1 profile entries: 41
+b1 page tabs before b2: 1
+INFO:zendriver.core.browser:Browser stderr: [30885:30885:1020/234829.101538:ERROR:chrome/browser/process_singleton_posix.cc:340] Failed to create /tmp/r14rf_repr/uc_54q8q19g/SingletonLock: File exists (17)
+[30885:30885:1020/234829.101771:ERROR:chrome/app/chrome_main_delegate.cc:505] Failed to create a ProcessSingleton for your profile directory. This means that running multiple instances would start multiple browser processes rather than opening a new window in the existing process. Aborting now to avoid profile corruption.
+b2 start failed after 2.5s: Exception | Failed to connect: True
+b1 process alive: True
+b1 profile dir exists: False
+b1 page tabs after b2 attempt: 1 ['about:blank']
+b1 evaluate after profile loss: 2
+b1 title after profile loss: t
+b1 profile dir exists now: False entries: None
+after b1.stop, leftover uc_*: []
+leftover:
+total 88
+drwxr-xr-x    3 root root  4096 Oct 20 23:48 .
+drwxrwxrwt 1347 root root 77824 Oct 20 23:48 ..
+drwx------    2 root root  4096 Oct 20 23:48 .org.chromium.Chromium.CLYbjH
+===== MODE config_call

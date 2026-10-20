@@ -48,17 +48,12 @@ class FakeTab:
 
     # Tab-level mouse helpers, reduced to the CDP calls they would make
     async def mouse_click(self, x: float, y: float, **kw: typing.Any) -> None:
-        for t in (
-            cdp.input_.MouseEventType.MOUSE_PRESSED,
-            cdp.input_.MouseEventType.MOUSE_RELEASED,
-        ):
+        for t in ("mousePressed", "mouseReleased"):
             await self.send(cdp.input_.dispatch_mouse_event(t, x, y))
 
     async def mouse_move(self, x: float, y: float, steps: int = 10) -> None:
         await self.send(
-            cdp.input_.dispatch_mouse_event(
-                cdp.input_.MouseEventType.MOUSE_MOVED, x, y
-            )
+            cdp.input_.dispatch_mouse_event("mouseMoved", x, y)
         )
 
     def methods(self) -> list[str]:
