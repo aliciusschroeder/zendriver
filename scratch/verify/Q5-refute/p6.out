@@ -1,0 +1,35 @@
+zendriver from /home/user/zendriver/zendriver/__init__.py 3.13.16 DISPLAY :99
+INFO:zendriver.core.browser:starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_ggitps4t
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=58187
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO:zendriver.core.browser:enabling autodiscover targets
+started in 0.3s
+udd /tmp/uc_ggitps4t
+headful after start+3s: stderr pending 5234
+after 60 navigations (7s): stderr pending 13538
+after 10 new tabs: stderr pending 14898
+after 60s idle: stderr pending 15332
+[('gpu/command_buffer/service/context_group.cc:145', 70), ('dbus/bus.cc:408', 18), ('dbus/object_proxy.cc:573', 9), ('google_apis/gcm/engine/registration_request.cc:291', 2), ('net/socket/ssl_client_socket_impl.cc:902', 2), ('google_apis/gcm/engine/connection_factory_impl.cc:434', 1)]
+stopped
+exit 0

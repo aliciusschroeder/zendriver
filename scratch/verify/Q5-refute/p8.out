@@ -1,0 +1,21 @@
+zendriver from /home/user/zendriver/zendriver/__init__.py 3.13.16 headless 1
+udd /tmp/uc_6dabwaz6
+nav 0 ok; stderr pending 5635 drained 0
+nav 25 ok; stderr pending 15388 drained 0
+nav 50 ok; stderr pending 24513 drained 0
+nav 75 ok; stderr pending 33638 drained 0
+nav 100 ok; stderr pending 42763 drained 0
+nav 125 ok; stderr pending 51888 drained 0
+nav 150 ok; stderr pending 61013 drained 0
+nav 161: tab.get TIMEOUT after 28s of browsing; stderr pending 63933
+hung=True; blocked writers: [(17335, 'chrome', '--type=gpu-process')]
+  evaluate 1+1: TIMEOUT
+  Browser.getVersion: OK
+  tab.get plain page: TIMEOUT
+  screenshot: TIMEOUT
+  new tab: OK
+blocked writers now: [(17335, 'chrome', '--type=gpu-process')]
+stop done=True
+[('gpu/command_buffer/service/gles2_cmd_decoder_passthrough.cc:1101', 159), ('dbus/bus.cc:408', 17), ('dbus/object_proxy.cc:573', 10), ('gpu/command_buffer/service/gl_utils.cc:391', 4)]
+udd exists: False
+exit 0
