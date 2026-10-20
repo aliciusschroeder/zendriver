@@ -1,0 +1,38 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
+--- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/browser.py	2026-10-20 23:50:58.262421557 +0000
+@@ -271,7 +271,7 @@
+             tuple[str, cdp.emulation.UserAgentMetadata] | None
+         ) = None
+         """user agent and client hint metadata of a headless browser, built at startup"""
+-        logger.debug("Session object initialized: %s" % vars(self))
++        logger.debug("Session object initialized: %s", vars(self))
+ 
+     @property
+     def websocket_url(self) -> str:
+@@ -873,6 +873,9 @@
+ 
+     async def _stop(self) -> None:
+         if not self.connection and not self._process:
++            # nothing was launched or connected, but start() may already have
++            # created the temporary profile (e.g. connecting to an existing browser failed)
++            await self._cleanup_temporary_profile()
+             return
+ 
+         for target in self.targets:
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/config.py b/zendriver/core/config.py
+--- a/zendriver/core/config.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/config.py	2026-10-20 23:50:54.526421725 +0000
+@@ -251,7 +251,11 @@
+                 continue
+             if not v:
+                 continue
+-            if isinstance(v, property):
++            if k == "user_data_dir":
++                # do not create the lazy temp profile just to print the config,
++                # or every browser started from it would share that profile
++                v = self._user_data_dir
++            elif isinstance(v, property):
+                 v = getattr(self, k)
+             if callable(v):
+                 continue
