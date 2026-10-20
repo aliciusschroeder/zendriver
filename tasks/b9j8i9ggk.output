@@ -1,0 +1,16 @@
+zendriver: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety/pkg/zendriver/__init__.py
+proto rc=4
+ERROR: usage: python -m pytest [options] [file_or_dir] [file_or_dir] [...]
+python -m pytest: error: unrecognized arguments: --timeout
+  inifile: None
+  rootdir: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety/rt
+
+zendriver: /home/user/zendriver/zendriver/__init__.py
+repo rc=4
+ERROR: usage: python -m pytest [options] [file_or_dir] [file_or_dir] [...]
+python -m pytest: error: unrecognized arguments: --timeout
+  inifile: None
+  rootdir: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety/rt
+
+
+[exited with code 0]

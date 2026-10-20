@@ -1,0 +1,1 @@
+{"agentType":"workflow-subagent","description":"A13 scripts/generate_cdp.py","workflowPhase":"Sweep A","spawnDepth":1,"requestShape":"foreground","requestNonInteractive":true}

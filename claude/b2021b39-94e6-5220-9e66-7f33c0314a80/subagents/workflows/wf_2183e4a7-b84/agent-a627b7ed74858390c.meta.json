@@ -1,0 +1,1 @@
+{"agentType":"workflow-subagent","description":"Q2:fixsafety","workflowPhase":"Verify fix queue","spawnDepth":1,"requestShape":"foreground","requestNonInteractive":true}

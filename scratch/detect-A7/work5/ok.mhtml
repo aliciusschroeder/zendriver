@@ -1,0 +1,69 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: http://127.0.0.1:32923/docs/index.html
+Subject: docs
+Date: Tue, 20 Oct 2026 19:47:35 +0000
+MIME-Version: 1.0
+Content-Type: multipart/related;
+	type="text/html";
+	boundary="----MultipartBoundary--Kr8tFNrqdSlLLeEfVtIXNqD1YOoyg71Jglw2teHISU----"
+
+
+------MultipartBoundary--Kr8tFNrqdSlLLeEfVtIXNqD1YOoyg71Jglw2teHISU----
+Content-Type: text/html
+Content-ID: <frame-E0DA651FF2E0032F189051AF5C07D720@mhtml.blink>
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://127.0.0.1:32923/docs/index.html
+
+<!DOCTYPE html><html><head><meta http-equiv=3D"Content-Type" content=3D"tex=
+t/html; charset=3Dwindows-1252"><script src=3D"cid:js-dc5f1f39-b2dc-4cf7-91=
+f2-3839114dc981@mhtml.blink"></script><title>docs</title><link rel=3D"style=
+sheet" href=3D"http://127.0.0.1:32923/docs/style.css"></head>
+<body><h1>Hello Login</h1><button id=3D"b">Sign in now</button>
+<a href=3D"http://127.0.0.1:32923/docs/other.html">rel no slash</a>
+<a href=3D"http://127.0.0.1:32923/docs/sub/page.html">rel with slash</a>
+<a href=3D"http://127.0.0.1:32923/up.html">parent rel</a>
+<a href=3D"http://127.0.0.1:32923/root.html">root rel</a>
+<a href=3D"https://example.org/page#frag">abs with fragment</a>
+<img src=3D"http://127.0.0.1:32923/docs/images/a.png">
+
+</body></html>
+------MultipartBoundary--Kr8tFNrqdSlLLeEfVtIXNqD1YOoyg71Jglw2teHISU----
+Content-Type: text/javascript
+Content-Transfer-Encoding: quoted-printable
+Content-Location: cid:js-dc5f1f39-b2dc-4cf7-91f2-3839114dc981@mhtml.blink
+
+(()=3D>{
+function addCustomElement(def) {
+  if (def.is_autonomous) {
+      window.customElements.define(def.name, class extends HTMLElement{});
+  } else {
+    const templateElement =3D document.createElement(def.local_name);
+    const baseName =3D Object.getPrototypeOf(templateElement).constructor.n=
+ame;
+    const ElementBase =3D window[baseName];
+    window.customElements.define(def.name, class extends ElementBase {},
+      {extends: def.local_name});
+  }
+}
+
+function addCustomElements(metadata) {
+  for (const def of metadata.custom_elements) {
+    try {
+      addCustomElement(def);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+}
+
+function main(metadata) {
+  addCustomElements(metadata);
+}
+main({"custom_elements":[]});})();
+------MultipartBoundary--Kr8tFNrqdSlLLeEfVtIXNqD1YOoyg71Jglw2teHISU----
+Content-Type: text/css
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://127.0.0.1:32923/docs/style.css
+
+body{}=0A
+------MultipartBoundary--Kr8tFNrqdSlLLeEfVtIXNqD1YOoyg71Jglw2teHISU------

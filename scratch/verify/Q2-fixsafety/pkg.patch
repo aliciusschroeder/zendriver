@@ -1,0 +1,371 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/cloudflare.py b/zendriver/core/cloudflare.py
+--- a/zendriver/core/cloudflare.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/cloudflare.py	2026-10-20 21:42:09.339814622 +0000
+@@ -84,19 +84,30 @@
+     loop = asyncio.get_running_loop()
+     start_time = loop.time()
+ 
+-    while loop.time() - start_time < timeout:
+-        logger.debug("Waiting for challenge elements to appear...")
+-        (
+-            host_element,
+-            shadow_root_element,
+-            challenge_iframe,
+-        ) = await cf_find_interactive_challenge(tab)
+-        if challenge_iframe and "display: none" not in challenge_iframe.attrs.get(
+-            "style", ""
+-        ):
+-            logger.debug("Cloudflare challenge elements found and visible.")
+-            return host_element, shadow_root_element, challenge_iframe
+-        await asyncio.sleep(0.5)
++    async def _poll() -> tuple[Element | None, Element | None, Element | None]:
++        while loop.time() - start_time < timeout:
++            logger.debug("Waiting for challenge elements to appear...")
++            (
++                host_element,
++                shadow_root_element,
++                challenge_iframe,
++            ) = await cf_find_interactive_challenge(tab)
++            if challenge_iframe and "display: none" not in challenge_iframe.attrs.get(
++                "style", ""
++            ):
++                logger.debug("Cloudflare challenge elements found and visible.")
++                return host_element, shadow_root_element, challenge_iframe
++            await asyncio.sleep(0.5)
++        return None, None, None
++
++    # the timeout has to cover the CDP calls too, otherwise a CDP response
++    # that never arrives (e.g. page blocked by a dialog) hangs here forever
++    try:
++        found = await asyncio.wait_for(_poll(), timeout)
++        if found[2] is not None:
++            return found
++    except asyncio.TimeoutError:
++        pass
+ 
+     logger.warning(
+         f"Timeout: Cloudflare challenge elements not found or not visible within {timeout} seconds."
+@@ -161,6 +172,40 @@
+ 
+     logger.debug("Cloudflare checkbox found, starting clicks.")
+ 
++    # the clicks get the time left, and their CDP calls and the click_delay
++    # sleeps are bounded by it as well
++    try:
++        await asyncio.wait_for(
++            _cf_click_challenge(
++                tab,
++                host_element,
++                challenge_iframe,
++                click_delay,
++                challenge_selector,
++                flash_corners,
++                timeout,
++                start_time,
++            ),
++            timeout - (loop.time() - start_time),
++        )
++    except asyncio.TimeoutError:
++        raise TimeoutError(
++            f"Could not solve the checkbox in {timeout} seconds (timeout during clicks)."
++        ) from None
++
++
++async def _cf_click_challenge(
++    tab: Tab,
++    host_element: Element | None,
++    challenge_iframe: Element,
++    click_delay: float,
++    challenge_selector: Optional[str],
++    flash_corners: bool,
++    timeout: float,
++    start_time: float,
++) -> None:
++    loop = asyncio.get_running_loop()
++
+     await challenge_iframe.scroll_into_view()
+ 
+     # To get the element's dimensions, its numeric 'node_id' is needed.
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/core/tab.py
+--- a/zendriver/core/tab.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/tab.py	2026-10-20 21:42:28.851347446 +0000
+@@ -20,6 +20,7 @@
+     Literal,
+     Optional,
+     Tuple,
++    TypeVar,
+     Union,
+     cast,
+ )
+@@ -51,6 +52,24 @@
+ }
+ MOUSE_PRESSED_FORCE = 0.5
+ 
++T = TypeVar("T")
++
++
++async def _poll_with_timeout(
++    poll: Awaitable[T], timeout: Union[int, float], message: str
++) -> T:
++    """
++    the timeout has to cover the CDP calls of a polling loop too, otherwise a
++    CDP response that never arrives (e.g. page blocked by a dialog) hangs the
++    loop forever. with timeout <= 0 the loop still makes its single attempt.
++    """
++    try:
++        if timeout <= 0:
++            return await poll
++        return await asyncio.wait_for(poll, timeout)
++    except asyncio.TimeoutError:
++        raise asyncio.TimeoutError(message) from None
++
+ 
+ class Tab(Connection):
+     """
+@@ -304,24 +323,27 @@
+             )
+             return [item] if item else []
+ 
+-        while True:
+-            item = await self.find_element_by_text(
+-                text, best_match, return_enclosing_element
+-            )
+-            if item:
+-                return item
+-
+-            if include_frames:
+-                items = await self._search_frames(find_in_frame)
+-                if items:
+-                    return items[0]
++        message = f"Timeout ({timeout}s) waiting for element with text: '{text}'"
+ 
+-            if loop.time() - start_time > timeout:
+-                raise asyncio.TimeoutError(
+-                    f"Timeout ({timeout}s) waiting for element with text: '{text}'"
++        async def _poll() -> Element:
++            while True:
++                item = await self.find_element_by_text(
++                    text, best_match, return_enclosing_element
+                 )
++                if item:
++                    return item
+ 
+-            await self.sleep(0.5)
++                if include_frames:
++                    items = await self._search_frames(find_in_frame)
++                    if items:
++                        return items[0]
++
++                if loop.time() - start_time > timeout:
++                    raise asyncio.TimeoutError(message)
++
++                await self.sleep(0.5)
++
++        return await _poll_with_timeout(_poll(), timeout, message)
+ 
+     async def select(
+         self,
+@@ -341,23 +363,27 @@
+         start_time = loop.time()
+ 
+         selector = selector.strip()
++        message = (
++            f"Timeout ({timeout}s) waiting for element with selector: '{selector}'"
++        )
+ 
+-        while True:
+-            if include_frames:
+-                items = await self._query_selector_all_with_frames(selector)
+-                if items:
+-                    return items[0]
+-            else:
+-                item = await self.query_selector(selector)
+-                if item:
+-                    return item
++        async def _poll() -> Element:
++            while True:
++                if include_frames:
++                    items = await self._query_selector_all_with_frames(selector)
++                    if items:
++                        return items[0]
++                else:
++                    item = await self.query_selector(selector)
++                    if item:
++                        return item
+ 
+-            if loop.time() - start_time > timeout:
+-                raise asyncio.TimeoutError(
+-                    f"Timeout ({timeout}s) waiting for element with selector: '{selector}'"
+-                )
++                if loop.time() - start_time > timeout:
++                    raise asyncio.TimeoutError(message)
++
++                await self.sleep(0.5)
+ 
+-            await self.sleep(0.5)
++        return await _poll_with_timeout(_poll(), timeout, message)
+ 
+     async def find_all(
+         self,
+@@ -377,24 +403,26 @@
+         now = loop.time()
+ 
+         text = text.strip()
++        message = f"Timeout ({timeout}s) waiting for any element with text: '{text}'"
+ 
+-        while True:
+-            items = await self.find_elements_by_text(text)
+-            if include_frames:
+-                items.extend(
+-                    await self._search_frames(
+-                        lambda frame: frame.find_elements_by_text(text)
++        async def _poll() -> List[Element]:
++            while True:
++                items = await self.find_elements_by_text(text)
++                if include_frames:
++                    items.extend(
++                        await self._search_frames(
++                            lambda frame: frame.find_elements_by_text(text)
++                        )
+                     )
+-                )
+-            if items:
+-                return items
++                if items:
++                    return items
+ 
+-            if loop.time() - now > timeout:
+-                raise asyncio.TimeoutError(
+-                    f"Timeout ({timeout}s) waiting for any element with text: '{text}'"
+-                )
++                if loop.time() - now > timeout:
++                    raise asyncio.TimeoutError(message)
++
++                await self.sleep(0.5)
+ 
+-            await self.sleep(0.5)
++        return await _poll_with_timeout(_poll(), timeout, message)
+ 
+     async def select_all(
+         self,
+@@ -415,22 +443,26 @@
+         loop = asyncio.get_running_loop()
+         now = loop.time()
+         selector = selector.strip()
++        message = (
++            f"Timeout ({timeout}s) waiting for any element with selector: '{selector}'"
++        )
+ 
+-        while True:
+-            if include_frames:
+-                items = await self._query_selector_all_with_frames(selector)
+-            else:
+-                items = await self.query_selector_all(selector)
++        async def _poll() -> List[Element]:
++            while True:
++                if include_frames:
++                    items = await self._query_selector_all_with_frames(selector)
++                else:
++                    items = await self.query_selector_all(selector)
+ 
+-            if items:
+-                return items
++                if items:
++                    return items
+ 
+-            if loop.time() - now > timeout:
+-                raise asyncio.TimeoutError(
+-                    f"Timeout ({timeout}s) waiting for any element with selector: '{selector}'"
+-                )
++                if loop.time() - now > timeout:
++                    raise asyncio.TimeoutError(message)
+ 
+-            await self.sleep(0.5)
++                await self.sleep(0.5)
++
++        return await _poll_with_timeout(_poll(), timeout, message)
+ 
+     async def _query_selector_all_with_frames(self, selector: str) -> List[Element]:
+         items = await self.query_selector_all(selector, _include_frames=True)
+@@ -464,20 +496,29 @@
+         :return:List[Element] or []
+         :rtype:
+         """
+-        items: List[Element] = []
+         loop = asyncio.get_running_loop()
+         start_time = loop.time()
+ 
+-        while (loop.time() - start_time) < timeout and len(items) == 0:
+-            try:
+-                await self.send(cdp.dom.enable(), True)
+-                items = await self.find_all(xpath, timeout=0)
+-            except Exception:
+-                items = []  # find_elements_by_text may raise exception
++        async def _poll() -> List[Element]:
++            # at least one attempt, even with timeout <= 0
++            while True:
++                items: List[Element]
++                try:
++                    await self.send(cdp.dom.enable(), True)
++                    items = await self.find_all(xpath, timeout=0)
++                except Exception:
++                    items = []  # find_elements_by_text may raise exception
+ 
+-            await self.disable_dom_agent()
++                await self.disable_dom_agent()
++                if items or loop.time() - start_time >= timeout:
++                    return items
+ 
+-        return items
++                await self.sleep(0.5)
++
++        try:
++            return await _poll_with_timeout(_poll(), timeout, "")
++        except asyncio.TimeoutError:
++            return []
+ 
+     async def get(
+         self,
+@@ -1304,24 +1345,29 @@
+         """
+         loop = asyncio.get_running_loop()
+         start_time = loop.time()
+-        if selector:
+-            item = await self.query_selector(selector)
+-            while not item and loop.time() - start_time < timeout:
++        message = "time ran out while waiting"
++
++        async def _poll() -> Element:
++            if selector:
+                 item = await self.query_selector(selector)
+-                await self.sleep(0.5)
++                while not item and loop.time() - start_time < timeout:
++                    item = await self.query_selector(selector)
++                    await self.sleep(0.5)
+ 
+-            if item:
+-                return item
+-        if text:
+-            item = await self.find_element_by_text(text)
+-            while not item and loop.time() - start_time < timeout:
++                if item:
++                    return item
++            if text:
+                 item = await self.find_element_by_text(text)
+-                await self.sleep(0.5)
++                while not item and loop.time() - start_time < timeout:
++                    item = await self.find_element_by_text(text)
++                    await self.sleep(0.5)
++
++                if item:
++                    return item
+ 
+-            if item:
+-                return item
++            raise asyncio.TimeoutError(message)
+ 
+-        raise asyncio.TimeoutError("time ran out while waiting")
++        return await _poll_with_timeout(_poll(), timeout, message)
+ 
+     async def wait_for_ready_state(
+         self,

@@ -1,0 +1,61 @@
+--- orig/zendriver/core/connection.py	2026-10-20 21:16:01.228337070 +0000
++++ pkg/zendriver/core/connection.py	2026-10-20 21:19:36.395269779 +0000
+@@ -127,7 +127,17 @@
+         except StopIteration as e:
+             # exception value holds the parsed response
+             return self.set_result(e.value)
+-        raise ProtocolException("could not parse the cdp response:\n%s" % response)
++        except Exception as e:
++            # a result the cdp parser rejects (e.g. a newer protocol) must fail
++            # this transaction, not the listener that dispatches it
++            exception = ProtocolException(
++                "could not parse the cdp response:\n%s" % response
++            )
++            exception.__cause__ = e
++            return self.set_exception(exception)
++        self.set_exception(
++            ProtocolException("could not parse the cdp response:\n%s" % response)
++        )
+ 
+     def __repr__(self) -> str:
+         success = False if (self.done() and self.has_exception) else True
+@@ -432,6 +442,12 @@
+         browser_connection = self._browser_connection
+         if browser_connection is not None:
+             await self._attach_session(browser_connection)
++            # the browser connection's listener reads the websocket for this session
++            if browser_connection.websocket is not None and (
++                not browser_connection.listener
++                or not browser_connection.listener.running
++            ):
++                browser_connection.listener = Listener(browser_connection)
+         elif self.websocket is None:
+             # concurrent callers must not each open (and leak) their own websocket
+             async with self._open_lock:
+@@ -945,6 +961,18 @@
+                     session._detach_session()
+                 self.connection._fail_pending_transactions(e)
+                 break
++            except Exception as e:
++                # fail the waiting commands instead of leaving them hanging;
++                # the next send() starts a new listener
++                logger.warning(
++                    "unexpected exception while reading websocket: %s",
++                    e,
++                    exc_info=True,
++                )
++                for session in list(self.connection._sessions.values()):
++                    session._fail_pending_transactions(e)
++                self.connection._fail_pending_transactions(e)
++                break
+ 
+             if not self.running:
+                 # if we have been cancelled or otherwise stopped running
+@@ -1008,7 +1036,6 @@
+                                 e,
+                                 exc_info=True,
+                             )
+-                            raise
+                 except asyncio.CancelledError:
+                     break
+                 except Exception:

@@ -1,0 +1,1 @@
+{"agentType":"workflow-subagent","description":"B13 bug class: unbounded awaits","workflowPhase":"Sweep B","spawnDepth":1,"requestShape":"foreground","requestNonInteractive":true}

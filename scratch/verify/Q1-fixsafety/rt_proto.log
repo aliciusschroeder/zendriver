@@ -1,0 +1,24 @@
+....................................................................     [100%]
+=============================== warnings summary ===============================
+tests/core/test_tab.py:482
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety/rt/tests/core/test_tab.py:482: PytestUnknownMarkWarning: Unknown pytest.mark.external - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.external
+
+tests/core/test_tab.py:501
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety/rt/tests/core/test_tab.py:501: PytestUnknownMarkWarning: Unknown pytest.mark.external - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.external
+
+tests/core/test_tab.py:525
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety/rt/tests/core/test_tab.py:525: PytestUnknownMarkWarning: Unknown pytest.mark.external - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.external
+
+tests/core/test_tab.py:564
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety/rt/tests/core/test_tab.py:564: PytestUnknownMarkWarning: Unknown pytest.mark.external - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.external
+
+tests/core/test_browser.py:21
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety/rt/tests/core/test_browser.py:21: PytestUnknownMarkWarning: Unknown pytest.mark.fresh_browser - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = pytest.mark.fresh_browser
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+68 passed, 4 deselected, 5 warnings in 35.45s

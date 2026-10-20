@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><style>body{margin:0}</style></head><body>
+<div id="outer"><span id="inner">hello</span><p id="deep"><b id="bold">x</b></p></div>
+<button id="hid" style="display:none" onclick="window.hidClicked=1">hidden</button>
+<textarea id="ta">some text</textarea>
+<input id="inp" value="abc">
+<div id="ce" contenteditable="true">editable</div>
+<div id="cmt"><!-- a comment --><i>it</i></div>
+<p id="esc">&lt;b&gt;not bold&lt;/b&gt;</p>
+<div id="q" title='say "hi"'>q</div>
+<a id="lnk" href="#x" onclick="window.lnkClicks=(window.lnkClicks||0)+1">link</a>
+<div id="circ">circ</div>
+<script>document.getElementById('circ').__fiber = {}; document.getElementById('circ').__fiber.self = document.getElementById('circ').__fiber;</script>
+</body></html>

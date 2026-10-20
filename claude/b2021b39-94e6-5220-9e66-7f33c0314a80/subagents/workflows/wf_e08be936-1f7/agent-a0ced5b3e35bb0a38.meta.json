@@ -1,0 +1,1 @@
+{"agentType":"workflow-subagent","description":"A3 browser.py: create, start, stop, process and connection lifecycle","workflowPhase":"Sweep A","spawnDepth":1,"requestShape":"foreground","requestNonInteractive":true}

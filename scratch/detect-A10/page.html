@@ -1,0 +1,9 @@
+<!doctype html><html><body>
+<form id="f"><input id="q" name="q"><button type="submit">go</button></form>
+<textarea id="ta"></textarea>
+<input id="i2">
+<script>
+window.submitted = 0; window.log = [];
+document.getElementById('f').addEventListener('submit', e => { e.preventDefault(); window.submitted++; });
+for (const t of ['keydown','keyup','keypress']) document.addEventListener(t, e => window.log.push([t, e.key, e.code, e.ctrlKey, e.shiftKey, e.altKey, e.metaKey, e.keyCode]), true);
+</script></body></html>

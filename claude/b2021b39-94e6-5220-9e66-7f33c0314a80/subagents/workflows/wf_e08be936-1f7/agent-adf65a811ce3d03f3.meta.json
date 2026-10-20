@@ -1,0 +1,1 @@
+{"agentType":"workflow-subagent","description":"A11 cloudflare.py + proxy.py + _contradict.py","workflowPhase":"Sweep A","spawnDepth":1,"requestShape":"foreground","requestNonInteractive":true}

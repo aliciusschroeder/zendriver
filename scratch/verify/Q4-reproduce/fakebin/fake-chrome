@@ -1,0 +1,31 @@
+#!/home/user/zendriver/.venv/bin/python
+"""Fake browser executable: serves /json/version and a CDP websocket that answers
+every command with a CDP error (as if the browser rejected Target.setDiscoverTargets)."""
+import asyncio, json, sys
+from websockets.asyncio.server import serve
+
+args = sys.argv[1:]
+port = int(next(a.split("=", 1)[1] for a in args if a.startswith("--remote-debugging-port=")))
+host = next((a.split("=", 1)[1] for a in args if a.startswith("--remote-debugging-host=")), "127.0.0.1")
+
+def process_request(connection, request):
+    if request.path.startswith("/json"):
+        body = json.dumps({
+            "Browser": "FakeChrome/1.0",
+            "User-Agent": "Mozilla/5.0 HeadlessChrome/141.0.0.0",
+            "webSocketDebuggerUrl": f"ws://{host}:{port}/devtools/browser/fake",
+        })
+        return connection.respond(200, body)
+    return None
+
+async def handler(ws):
+    async for raw in ws:
+        msg = json.loads(raw)
+        print("fake-chrome got", msg.get("method"), file=sys.stderr, flush=True)
+        await ws.send(json.dumps({"id": msg["id"], "error": {"code": -32601, "message": f"'{msg.get('method')}' wasn't found"}}))
+
+async def main():
+    async with serve(handler, host, port, process_request=process_request):
+        await asyncio.Future()
+
+asyncio.run(main())

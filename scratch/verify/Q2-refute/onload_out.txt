@@ -1,0 +1,12 @@
+zendriver from /home/user/zendriver/zendriver/__init__.py python 3.13.16
+browser.get returned after 0.01s
+select(#a, timeout=3) STILL PENDING after 20s; stack:
+Stack for <Task pending name='Task-10' coro=<Tab.select() running at /home/user/zendriver/zendriver/core/tab.py:351> wait_for=<Transaction
+	method: DOM.getDocument
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/tab.py", line 351, in select
+    item = await self.query_selector(selector)
+
+recovery: navigate elsewhere (Page.navigate is browser-side)
+after navigation select works: <p id="b">ok</p> (0.13s)

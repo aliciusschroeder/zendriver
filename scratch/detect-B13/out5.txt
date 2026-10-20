@@ -1,0 +1,11 @@
+start 5073
+25 14145 70s
+50 23073 144s
+75 33536 220s
+100 43331 295s
+125 52687 370s
+150 62046 445s
+iteration 157: navigate TIMEOUT stderr pending 64350 after 473s
+browser answers getVersion
+final 64350
+rc=0

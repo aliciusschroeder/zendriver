@@ -1,0 +1,5 @@
+zendriver from /home/user/zendriver/zendriver/__init__.py python 3.13.16
+challenge present: True
+verify_cf(timeout=1, click_delay=4): TimeoutError(Could not solve the checkbox in 1 seconds (timeout) after 4.02s, clicks=1
+verify_cf(timeout=2, click_delay=0.1): TimeoutError(Could not solve the checkbox in 2 seconds (timeout) after 2.01s, clicks=19
+verify_cf(timeout=15, click_delay=5): TimeoutError(Could not solve the checkbox in 15 seconds (timeou) after 15.03s, clicks=3

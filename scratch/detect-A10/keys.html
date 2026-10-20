@@ -1,0 +1,8 @@
+<!DOCTYPE html><html><body>
+<form id="f" onsubmit="window.__sub=(window.__sub||0)+1; return false;"><input id="i1"><input id="i2"><button type="submit">s</button></form>
+<textarea id="ta"></textarea>
+<script>
+window.__sub=0; window.__log=[];
+for (const t of ['keydown','keypress','keyup']) document.addEventListener(t, e=>window.__log.push(t+':'+JSON.stringify(e.key)+':'+e.code+':'+e.keyCode+':shift='+e.shiftKey));
+</script>
+</body></html>

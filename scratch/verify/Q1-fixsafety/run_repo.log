@@ -1,0 +1,535 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.16, pytest-9.1.1, pluggy-1.5.0 -- /home/user/zendriver/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety
+plugins: cov-6.2.1, xdist-3.8.0, mock-3.14.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... zendriver imported from: /home/user/zendriver/zendriver/__init__.py
+collected 8 items
+
+test_q1_listener_robustness.py::test_unparseable_reply_raises_and_listener_survives[missing-key] ---- stuck task stack ----
+Stack for <Task pending name='Task-3' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Target.getTargetInfo
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+FAILED
+test_q1_listener_robustness.py::test_unparseable_reply_raises_and_listener_survives[unknown-enum] ---- stuck task stack ----
+Stack for <Task pending name='Task-8' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Storage.getCookies
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+FAILED
+test_q1_listener_robustness.py::test_custom_generator_that_raises_propagates ---- stuck task stack ----
+Stack for <Task pending name='Task-12' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Runtime.evaluate
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+FAILED
+test_q1_listener_robustness.py::test_generator_that_does_not_stop_raises_protocol_exception ---- stuck task stack ----
+Stack for <Task pending name='Task-17' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Runtime.evaluate
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+FAILED
+test_q1_listener_robustness.py::test_bad_handler_does_not_kill_listener ---- stuck task stack ----
+Stack for <Task pending name='Task-22' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Browser.getVersion
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+FAILED
+test_q1_listener_robustness.py::test_unexpected_receive_error_does_not_hang_send[non-json-frame] ---- stuck task stack ----
+Stack for <Task pending name='Task-27' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Browser.getVersion
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+FAILED
+test_q1_listener_robustness.py::test_unexpected_receive_error_does_not_hang_send[recv-raises] ---- stuck task stack ----
+Stack for <Task pending name='Task-32' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Browser.getVersion
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+FAILED
+test_q1_listener_robustness.py::test_tab_send_revives_dead_browser_listener ---- stuck task stack ----
+Stack for <Task pending name='Task-40' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Runtime.evaluate
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+FAILED
+
+=================================== FAILURES ===================================
+_______ test_unparseable_reply_raises_and_listener_survives[missing-key] _______
+
+fake_ws = <function fake_ws.<locals>.install at 0x7fe7a9ab04a0>, bad_result = {}
+cmd_factory = <function <lambda> at 0x7fe7a9a9b600>
+
+    @pytest.mark.parametrize(
+        "bad_result,cmd_factory",
+        [
+            # missing required key -> KeyError in TargetInfo.from_json
+            ({}, lambda: cdp.target.get_target_info()),
+            # enum value newer than the generated protocol -> ValueError
+            (
+                {
+                    "cookies": [
+                        {
+                            "name": "n",
+                            "value": "v",
+                            "domain": "d",
+                            "path": "/",
+                            "size": 2,
+                            "httpOnly": False,
+                            "secure": False,
+                            "session": True,
+                            "priority": "Medium",
+                            "sourceScheme": "Secure",
+                            "sourcePort": 443,
+                            "expires": -1,
+                            "sameSite": "SomeFutureValue",
+                        }
+                    ]
+                },
+                lambda: cdp.storage.get_cookies(),
+            ),
+        ],
+        ids=["missing-key", "unknown-enum"],
+    )
+    async def test_unparseable_reply_raises_and_listener_survives(
+        fake_ws: Callable[[Responder], None], bad_result: Any, cmd_factory: Any
+    ) -> None:
+        bad_methods = {"Target.getTargetInfo", "Storage.getCookies"}
+    
+        def responder(command: dict[str, Any]) -> list[Any]:
+            if command["method"] in bad_methods:
+                return [reply(command, bad_result)]
+            return [reply(command, default_result(command["method"]))]
+    
+        fake_ws(responder)
+        conn = Connection("ws://fake/devtools/browser/x")
+        try:
+            await conn.aopen()
+            listener = conn.listener
+            with pytest.raises(Exception) as excinfo:
+>               await finish_within(conn.send(cmd_factory()))
+
+test_q1_listener_robustness.py:184: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+coro = <coroutine object Connection.send at 0x7fe7a9aa8820>, timeout = 3.0
+
+    async def finish_within(coro: Any, timeout: float = 3.0) -> Any:
+        """Await coro; if it is still pending after `timeout`, print where it is
+        stuck, cancel it and fail the test."""
+        task = asyncio.ensure_future(coro)
+        done, _ = await asyncio.wait({task}, timeout=timeout)
+        if not done:
+            print("---- stuck task stack ----")
+            task.print_stack()
+            task.cancel()
+            try:
+                await asyncio.wait_for(task, 1)
+            except BaseException:
+                pass
+>           pytest.fail(f"call did not finish within {timeout}s (hang)")
+E           Failed: call did not finish within 3.0s (hang)
+
+test_q1_listener_robustness.py:119: Failed
+______ test_unparseable_reply_raises_and_listener_survives[unknown-enum] _______
+
+fake_ws = <function fake_ws.<locals>.install at 0x7fe7a9ab0720>
+bad_result = {'cookies': [{'name': 'n', 'value': 'v', 'domain': 'd', 'path': '/', ...}]}
+cmd_factory = <function <lambda> at 0x7fe7a9a9b6a0>
+
+    @pytest.mark.parametrize(
+        "bad_result,cmd_factory",
+        [
+            # missing required key -> KeyError in TargetInfo.from_json
+            ({}, lambda: cdp.target.get_target_info()),
+            # enum value newer than the generated protocol -> ValueError
+            (
+                {
+                    "cookies": [
+                        {
+                            "name": "n",
+                            "value": "v",
+                            "domain": "d",
+                            "path": "/",
+                            "size": 2,
+                            "httpOnly": False,
+                            "secure": False,
+                            "session": True,
+                            "priority": "Medium",
+                            "sourceScheme": "Secure",
+                            "sourcePort": 443,
+                            "expires": -1,
+                            "sameSite": "SomeFutureValue",
+                        }
+                    ]
+                },
+                lambda: cdp.storage.get_cookies(),
+            ),
+        ],
+        ids=["missing-key", "unknown-enum"],
+    )
+    async def test_unparseable_reply_raises_and_listener_survives(
+        fake_ws: Callable[[Responder], None], bad_result: Any, cmd_factory: Any
+    ) -> None:
+        bad_methods = {"Target.getTargetInfo", "Storage.getCookies"}
+    
+        def responder(command: dict[str, Any]) -> list[Any]:
+            if command["method"] in bad_methods:
+                return [reply(command, bad_result)]
+            return [reply(command, default_result(command["method"]))]
+    
+        fake_ws(responder)
+        conn = Connection("ws://fake/devtools/browser/x")
+        try:
+            await conn.aopen()
+            listener = conn.listener
+            with pytest.raises(Exception) as excinfo:
+>               await finish_within(conn.send(cmd_factory()))
+
+test_q1_listener_robustness.py:184: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+coro = <coroutine object Connection.send at 0x7fe7a9aa9a20>, timeout = 3.0
+
+    async def finish_within(coro: Any, timeout: float = 3.0) -> Any:
+        """Await coro; if it is still pending after `timeout`, print where it is
+        stuck, cancel it and fail the test."""
+        task = asyncio.ensure_future(coro)
+        done, _ = await asyncio.wait({task}, timeout=timeout)
+        if not done:
+            print("---- stuck task stack ----")
+            task.print_stack()
+            task.cancel()
+            try:
+                await asyncio.wait_for(task, 1)
+            except BaseException:
+                pass
+>           pytest.fail(f"call did not finish within {timeout}s (hang)")
+E           Failed: call did not finish within 3.0s (hang)
+
+test_q1_listener_robustness.py:119: Failed
+_________________ test_custom_generator_that_raises_propagates _________________
+
+fake_ws = <function fake_ws.<locals>.install at 0x7fe7a9ab0180>
+
+    async def test_custom_generator_that_raises_propagates(
+        fake_ws: Callable[[Responder], None],
+    ) -> None:
+        fake_ws(lambda c: [reply(c, default_result(c["method"]))])
+    
+        def custom_cmd() -> Any:
+            j = yield {"method": "Runtime.evaluate", "params": {"expression": "1"}}
+            return j["notThere"]
+    
+        conn = Connection("ws://fake/devtools/browser/x")
+        try:
+            with pytest.raises(Exception) as excinfo:
+>               await finish_within(conn.send(custom_cmd()))
+
+test_q1_listener_robustness.py:209: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+coro = <coroutine object Connection.send at 0x7fe7a9aaa680>, timeout = 3.0
+
+    async def finish_within(coro: Any, timeout: float = 3.0) -> Any:
+        """Await coro; if it is still pending after `timeout`, print where it is
+        stuck, cancel it and fail the test."""
+        task = asyncio.ensure_future(coro)
+        done, _ = await asyncio.wait({task}, timeout=timeout)
+        if not done:
+            print("---- stuck task stack ----")
+            task.print_stack()
+            task.cancel()
+            try:
+                await asyncio.wait_for(task, 1)
+            except BaseException:
+                pass
+>           pytest.fail(f"call did not finish within {timeout}s (hang)")
+E           Failed: call did not finish within 3.0s (hang)
+
+test_q1_listener_robustness.py:119: Failed
+_________ test_generator_that_does_not_stop_raises_protocol_exception __________
+
+fake_ws = <function fake_ws.<locals>.install at 0x7fe7a9ab1800>
+
+    async def test_generator_that_does_not_stop_raises_protocol_exception(
+        fake_ws: Callable[[Responder], None],
+    ) -> None:
+        fake_ws(lambda c: [reply(c, default_result(c["method"]))])
+    
+        def two_step_cmd() -> Any:
+            yield {"method": "Runtime.evaluate", "params": {"expression": "1"}}
+            yield {"method": "Runtime.evaluate", "params": {"expression": "2"}}
+    
+        conn = Connection("ws://fake/devtools/browser/x")
+        try:
+            with pytest.raises(ProtocolException, match="could not parse"):
+>               await finish_within(conn.send(two_step_cmd()))
+
+test_q1_listener_robustness.py:228: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+coro = <coroutine object Connection.send at 0x7fe7a9aab2e0>, timeout = 3.0
+
+    async def finish_within(coro: Any, timeout: float = 3.0) -> Any:
+        """Await coro; if it is still pending after `timeout`, print where it is
+        stuck, cancel it and fail the test."""
+        task = asyncio.ensure_future(coro)
+        done, _ = await asyncio.wait({task}, timeout=timeout)
+        if not done:
+            print("---- stuck task stack ----")
+            task.print_stack()
+            task.cancel()
+            try:
+                await asyncio.wait_for(task, 1)
+            except BaseException:
+                pass
+>           pytest.fail(f"call did not finish within {timeout}s (hang)")
+E           Failed: call did not finish within 3.0s (hang)
+
+test_q1_listener_robustness.py:119: Failed
+___________________ test_bad_handler_does_not_kill_listener ____________________
+
+fake_ws = <function fake_ws.<locals>.install at 0x7fe7a9ab1c60>
+
+    async def test_bad_handler_does_not_kill_listener(
+        fake_ws: Callable[[Responder], None],
+    ) -> None:
+        def responder(command: dict[str, Any]) -> list[Any]:
+            frames: list[Any] = []
+            if command["method"] == "Browser.getVersion":
+                frames.append(
+                    {
+                        "method": "Target.targetCreated",
+                        "params": {"targetInfo": dict(TARGET_INFO)},
+                    }
+                )
+            frames.append(reply(command, default_result(command["method"])))
+            return frames
+    
+        fake_ws(responder)
+        seen: list[Any] = []
+    
+        async def bad_handler() -> None:  # wrong arity: TypeError when called
+            pass
+    
+        async def good_handler(event: Any) -> None:
+            seen.append(event)
+    
+        conn = Connection("ws://fake/devtools/browser/x")
+        conn.add_handler(cdp.target.TargetCreated, bad_handler)
+        conn.add_handler(cdp.target.TargetCreated, good_handler)
+        try:
+>           version = await finish_within(conn.send(cdp.browser.get_version()))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+test_q1_listener_robustness.py:265: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+coro = <coroutine object Connection.send at 0x7fe7a9aab9a0>, timeout = 3.0
+
+    async def finish_within(coro: Any, timeout: float = 3.0) -> Any:
+        """Await coro; if it is still pending after `timeout`, print where it is
+        stuck, cancel it and fail the test."""
+        task = asyncio.ensure_future(coro)
+        done, _ = await asyncio.wait({task}, timeout=timeout)
+        if not done:
+            print("---- stuck task stack ----")
+            task.print_stack()
+            task.cancel()
+            try:
+                await asyncio.wait_for(task, 1)
+            except BaseException:
+                pass
+>           pytest.fail(f"call did not finish within {timeout}s (hang)")
+E           Failed: call did not finish within 3.0s (hang)
+
+test_q1_listener_robustness.py:119: Failed
+------------------------------ Captured log call -------------------------------
+WARNING  uc.connection:connection.py:1004 exception in callback <function test_bad_handler_does_not_kill_listener.<locals>.bad_handler at 0x7fe7a9ab2340> for event TargetCreated => test_bad_handler_does_not_kill_listener.<locals>.bad_handler() takes 0 positional arguments but 1 was given
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 1000, in listener_loop
+    asyncio.create_task(callback(*args))
+                        ~~~~~~~~^^^^^^^
+TypeError: test_bad_handler_does_not_kill_listener.<locals>.bad_handler() takes 0 positional arguments but 1 was given
+_______ test_unexpected_receive_error_does_not_hang_send[non-json-frame] _______
+
+fake_ws = <function fake_ws.<locals>.install at 0x7fe7a9ab2200>
+bad_frame = 'this is not json'
+
+    @pytest.mark.parametrize(
+        "bad_frame",
+        ["this is not json", RuntimeError("unexpected recv failure")],
+        ids=["non-json-frame", "recv-raises"],
+    )
+    async def test_unexpected_receive_error_does_not_hang_send(
+        fake_ws: Callable[[Responder], None], bad_frame: Any
+    ) -> None:
+        injected: list[Any] = []
+    
+        def responder(command: dict[str, Any]) -> list[Any]:
+            frames = [reply(command, default_result(command["method"]))]
+            if command["method"] == "Browser.getVersion" and not injected:
+                injected.append(bad_frame)  # only once, in front of the first reply
+                frames.insert(0, bad_frame)
+            return frames
+    
+        fake_ws(responder)
+        conn = Connection("ws://fake/devtools/browser/x")
+        try:
+            outcome: Any
+            try:
+>               outcome = await finish_within(conn.send(cdp.browser.get_version()))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+test_q1_listener_robustness.py:304: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+coro = <coroutine object Connection.send at 0x7fe7a9b0c3a0>, timeout = 3.0
+
+    async def finish_within(coro: Any, timeout: float = 3.0) -> Any:
+        """Await coro; if it is still pending after `timeout`, print where it is
+        stuck, cancel it and fail the test."""
+        task = asyncio.ensure_future(coro)
+        done, _ = await asyncio.wait({task}, timeout=timeout)
+        if not done:
+            print("---- stuck task stack ----")
+            task.print_stack()
+            task.cancel()
+            try:
+                await asyncio.wait_for(task, 1)
+            except BaseException:
+                pass
+>           pytest.fail(f"call did not finish within {timeout}s (hang)")
+E           Failed: call did not finish within 3.0s (hang)
+
+test_q1_listener_robustness.py:119: Failed
+________ test_unexpected_receive_error_does_not_hang_send[recv-raises] _________
+
+fake_ws = <function fake_ws.<locals>.install at 0x7fe7a9ab28e0>
+bad_frame = RuntimeError('unexpected recv failure')
+
+    @pytest.mark.parametrize(
+        "bad_frame",
+        ["this is not json", RuntimeError("unexpected recv failure")],
+        ids=["non-json-frame", "recv-raises"],
+    )
+    async def test_unexpected_receive_error_does_not_hang_send(
+        fake_ws: Callable[[Responder], None], bad_frame: Any
+    ) -> None:
+        injected: list[Any] = []
+    
+        def responder(command: dict[str, Any]) -> list[Any]:
+            frames = [reply(command, default_result(command["method"]))]
+            if command["method"] == "Browser.getVersion" and not injected:
+                injected.append(bad_frame)  # only once, in front of the first reply
+                frames.insert(0, bad_frame)
+            return frames
+    
+        fake_ws(responder)
+        conn = Connection("ws://fake/devtools/browser/x")
+        try:
+            outcome: Any
+            try:
+>               outcome = await finish_within(conn.send(cdp.browser.get_version()))
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+test_q1_listener_robustness.py:304: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+coro = <coroutine object Connection.send at 0x7fe7a9b0c040>, timeout = 3.0
+
+    async def finish_within(coro: Any, timeout: float = 3.0) -> Any:
+        """Await coro; if it is still pending after `timeout`, print where it is
+        stuck, cancel it and fail the test."""
+        task = asyncio.ensure_future(coro)
+        done, _ = await asyncio.wait({task}, timeout=timeout)
+        if not done:
+            print("---- stuck task stack ----")
+            task.print_stack()
+            task.cancel()
+            try:
+                await asyncio.wait_for(task, 1)
+            except BaseException:
+                pass
+>           pytest.fail(f"call did not finish within {timeout}s (hang)")
+E           Failed: call did not finish within 3.0s (hang)
+
+test_q1_listener_robustness.py:119: Failed
+_________________ test_tab_send_revives_dead_browser_listener __________________
+
+fake_ws = <function fake_ws.<locals>.install at 0x7fe7a9ab27a0>
+
+    async def test_tab_send_revives_dead_browser_listener(
+        fake_ws: Callable[[Responder], None],
+    ) -> None:
+        fake_ws(lambda c: [reply(c, default_result(c["method"]))])
+        browser_conn = Connection("ws://fake/devtools/browser/x")
+        owner = types.SimpleNamespace(connection=browser_conn, config=None)
+        tab = Connection(
+            "ws://fake/devtools/page/T1",
+            target=cdp.target.TargetInfo.from_json(dict(TARGET_INFO)),
+            _owner=owner,  # type: ignore[arg-type]
+        )
+        try:
+            remote, _ = await finish_within(tab.send(cdp.runtime.evaluate("1+1")))
+            assert remote.value == 2 and tab.session_id == "S1"
+    
+            # the browser listener stops for some reason (any of the other Q1 paths)
+            assert browser_conn.listener is not None
+            browser_conn.listener.cancel()
+            await asyncio.wait({browser_conn.listener.task}, timeout=1)  # type: ignore[arg-type]
+            assert listener_state(browser_conn) == "stopped"
+    
+>           remote, _ = await finish_within(tab.send(cdp.runtime.evaluate("1+1")))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+test_q1_listener_robustness.py:339: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+coro = <coroutine object Connection.send at 0x7fe7a9b0d000>, timeout = 3.0
+
+    async def finish_within(coro: Any, timeout: float = 3.0) -> Any:
+        """Await coro; if it is still pending after `timeout`, print where it is
+        stuck, cancel it and fail the test."""
+        task = asyncio.ensure_future(coro)
+        done, _ = await asyncio.wait({task}, timeout=timeout)
+        if not done:
+            print("---- stuck task stack ----")
+            task.print_stack()
+            task.cancel()
+            try:
+                await asyncio.wait_for(task, 1)
+            except BaseException:
+                pass
+>           pytest.fail(f"call did not finish within {timeout}s (hang)")
+E           Failed: call did not finish within 3.0s (hang)
+
+test_q1_listener_robustness.py:119: Failed
+=========================== short test summary info ============================
+FAILED test_q1_listener_robustness.py::test_unparseable_reply_raises_and_listener_survives[missing-key]
+FAILED test_q1_listener_robustness.py::test_unparseable_reply_raises_and_listener_survives[unknown-enum]
+FAILED test_q1_listener_robustness.py::test_custom_generator_that_raises_propagates
+FAILED test_q1_listener_robustness.py::test_generator_that_does_not_stop_raises_protocol_exception
+FAILED test_q1_listener_robustness.py::test_bad_handler_does_not_kill_listener
+FAILED test_q1_listener_robustness.py::test_unexpected_receive_error_does_not_hang_send[non-json-frame]
+FAILED test_q1_listener_robustness.py::test_unexpected_receive_error_does_not_hang_send[recv-raises]
+FAILED test_q1_listener_robustness.py::test_tab_send_revives_dead_browser_listener
+============================== 8 failed in 24.34s ==============================

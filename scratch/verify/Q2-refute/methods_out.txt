@@ -1,0 +1,56 @@
+zendriver from /home/user/zendriver/zendriver/__init__.py python 3.13.16
+B1: no Page.enable/handlers; alert via setTimeout; all methods timeout=2, outer 12s
+   select(#nope)            STILL PENDING after 12.0s (timeout=2) at core/tab.py", line 351, in select
+   select(#topp) [exists]   STILL PENDING after 12.0s (timeout=2) at core/tab.py", line 351, in select
+   find(nope)               STILL PENDING after 12.0s (timeout=2) at core/tab.py", line 308, in find
+   find_all(nope)           STILL PENDING after 12.0s (timeout=2) at core/tab.py", line 382, in find_all
+   select_all(#nope)        STILL PENDING after 12.0s (timeout=2) at core/tab.py", line 423, in select_all
+   select(#nope,frames)     STILL PENDING after 12.0s (timeout=2) at core/tab.py", line 347, in select
+   xpath(//nope)            STILL PENDING after 12.0s (timeout=2) at core/tab.py", line 473, in xpath
+   wait_for(selector)       STILL PENDING after 12.0s (timeout=2) at core/tab.py", line 1308, in wait_for
+   wait_for(text)           STILL PENDING after 12.0s (timeout=2) at core/tab.py", line 1316, in wait_for
+   tab(selector=)           STILL PENDING after 12.0s (timeout=2) at core/tab.py", line 1966, in __call__
+   cf_is_present            STILL PENDING after 12.0s (timeout=2) at core/cloudflare.py", line 120, in cf_is_interactive_challenge_present
+   verify_cf                STILL PENDING after 12.0s (timeout=2) at core/tab.py", line 1666, in verify_cf
+B2: dismiss dialog; do pending calls now finish?
+   handleJavaScriptDialog without Page.enable: ProtocolException No dialog is showing
+   late Page.enable: TimeoutError 
+   handleJavaScriptDialog after late Page.enable: ProtocolException No dialog is showing
+   select(#nope)            still pending
+   select(#topp) [exists]   still pending
+   find(nope)               still pending
+   find_all(nope)           still pending
+   select_all(#nope)        still pending
+   select(#nope,frames)     still pending
+   xpath(//nope)            still pending
+   wait_for(selector)       still pending
+   wait_for(text)           still pending
+   tab(selector=)           still pending
+   cf_is_present            still pending
+   verify_cf                still pending
+C1: busy main thread for 8s; all methods timeout=2
+Timeout: Cloudflare challenge elements not found or not visible within 2 seconds.
+Timeout: Cloudflare challenge elements not found or not visible within 2 seconds.
+   select(#nope)            done after  7.60s: raised TimeoutError
+   select(#topp) [exists]   done after  7.60s: raised TimeoutError
+   find(nope)               done after  7.60s: raised TimeoutError
+   find_all(nope)           done after  7.60s: raised TimeoutError
+   select_all(#nope)        done after  7.61s: raised TimeoutError
+   select(#nope,frames)     done after  7.61s: raised TimeoutError
+   xpath(//nope)            done after  7.61s: returned '[]'
+   wait_for(selector)       done after  7.61s: raised TimeoutError
+   wait_for(text)           done after  7.61s: raised TimeoutError
+   tab(selector=)           done after  7.61s: raised TimeoutError
+   cf_is_present            done after  8.10s: returned 'False'
+   verify_cf                done after  8.10s: raised TimeoutError
+D1: xpath timeout semantics on an existing element
+   xpath(//p[@id=topp], timeout=2.5) -> 1 items in 0.004s
+   xpath(//p[@id=topp], timeout=0.5) -> 1 items in 0.002s
+   xpath(//p[@id=topp], timeout=0.001) -> 1 items in 0.002s
+   xpath(//p[@id=topp], timeout=0) -> 0 items in 0.000s
+   xpath(//p[@id=topp], timeout=-1) -> 0 items in 0.000s
+   find('hello', timeout=0) -> <p id="topp">hello world</p>
+   select('#topp', timeout=0) -> <p id="topp">hello world</p>
+D2: send count during a 0.5s xpath miss
+   xpath miss -> [] in 0.50s, Tab.send calls: 1398
+   for comparison select miss timeout=0.5, Tab.send calls: 5

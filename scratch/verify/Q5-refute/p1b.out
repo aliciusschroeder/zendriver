@@ -1,0 +1,13 @@
+zendriver from /home/user/zendriver/zendriver/__init__.py 3.13.16
+udd /tmp/uc_7xlmd9q9
+hung at round 10
+stop still pending after 40s; stack:
+Stack for <Task pending name='Task-7' coro=<Browser.stop() running at /home/user/zendriver/zendriver/core/browser.py:872> wait_for=<Transaction
+	method: Target.detachFromTarget
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/browser.py", line 872, in stop
+    await self._stop()
+killing
+children killed
+killed main

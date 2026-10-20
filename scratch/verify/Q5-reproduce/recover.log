@@ -1,0 +1,5 @@
+zendriver from /home/user/zendriver/zendriver/__init__.py python 3.13.16
+evaluate #362 TIMEOUT, pending=65062, browser wchan=anon_pipe_write
+drained 65062 bytes from stderr pipe (test harness, not zendriver)
+evaluate after drain -> 2 in 0.00s
+stop ok

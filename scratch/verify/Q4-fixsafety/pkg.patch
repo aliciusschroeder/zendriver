@@ -1,0 +1,31 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
+--- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/browser.py	2026-10-20 22:15:22.741992929 +0000
+@@ -576,6 +576,19 @@
+ 
+         self._http = HTTPApi((self.config.host, self.config.port))
+         util.get_registered_instances().add(self)
++        try:
++            await self._connect(connect_existing)
++        except BaseException:
++            # the caller never gets this instance when start() fails or is
++            # cancelled, so it could not stop the browser launched above
++            if connect_existing and self.connection:
++                # do not close a browser that was not launched here
++                await self.connection.aclose()
++            await self.stop()
++            raise
++        return self
++
++    async def _connect(self, connect_existing: bool) -> None:
+         # try to connect immediately, then retry at the configured interval
+         connected = await self.test_connection()
+         for _ in range(self.config.browser_connection_max_tries):
+@@ -640,7 +653,6 @@
+             await self._wait_for_initial_tab()
+         if self.config.headless:
+             await self._read_headless_user_agent()
+-        return self
+ 
+     async def _wait_for_initial_tab(self) -> None:
+         for _ in range(self.config.browser_connection_max_tries):

@@ -1,0 +1,75 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.16, pytest-9.1.1, pluggy-1.5.0 -- /home/user/zendriver/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety
+plugins: cov-6.2.1, xdist-3.8.0, mock-3.14.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... zendriver imported from: /home/user/zendriver/zendriver/__init__.py
+collected 9 items / 8 deselected / 1 selected
+
+test_q1_listener_robustness.py::test_tab_command_in_flight_when_browser_listener_breaks ---- stuck task stack ----
+Stack for <Task pending name='Task-5' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Runtime.evaluate
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+FAILED
+
+=================================== FAILURES ===================================
+___________ test_tab_command_in_flight_when_browser_listener_breaks ____________
+
+fake_ws = <function fake_ws.<locals>.install at 0x7fd2fb318900>
+
+    async def test_tab_command_in_flight_when_browser_listener_breaks(
+        fake_ws: Callable[[Responder], None],
+    ) -> None:
+        """Browser listener hits an unexpected receive error while a tab command is
+        waiting: the tab command must fail (not hang) and the tab must recover."""
+        state = {"inject": False}
+    
+        def responder(command: dict[str, Any]) -> list[Any]:
+            frames: list[Any] = [reply(command, default_result(command["method"]))]
+            if command.get("sessionId") and state["inject"]:
+                state["inject"] = False
+                return [RuntimeError("unexpected recv failure")] + frames
+            return frames
+    
+        fake_ws(responder)
+        browser_conn = Connection("ws://fake/devtools/browser/x")
+        owner = types.SimpleNamespace(connection=browser_conn, config=None)
+        tab = Connection(
+            "ws://fake/devtools/page/T1",
+            target=cdp.target.TargetInfo.from_json(dict(TARGET_INFO)),
+            _owner=owner,  # type: ignore[arg-type]
+        )
+        try:
+            await finish_within(tab.send(cdp.runtime.evaluate("1+1")))
+            state["inject"] = True
+            with pytest.raises(RuntimeError):
+>               await finish_within(tab.send(cdp.runtime.evaluate("1+1")))
+
+test_q1_listener_robustness.py:373: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+coro = <coroutine object Connection.send at 0x7fd2fb3117e0>, timeout = 3.0
+
+    async def finish_within(coro: Any, timeout: float = 3.0) -> Any:
+        """Await coro; if it is still pending after `timeout`, print where it is
+        stuck, cancel it and fail the test."""
+        task = asyncio.ensure_future(coro)
+        done, _ = await asyncio.wait({task}, timeout=timeout)
+        if not done:
+            print("---- stuck task stack ----")
+            task.print_stack()
+            task.cancel()
+            try:
+                await asyncio.wait_for(task, 1)
+            except BaseException:
+                pass
+>           pytest.fail(f"call did not finish within {timeout}s (hang)")
+E           Failed: call did not finish within 3.0s (hang)
+
+test_q1_listener_robustness.py:119: Failed
+=========================== short test summary info ============================
+FAILED test_q1_listener_robustness.py::test_tab_command_in_flight_when_browser_listener_breaks
+======================= 1 failed, 8 deselected in 3.26s ========================

@@ -1,0 +1,1 @@
+{"agentType":"workflow-subagent","description":"B16 bug class: resource lifecycle and state consistency","workflowPhase":"Sweep B","spawnDepth":1,"requestShape":"foreground","requestNonInteractive":true}

@@ -1,0 +1,36 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.16, pytest-9.1.1, pluggy-1.5.0 -- /home/user/zendriver/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety
+plugins: cov-6.2.1, xdist-3.8.0, mock-3.14.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... zendriver imported from: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety/pkg/zendriver/__init__.py
+collected 8 items
+
+test_q1_listener_robustness.py::test_unparseable_reply_raises_and_listener_survives[missing-key] send raised: ProtocolException could not parse the cdp response:
+{'id': 1, 'result': {}}
+command:Target.getTargetInfo
+params:{}
+listener after: running
+PASSED
+test_q1_listener_robustness.py::test_unparseable_reply_raises_and_listener_survives[unknown-enum] send raised: ProtocolException could not parse the cdp response:
+{'id': 1, 'result': {'cookies': [{'name': 'n', 'value': 'v', 'domain': 'd', 'path': '/', 'size': 2, 'httpOnly': False, 'secure': False, 'session': True, 'priority': 'Medium', 'sourceScheme': 'Secure', 'sourcePort': 443, 'expires': -1, 'sameSite': 'SomeFutureValue'}]}}
+command:Storage.getCookies
+params:{}
+listener after: running
+PASSED
+test_q1_listener_robustness.py::test_custom_generator_that_raises_propagates custom send raised: ProtocolException could not parse the cdp response:
+{'id': 1, 'result': {'result': {'type': 'number', 'value': 2}}}
+command:Runtime.evaluate
+params:{'expression': '1'}
+PASSED
+test_q1_listener_robustness.py::test_generator_that_does_not_stop_raises_protocol_exception PASSED
+test_q1_listener_robustness.py::test_bad_handler_does_not_kill_listener listener after: running good handler calls: 1
+PASSED
+test_q1_listener_robustness.py::test_unexpected_receive_error_does_not_hang_send[non-json-frame] send outcome: JSONDecodeError('Expecting value: line 1 column 1 (char 0)') | listener: stopped
+PASSED
+test_q1_listener_robustness.py::test_unexpected_receive_error_does_not_hang_send[recv-raises] send outcome: RuntimeError('unexpected recv failure') | listener: stopped
+PASSED
+test_q1_listener_robustness.py::test_tab_send_revives_dead_browser_listener tab send ok; browser listener: running
+PASSED
+
+============================== 8 passed in 0.24s ===============================

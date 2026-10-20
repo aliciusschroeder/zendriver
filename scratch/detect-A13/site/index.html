@@ -1,0 +1,4 @@
+<html><head><title>t</title><script>document.cookie="a=1; SameSite=Lax"; console.log("hi", {x:1}); </script>
+<link rel="preload" href="/missing.css" as="style"></head>
+<body><iframe src="/frame.html"></iframe><img src="/nope.png"><input id=i><button>b</button>
+<script>fetch('/nope.json').catch(()=>{}); new WebSocket('ws://127.0.0.1:1/'); setTimeout(()=>{throw new Error('boom')},10)</script></body></html>

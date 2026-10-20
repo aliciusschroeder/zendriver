@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.16, pytest-9.1.1, pluggy-1.5.0 -- /home/user/zendriver/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety
+plugins: cov-6.2.1, xdist-3.8.0, mock-3.14.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... zendriver imported from: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q1-fixsafety/pkg/zendriver/__init__.py
+collected 9 items / 8 deselected / 1 selected
+
+test_q1_listener_robustness.py::test_tab_command_in_flight_when_browser_listener_breaks browser listener after error: stopped
+PASSED
+
+======================= 1 passed, 8 deselected in 0.24s ========================

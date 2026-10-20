@@ -1,0 +1,56 @@
+iteration 0: ok title=oktrue stderr pending=5577 dt=0.37
+iteration 50: ok title=oktrue stderr pending=24349 dt=0.38
+iteration 100: ok title=oktrue stderr pending=42499 dt=0.38
+iteration 150: ok title=oktrue stderr pending=60649 dt=0.38
+iteration 159: TIMEOUT (hang) stderr pending=63553
+Traceback (most recent call last):
+  File "/usr/lib/python3.13/asyncio/selector_events.py", line 1011, in _read_ready__data_received
+    data = self._sock.recv(self.max_size)
+ConnectionResetError: [Errno 104] Connection reset by peer
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/detect-A9/p4c_hang.py", line 34, in <module>
+    asyncio.run(asyncio.wait_for(main(sys.argv[1] == "1"), 400))
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/asyncio/runners.py", line 196, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.13/asyncio/runners.py", line 119, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.13/asyncio/base_events.py", line 726, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/detect-A9/p4c_hang.py", line 32, in main
+    await b.stop()
+  File "/home/user/zendriver/zendriver/core/browser.py", line 872, in stop
+    await self._stop()
+  File "/home/user/zendriver/zendriver/core/browser.py", line 879, in _stop
+    await target.aclose()
+  File "/home/user/zendriver/zendriver/core/connection.py", line 517, in aclose
+    await browser_connection.send(
+    ...<4 lines>...
+    )
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+           ^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 836, in _receive_message
+    message: dict[str, Any] = json.loads(await self.websocket.recv())
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/websockets/asyncio/connection.py", line 313, in recv
+    raise self.protocol.close_exc from self.recv_exc
+websockets.exceptions.ConnectionClosedError: no close frame received or sent

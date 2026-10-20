@@ -1,0 +1,1 @@
+{"agentType":"workflow-subagent","description":"B14 bug class: concurrency","workflowPhase":"Sweep B","spawnDepth":1,"requestShape":"foreground","requestNonInteractive":true}

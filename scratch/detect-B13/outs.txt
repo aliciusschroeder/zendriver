@@ -1,0 +1,28 @@
+INFO:zendriver.core.browser:starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_g2vkgscv
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=35307
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+LOGGED: Browser stderr: No output from browser
+INFO:zendriver.core.browser:Browser stderr: No output from browser
+start failed after 3.2s:                 Failed to connect to browser

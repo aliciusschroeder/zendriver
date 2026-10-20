@@ -1,0 +1,1 @@
+{"agentType":"workflow-subagent","description":"B15 bug class: exception and cancellation handling","workflowPhase":"Sweep B","spawnDepth":1,"requestShape":"foreground","requestNonInteractive":true}

@@ -1,0 +1,98 @@
+--- /home/user/zendriver/zendriver/core/cloudflare.py	2026-10-20 18:38:27.701980066 +0000
++++ pkg2/zendriver/core/cloudflare.py	2026-10-20 21:47:36.362753968 +0000
+@@ -84,19 +84,31 @@
+     loop = asyncio.get_running_loop()
+     start_time = loop.time()
+ 
+-    while loop.time() - start_time < timeout:
+-        logger.debug("Waiting for challenge elements to appear...")
+-        (
+-            host_element,
+-            shadow_root_element,
+-            challenge_iframe,
+-        ) = await cf_find_interactive_challenge(tab)
+-        if challenge_iframe and "display: none" not in challenge_iframe.attrs.get(
+-            "style", ""
+-        ):
+-            logger.debug("Cloudflare challenge elements found and visible.")
+-            return host_element, shadow_root_element, challenge_iframe
+-        await asyncio.sleep(0.5)
++    async def _poll() -> tuple[Element | None, Element | None, Element | None]:
++        while loop.time() - start_time < timeout:
++            logger.debug("Waiting for challenge elements to appear...")
++            (
++                host_element,
++                shadow_root_element,
++                challenge_iframe,
++            ) = await cf_find_interactive_challenge(tab)
++            if challenge_iframe and "display: none" not in challenge_iframe.attrs.get(
++                "style", ""
++            ):
++                logger.debug("Cloudflare challenge elements found and visible.")
++                return host_element, shadow_root_element, challenge_iframe
++            await asyncio.sleep(0.5)
++        return None, None, None
++
++    # the timeout has to cover the CDP calls too, otherwise a CDP response
++    # that never arrives (e.g. page blocked by a dialog) hangs here forever.
++    # a scan started before the deadline gets half a second to finish
++    try:
++        found = await asyncio.wait_for(_poll(), timeout + 0.5)
++        if found[2] is not None:
++            return found
++    except asyncio.TimeoutError:
++        pass
+ 
+     logger.warning(
+         f"Timeout: Cloudflare challenge elements not found or not visible within {timeout} seconds."
+@@ -161,6 +173,41 @@
+ 
+     logger.debug("Cloudflare checkbox found, starting clicks.")
+ 
++    # the clicks get the time left, and their CDP calls and the click_delay
++    # sleeps are bounded by it as well; the check after the last click, made
++    # at the deadline, gets half a second to finish
++    try:
++        await asyncio.wait_for(
++            _cf_click_challenge(
++                tab,
++                host_element,
++                challenge_iframe,
++                click_delay,
++                challenge_selector,
++                flash_corners,
++                timeout,
++                start_time,
++            ),
++            timeout - (loop.time() - start_time) + 0.5,
++        )
++    except asyncio.TimeoutError:
++        raise TimeoutError(
++            f"Could not solve the checkbox in {timeout} seconds (timeout during clicks)."
++        ) from None
++
++
++async def _cf_click_challenge(
++    tab: Tab,
++    host_element: Element | None,
++    challenge_iframe: Element,
++    click_delay: float,
++    challenge_selector: Optional[str],
++    flash_corners: bool,
++    timeout: float,
++    start_time: float,
++) -> None:
++    loop = asyncio.get_running_loop()
++
+     await challenge_iframe.scroll_into_view()
+ 
+     # To get the element's dimensions, its numeric 'node_id' is needed.
+@@ -257,7 +304,7 @@
+             )
+         try:
+             await tab.mouse_click(click_x, click_y)
+-            await asyncio.sleep(click_delay)
++            await asyncio.sleep(min(click_delay, start_time + timeout - loop.time()))
+             checkbox_clicked = True
+         except Exception as e:
+             if "could not find position" in str(e) and checkbox_clicked:
