@@ -217,6 +217,7 @@ class Connection(metaclass=CantTouchThis):
         self._sessions: dict[str, Connection] = {}
         self._inbox: asyncio.Queue[dict[str, Any]] | None = None
         self._attach_lock = asyncio.Lock()
+        self._open_lock = asyncio.Lock()
         self.__dict__.update(**kwargs)
 
     @property
@@ -432,18 +433,21 @@ class Connection(metaclass=CantTouchThis):
         if browser_connection is not None:
             await self._attach_session(browser_connection)
         elif self.websocket is None:
-            try:
-                self.websocket = await websockets.connect(
-                    self.websocket_url,
-                    ping_timeout=PING_TIMEOUT,
-                    max_size=MAX_SIZE,
-                )
-                self.listener = Listener(self)
-            except (Exception,) as e:
-                logger.debug("exception during opening of websocket : %s", e)
-                if self.listener:
-                    self.listener.cancel()
-                raise
+            # concurrent callers must not each open (and leak) their own websocket
+            async with self._open_lock:
+                if self.websocket is None:
+                    try:
+                        self.websocket = await websockets.connect(
+                            self.websocket_url,
+                            ping_timeout=PING_TIMEOUT,
+                            max_size=MAX_SIZE,
+                        )
+                        self.listener = Listener(self)
+                    except (Exception,) as e:
+                        logger.debug("exception during opening of websocket : %s", e)
+                        if self.listener:
+                            self.listener.cancel()
+                        raise
         if not self.listener or not self.listener.running:
             self.listener = Listener(self)
             logger.debug("\n✅  opened websocket connection to %s", self.websocket_url)
