@@ -1,0 +1,12 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/core/tab.py
+--- a/zendriver/core/tab.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/tab.py	2026-10-20 23:16:17.278515012 +0000
+@@ -1963,7 +1963,7 @@
+         :return:
+         :rtype:
+         """
+-        return await self.wait_for(text, selector, timeout)
++        return await self.wait_for(selector=selector, text=text, timeout=timeout)
+ 
+     def __eq__(self, other: Any) -> bool:
+         if not isinstance(other, Tab):

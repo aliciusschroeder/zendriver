@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.16, pytest-9.1.1, pluggy-1.5.0 -- /home/user/zendriver/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q9-fixsafety
+plugins: cov-6.2.1, xdist-3.8.0, mock-3.14.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... zendriver imported from: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q9-fixsafety/pkg/zendriver/__init__.py
+collected 16 items
+
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[json] PASSED
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[unicode] PASSED
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[ws_closed] PASSED
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[protocol] PASSED
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[keyerror] PASSED
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[group] PASSED
+test_q9_aexit.py::test_connection_aexit_propagates_original_exception[json] PASSED
+test_q9_aexit.py::test_connection_aexit_propagates_original_exception[unicode] PASSED
+test_q9_aexit.py::test_connection_aexit_propagates_original_exception[ws_closed] PASSED
+test_q9_aexit.py::test_connection_aexit_propagates_original_exception[protocol] PASSED
+test_q9_aexit.py::test_connection_aexit_propagates_original_exception[keyerror] PASSED
+test_q9_aexit.py::test_connection_aexit_propagates_original_exception[group] PASSED
+test_q9_aexit.py::test_connection_aexit_keeps_protocol_exception_code PASSED
+test_q9_aexit.py::test_aexit_passes_through_when_no_exception PASSED
+test_q9_aexit.py::test_cancellation_inside_aexit_block_is_timeout PASSED
+test_q9_aexit.py::test_sys_exit_status_preserved_through_browser_aexit PASSED
+
+============================== 16 passed in 0.83s ==============================
