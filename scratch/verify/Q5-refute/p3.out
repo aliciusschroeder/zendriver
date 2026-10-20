@@ -16,3 +16,9 @@ t= 360s stderr pending 6880
 t= 390s stderr pending 6880
 t= 420s stderr pending 6880
 t= 450s stderr pending 6880
+t= 480s stderr pending 6880
+t= 510s stderr pending 6880
+t= 540s stderr pending 6880
+t= 570s stderr pending 6880
+[('dbus/bus.cc:408', 17), ('dbus/object_proxy.cc:573', 10), ('net/socket/ssl_client_socket_impl.cc:902', 4), ('google_apis/gcm/engine/connection_factory_impl.cc:434', 2), ('google_apis/gcm/engine/registration_request.cc:291', 1), ('google_apis/gcm/engine/connection_factory_impl.cc:483', 1)]
+stopped
