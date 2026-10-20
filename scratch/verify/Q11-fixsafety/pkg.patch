@@ -1,0 +1,20 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/core/tab.py
+--- a/zendriver/core/tab.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/tab.py	2026-10-20 23:19:40.946505865 +0000
+@@ -1337,10 +1337,15 @@
+         :rtype: bool
+         """
+ 
++        # document.readyState only moves forward, so a later state also means
++        # the requested one was reached
++        states = ("loading", "interactive", "complete")
++        reached = states[states.index(until) :]
++
+         async def _poll() -> bool:
+             while True:
+                 ready_state = await self.evaluate("document.readyState")
+-                if ready_state == until:
++                if ready_state in reached:
+                     return True
+                 await asyncio.sleep(0.1)
+ 

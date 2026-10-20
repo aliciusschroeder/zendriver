@@ -1,0 +1,12 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zendriver/core/connection.py
+--- a/zendriver/core/connection.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/connection.py	2026-10-20 23:22:17.076935641 +0000
+@@ -706,7 +706,7 @@
+ 
+                     await self.send(domain_mod.enable(), _is_update=True)
+ 
+-                except:  # noqa - as broad as possible, we don't want an error before the "actual" request is sent
++                except Exception:  # Q12 control patch
+                     logger.debug("", exc_info=True)
+                     try:
+                         self.enabled_domains.remove(domain_mod)

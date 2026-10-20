@@ -1,0 +1,94 @@
+python 3.13.16 zendriver from /home/user/zendriver/zendriver/__init__.py
+
+=== CONTROL-A: drop=['Runtime.evaluate'] handler=False mode=wait_for timeout=1.0
+  [peer  0.002s] got Runtime.evaluate id=1
+  [ 1.001s] RESULT: raised TimeoutError -- correct
+  peer saw: [(' 0.002s', 'Runtime.evaluate')]
+
+=== CONTROL-B: drop=['Runtime.evaluate'] handler=False mode=cancel timeout=1.0
+  [peer  0.002s] got Runtime.evaluate id=1
+  [ 1.001s] task.cancel() -> True
+  [ 1.001s] RESULT: task cancelled (CancelledError propagated) -- correct
+  peer saw: [(' 0.002s', 'Runtime.evaluate')]
+
+=== BUG-1 timeout ignored, cmd answered: drop=['Network.enable'] handler=True mode=wait_for timeout=1.0
+  [peer  0.001s] got Network.enable id=1
+  [peer  1.002s] got Network.enable id=3
+  [ 5.001s] RESULT: STILL RUNNING 5.0s after start/cancel (HANG)
+  task.print_stack():
+Stack for <Task cancelling name='Task-15' coro=<wait_for() running at /usr/lib/python3.13/asyncio/tasks.py:514> wait_for=<Transaction
+	method: Network.enable
+	status: pending
+	success: True>> (most recent call last):
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+  cr_await chain:
+      /usr/lib/python3.13/asyncio/tasks.py:514 in wait_for
+      zendriver/core/connection.py:654 in send
+      zendriver/core/connection.py:707 in _register_handlers
+      zendriver/core/connection.py:662 in send
+  task.cancelling() = 1
+  [peer  5.001s] got Runtime.evaluate id=2
+  peer saw: [(' 0.001s', 'Network.enable'), (' 1.002s', 'Network.enable'), (' 5.001s', 'Runtime.evaluate')]
+
+=== BUG-2 timeout ignored, cmd unanswered: drop=['Network.enable', 'Runtime.evaluate'] handler=True mode=wait_for timeout=1.0
+  [peer  0.001s] got Network.enable id=1
+  [peer  1.001s] got Network.enable id=3
+  [ 5.001s] RESULT: STILL RUNNING 5.0s after start/cancel (HANG)
+  task.print_stack():
+Stack for <Task cancelling name='Task-21' coro=<wait_for() running at /usr/lib/python3.13/asyncio/tasks.py:514> wait_for=<Transaction
+	method: Network.enable
+	status: pending
+	success: True>> (most recent call last):
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+  cr_await chain:
+      /usr/lib/python3.13/asyncio/tasks.py:514 in wait_for
+      zendriver/core/connection.py:654 in send
+      zendriver/core/connection.py:707 in _register_handlers
+      zendriver/core/connection.py:662 in send
+  task.cancelling() = 1
+  [peer  5.002s] got Runtime.evaluate id=2
+  cleanup: second cancel -> TimeoutError
+  peer saw: [(' 0.001s', 'Network.enable'), (' 1.001s', 'Network.enable'), (' 5.002s', 'Runtime.evaluate')]
+
+=== BUG-3 cancel ignored, cmd answered: drop=['Network.enable'] handler=True mode=cancel timeout=1.0
+  [peer  0.001s] got Network.enable id=1
+  [ 1.000s] task.cancel() -> True
+  [peer  1.001s] got Network.enable id=3
+  [ 5.001s] RESULT: STILL RUNNING 4s after start/cancel (HANG)
+  task.print_stack():
+Stack for <Task cancelling name='Task-27' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:654> wait_for=<Transaction
+	method: Network.enable
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 654, in send
+    await self._register_handlers()
+  cr_await chain:
+      zendriver/core/connection.py:654 in send
+      zendriver/core/connection.py:707 in _register_handlers
+      zendriver/core/connection.py:662 in send
+  task.cancelling() = 1
+  [peer  5.002s] got Runtime.evaluate id=2
+  peer saw: [(' 0.001s', 'Network.enable'), (' 1.001s', 'Network.enable'), (' 5.002s', 'Runtime.evaluate')]
+
+=== BUG-4 cancel ignored, cmd unanswered: drop=['Network.enable', 'Runtime.evaluate'] handler=True mode=cancel timeout=1.0
+  [peer  0.002s] got Network.enable id=1
+  [ 1.001s] task.cancel() -> True
+  [peer  1.002s] got Network.enable id=3
+  [ 5.003s] RESULT: STILL RUNNING 4s after start/cancel (HANG)
+  task.print_stack():
+Stack for <Task cancelling name='Task-33' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:654> wait_for=<Transaction
+	method: Network.enable
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 654, in send
+    await self._register_handlers()
+  cr_await chain:
+      zendriver/core/connection.py:654 in send
+      zendriver/core/connection.py:707 in _register_handlers
+      zendriver/core/connection.py:662 in send
+  task.cancelling() = 1
+  [peer  5.003s] got Runtime.evaluate id=2
+  cleanup: second cancel -> TimeoutError
+  peer saw: [(' 0.002s', 'Network.enable'), (' 1.002s', 'Network.enable'), (' 5.003s', 'Runtime.evaluate')]

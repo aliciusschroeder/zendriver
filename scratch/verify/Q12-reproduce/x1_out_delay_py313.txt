@@ -1,0 +1,25 @@
+python 3.13.16 zendriver from /home/user/zendriver/zendriver/__init__.py
+
+=== BUG-5 slow Network.enable (2s), timeout 1s: drop=[] handler=True mode=wait_for timeout=1.0
+  [peer  0.001s] got Network.enable id=1
+  [peer  1.001s] got Network.enable id=3
+  [peer  2.003s] late reply to Network.enable id=1
+  [peer  3.003s] late reply to Network.enable id=3
+  [peer  3.003s] got Runtime.evaluate id=2
+  [ 3.003s] RESULT: returned normally (RemoteObject(type_='number', subtype=None, class_name=None, value=42, unserializable_value=None, description='42', deep_serialized_value=None, object_id=None, preview=None, custom_preview=None), None) -- cancel/timeout IGNORED
+  peer saw: [(' 0.001s', 'Network.enable'), (' 1.001s', 'Network.enable'), (' 3.003s', 'Runtime.evaluate')]
+
+=== BUG-6 slow Network.enable (2s), cancel at 1s: drop=[] handler=True mode=cancel timeout=1.0
+  [peer  0.002s] got Network.enable id=1
+  [ 1.000s] task.cancel() -> True
+  [peer  1.001s] got Network.enable id=3
+  [peer  2.003s] late reply to Network.enable id=1
+  [peer  3.001s] late reply to Network.enable id=3
+  [peer  3.002s] got Runtime.evaluate id=2
+  [ 3.002s] RESULT: returned normally (RemoteObject(type_='number', subtype=None, class_name=None, value=42, unserializable_value=None, description='42', deep_serialized_value=None, object_id=None, preview=None, custom_preview=None), None) -- cancel/timeout IGNORED
+  peer saw: [(' 0.002s', 'Network.enable'), (' 1.001s', 'Network.enable'), (' 3.002s', 'Runtime.evaluate')]
+
+=== CONTROL-C slow evaluate (2s), no handler, timeout 1s: drop=[] handler=False mode=wait_for timeout=1.0
+  [peer  0.001s] got Runtime.evaluate id=1
+  [ 1.000s] RESULT: raised TimeoutError -- correct
+  peer saw: [(' 0.001s', 'Runtime.evaluate')]

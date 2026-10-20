@@ -1,0 +1,19 @@
+python 3.13.16 zendriver from /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q12-reproduce/pkg/zendriver/__init__.py
+=== CONTROL-A: drop=['Runtime.evaluate'] handler=False mode=wait_for timeout=1.0
+  [ 1.001s] RESULT: raised TimeoutError -- correct
+=== CONTROL-B: drop=['Runtime.evaluate'] handler=False mode=cancel timeout=1.0
+  [ 1.001s] RESULT: task cancelled (CancelledError propagated) -- correct
+=== BUG-1 timeout ignored, cmd answered: drop=['Network.enable'] handler=True mode=wait_for timeout=1.0
+  [ 1.001s] RESULT: raised TimeoutError -- correct
+=== BUG-2 timeout ignored, cmd unanswered: drop=['Network.enable', 'Runtime.evaluate'] handler=True mode=wait_for timeout=1.0
+  [ 1.000s] RESULT: raised TimeoutError -- correct
+=== BUG-3 cancel ignored, cmd answered: drop=['Network.enable'] handler=True mode=cancel timeout=1.0
+  [ 1.002s] RESULT: task cancelled (CancelledError propagated) -- correct
+=== BUG-4 cancel ignored, cmd unanswered: drop=['Network.enable', 'Runtime.evaluate'] handler=True mode=cancel timeout=1.0
+  [ 1.001s] RESULT: task cancelled (CancelledError propagated) -- correct
+=== BUG-5 slow Network.enable (2s), timeout 1s: drop=[] handler=True mode=wait_for timeout=1.0
+  [ 1.001s] RESULT: raised TimeoutError -- correct
+=== BUG-6 slow Network.enable (2s), cancel at 1s: drop=[] handler=True mode=cancel timeout=1.0
+  [ 1.002s] RESULT: task cancelled (CancelledError propagated) -- correct
+=== CONTROL-C slow evaluate (2s), no handler, timeout 1s: drop=[] handler=False mode=wait_for timeout=1.0
+  [ 1.001s] RESULT: raised TimeoutError -- correct

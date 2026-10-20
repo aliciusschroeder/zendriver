@@ -1,0 +1,9 @@
+python 3.13.16 zendriver from /home/user/zendriver/zendriver/__init__.py
+
+=== CONTROL no handler (handler=False)
+  3.00s: raised TimeoutError (correct)
+  enabled_domains: []
+
+=== BUG new Network handler (handler=True)
+  3.00s: raised TimeoutError (correct)
+  enabled_domains: ['zendriver.cdp.network']
