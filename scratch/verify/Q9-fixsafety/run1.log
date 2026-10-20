@@ -1,0 +1,158 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.16, pytest-9.1.1, pluggy-1.5.0 -- /home/user/zendriver/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q9-fixsafety
+plugins: cov-6.2.1, xdist-3.8.0, mock-3.14.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... zendriver imported from: /home/user/zendriver/zendriver/__init__.py
+collected 16 items / 9 deselected / 7 selected
+
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[json] FAILED
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[unicode] FAILED
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[ws_closed] FAILED
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[protocol] FAILED
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[keyerror] FAILED
+test_q9_aexit.py::test_browser_aexit_propagates_original_exception[group] FAILED
+test_q9_aexit.py::test_sys_exit_status_preserved_through_browser_aexit FAILED
+
+=================================== FAILURES ===================================
+____________ test_browser_aexit_propagates_original_exception[json] ____________
+
+name = 'json'
+
+    @pytest.mark.parametrize("name", ALL_ERRORS)
+    async def test_browser_aexit_propagates_original_exception(name: str) -> None:
+        browser = zd.Browser(zd.Config(headless=True))
+        original = await _build_error(name)
+        with pytest.raises(BaseException) as excinfo:
+            async with browser:
+                raise original
+>       assert excinfo.value is original, repr(excinfo.value)
+E       AssertionError: TypeError("JSONDecodeError.__init__() missing 2 required positional arguments: 'doc' and 'pos'")
+E       assert TypeError("JSONDecodeError.__init__() missing 2 required positional arguments: 'doc' and 'pos'") is JSONDecodeError('Expecting property name enclosed in double quotes: line 1 column 2 (char 1)')
+E        +  where TypeError("JSONDecodeError.__init__() missing 2 required positional arguments: 'doc' and 'pos'") = <ExceptionInfo TypeError("JSONDecodeError.__init__() missing 2 required positional arguments: 'doc' and 'pos'") tblen=2>.value
+
+test_q9_aexit.py:101: AssertionError
+__________ test_browser_aexit_propagates_original_exception[unicode] ___________
+
+name = 'unicode'
+
+    @pytest.mark.parametrize("name", ALL_ERRORS)
+    async def test_browser_aexit_propagates_original_exception(name: str) -> None:
+        browser = zd.Browser(zd.Config(headless=True))
+        original = await _build_error(name)
+        with pytest.raises(BaseException) as excinfo:
+            async with browser:
+                raise original
+>       assert excinfo.value is original, repr(excinfo.value)
+E       AssertionError: TypeError('function takes exactly 5 arguments (1 given)')
+E       assert TypeError('function takes exactly 5 arguments (1 given)') is UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'invalid start byte')
+E        +  where TypeError('function takes exactly 5 arguments (1 given)') = <ExceptionInfo TypeError('function takes exactly 5 arguments (1 given)') tblen=2>.value
+
+test_q9_aexit.py:101: AssertionError
+_________ test_browser_aexit_propagates_original_exception[ws_closed] __________
+
+name = 'ws_closed'
+
+    @pytest.mark.parametrize("name", ALL_ERRORS)
+    async def test_browser_aexit_propagates_original_exception(name: str) -> None:
+        browser = zd.Browser(zd.Config(headless=True))
+        original = await _build_error(name)
+        with pytest.raises(BaseException) as excinfo:
+            async with browser:
+                raise original
+>       assert excinfo.value is original, repr(excinfo.value)
+E       AssertionError: TypeError("ConnectionClosed.__init__() missing 1 required positional argument: 'sent'")
+E       assert TypeError("ConnectionClosed.__init__() missing 1 required positional argument: 'sent'") is ConnectionClosedError(None, None)
+E        +  where TypeError("ConnectionClosed.__init__() missing 1 required positional argument: 'sent'") = <ExceptionInfo TypeError("ConnectionClosed.__init__() missing 1 required positional argument: 'sent'") tblen=2>.value
+
+test_q9_aexit.py:101: AssertionError
+__________ test_browser_aexit_propagates_original_exception[protocol] __________
+
+name = 'protocol'
+
+    @pytest.mark.parametrize("name", ALL_ERRORS)
+    async def test_browser_aexit_propagates_original_exception(name: str) -> None:
+        browser = zd.Browser(zd.Config(headless=True))
+        original = await _build_error(name)
+        with pytest.raises(BaseException) as excinfo:
+            async with browser:
+                raise original
+>       assert excinfo.value is original, repr(excinfo.value)
+E       AssertionError: ProtocolException(ProtocolException({'code': -32000, 'message': 'm'}))
+E       assert ProtocolException(ProtocolException({'code': -32000, 'message': 'm'})) is ProtocolException({'code': -32000, 'message': 'm'})
+E        +  where ProtocolException(ProtocolException({'code': -32000, 'message': 'm'})) = <ExceptionInfo ProtocolException(ProtocolException({'code': -32000, 'message': 'm'})) tblen=2>.value
+
+test_q9_aexit.py:101: AssertionError
+__________ test_browser_aexit_propagates_original_exception[keyerror] __________
+
+name = 'keyerror'
+
+    @pytest.mark.parametrize("name", ALL_ERRORS)
+    async def test_browser_aexit_propagates_original_exception(name: str) -> None:
+        browser = zd.Browser(zd.Config(headless=True))
+        original = await _build_error(name)
+        with pytest.raises(BaseException) as excinfo:
+            async with browser:
+                raise original
+>       assert excinfo.value is original, repr(excinfo.value)
+E       AssertionError: KeyError(KeyError('k'))
+E       assert KeyError(KeyError('k')) is KeyError('k')
+E        +  where KeyError(KeyError('k')) = <ExceptionInfo KeyError(KeyError('k')) tblen=2>.value
+
+test_q9_aexit.py:101: AssertionError
+___________ test_browser_aexit_propagates_original_exception[group] ____________
+
+name = 'group'
+
+    @pytest.mark.parametrize("name", ALL_ERRORS)
+    async def test_browser_aexit_propagates_original_exception(name: str) -> None:
+        browser = zd.Browser(zd.Config(headless=True))
+        original = await _build_error(name)
+        with pytest.raises(BaseException) as excinfo:
+            async with browser:
+                raise original
+>       assert excinfo.value is original, repr(excinfo.value)
+E       AssertionError: TypeError('BaseExceptionGroup.__new__() takes exactly 2 arguments (1 given)')
+E       assert TypeError('BaseExceptionGroup.__new__() takes exactly 2 arguments (1 given)') is ExceptionGroup('unhandled errors in a TaskGroup', [ValueError('inner')])
+E        +  where TypeError('BaseExceptionGroup.__new__() takes exactly 2 arguments (1 given)') = <ExceptionInfo TypeError('BaseExceptionGroup.__new__() takes exactly 2 arguments (1 given)') tblen=2>.value
+
+test_q9_aexit.py:101: AssertionError
+_____________ test_sys_exit_status_preserved_through_browser_aexit _____________
+
+    def test_sys_exit_status_preserved_through_browser_aexit() -> None:
+        script = textwrap.dedent(
+            """
+            import asyncio, sys
+            import zendriver as zd
+    
+            async def main():
+                async with zd.Browser(zd.Config(headless=True)):
+                    sys.exit(3)
+    
+            asyncio.run(main())
+            """
+        )
+        proc = subprocess.run(
+            [sys.executable, "-c", script],
+            env=os.environ.copy(),
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+        )
+>       assert proc.returncode == 3, (proc.returncode, proc.stderr[-500:])
+E       AssertionError: (1, '3
+E         ')
+E       assert 1 == 3
+E        +  where 1 = CompletedProcess(args=['/home/user/zendriver/.venv/bin/python', '-c', '\nimport asyncio, sys\nimport zendriver as zd\n\nasync def main():\n    async with zd.Browser(zd.Config(headless=True)):\n        sys.exit(3)\n\nasyncio.run(main())\n'], returncode=1, stdout='', stderr='3\n').returncode
+
+test_q9_aexit.py:170: AssertionError
+=========================== short test summary info ============================
+FAILED test_q9_aexit.py::test_browser_aexit_propagates_original_exception[json]
+FAILED test_q9_aexit.py::test_browser_aexit_propagates_original_exception[unicode]
+FAILED test_q9_aexit.py::test_browser_aexit_propagates_original_exception[ws_closed]
+FAILED test_q9_aexit.py::test_browser_aexit_propagates_original_exception[protocol]
+FAILED test_q9_aexit.py::test_browser_aexit_propagates_original_exception[keyerror]
+FAILED test_q9_aexit.py::test_browser_aexit_propagates_original_exception[group]
+FAILED test_q9_aexit.py::test_sys_exit_status_preserved_through_browser_aexit
+======================= 7 failed, 9 deselected in 0.58s ========================

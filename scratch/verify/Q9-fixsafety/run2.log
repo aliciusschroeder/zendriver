@@ -1,0 +1,49 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.16, pytest-9.1.1, pluggy-1.5.0 -- /home/user/zendriver/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q9-fixsafety
+plugins: cov-6.2.1, xdist-3.8.0, mock-3.14.0, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... zendriver imported from: /home/user/zendriver/zendriver/__init__.py
+collected 16 items / 15 deselected / 1 selected
+
+test_q9_aexit.py::test_aexit_passes_through_when_no_exception Timeout (0:00:15)!
+Thread 0x00007fc8c9205080 (most recent call first):
+  File "/usr/lib/python3.13/selectors.py", line 452 in select
+  File "/usr/lib/python3.13/asyncio/base_events.py", line 2023 in _run_once
+  File "/usr/lib/python3.13/asyncio/base_events.py", line 684 in run_forever
+  File "/usr/lib/python3.13/asyncio/base_events.py", line 713 in run_until_complete
+  File "/usr/lib/python3.13/asyncio/runners.py", line 119 in run
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py", line 905 in inner
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/python.py", line 167 in pytest_pyfunc_call
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_callers.py", line 103 in _multicall
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_hooks.py", line 513 in __call__
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/python.py", line 1707 in runtest
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py", line 569 in runtest
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/runner.py", line 184 in pytest_runtest_call
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_callers.py", line 103 in _multicall
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_hooks.py", line 513 in __call__
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/runner.py", line 250 in <lambda>
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/runner.py", line 249 in call_and_report
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/runner.py", line 139 in runtestprotocol
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/runner.py", line 118 in pytest_runtest_protocol
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_callers.py", line 103 in _multicall
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_hooks.py", line 513 in __call__
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/main.py", line 408 in pytest_runtestloop
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_callers.py", line 103 in _multicall
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_hooks.py", line 513 in __call__
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/main.py", line 384 in _main
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_callers.py", line 103 in _multicall
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pluggy/_hooks.py", line 513 in __call__
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py", line 229 in _main
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/_pytest/config/__init__.py", line 253 in _console_main
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/pytest/__main__.py", line 9 in <module>
+  File "<frozen runpy>", line 88 in _run_code
+  File "<frozen runpy>", line 203 in _run_module_as_main
