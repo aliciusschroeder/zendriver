@@ -1,0 +1,17 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zendriver/core/connection.py
+--- a/zendriver/core/connection.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/connection.py	2026-10-20 22:59:29.690560261 +0000
+@@ -716,8 +716,11 @@
+         for ed in enabled_domains:
+             # we started with a copy of self.enabled_domains and removed a domain from this
+             # temp variable when we registered it or saw handlers for it.
+-            # items still present at this point are unused and need removal
+-            self.enabled_domains.remove(ed)
++            # items still present at this point are unused and need removal.
++            # a nested send (the domain.enable() above runs _register_handlers
++            # again) or a concurrent send may already have removed it
++            if ed in self.enabled_domains:
++                self.enabled_domains.remove(ed)
+ 
+     def _update_manual_domain(
+         self, domain_name: str, action: Literal["enable", "disable"]
