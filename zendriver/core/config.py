@@ -198,7 +198,6 @@ class Config:
         args = self._default_browser_args.copy()
 
         args += ["--user-data-dir=%s" % self.user_data_dir]
-        args += ["--disable-session-crashed-bubble"]
         if self.expert:
             args += ["--disable-site-isolation-trials"]
         if self._browser_args:
