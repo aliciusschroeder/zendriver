@@ -1,0 +1,21 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/element.py b/zendriver/core/element.py
+--- a/zendriver/core/element.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/element.py	2026-10-20 23:42:49.682108887 +0000
+@@ -517,7 +517,7 @@
+             return result[1]
+ 
+     async def get_position(self, abs: bool = False) -> Position | None:
+-        if not self._remote_object or not self.parent or not self.object_id:
++        if not self._remote_object or not self.object_id:
+             self._remote_object = await self._tab.send(
+                 cdp.dom.resolve_node(backend_node_id=self.backend_node_id)
+             )
+@@ -525,8 +525,6 @@
+             quads = await self.tab.send(
+                 cdp.dom.get_content_quads(object_id=self._remote_object.object_id)
+             )
+-            if not quads:
+-                raise Exception("could not find position for %s " % self)
+             pos = Position(quads[0])
+             if abs:
+                 scroll_y = await self.tab.evaluate("window.scrollY")
