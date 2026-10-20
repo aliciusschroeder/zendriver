@@ -263,7 +263,11 @@ class Browser:
                 self.targets.remove(current_tab)
 
     async def get(
-        self, url: str = "about:blank", new_tab: bool = False, new_window: bool = False
+        self,
+        url: str = "about:blank",
+        new_tab: bool = False,
+        new_window: bool = False,
+        timeout: Union[int, float] = 10,
     ) -> tab.Tab:
         """top level get. utilizes the first tab to retrieve given url.
 
@@ -274,6 +278,7 @@ class Browser:
         :param url: the url to navigate to
         :param new_tab: open new tab
         :param new_window:  open new window
+        :param timeout: seconds to wait for the navigation to start
         :return: Page
         :raises asyncio.TimeoutError:
         """
@@ -317,7 +322,7 @@ class Browser:
             if connection.target_id is None:
                 raise RuntimeError("Tab has no target to wait for navigation on")
 
-            await asyncio.wait_for(wait_for_navigation(connection.target_id), 10)
+            await asyncio.wait_for(wait_for_navigation(connection.target_id), timeout)
         finally:
             self.connection.remove_handlers(event_type, get_handler)
 

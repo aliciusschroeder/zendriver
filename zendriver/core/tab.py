@@ -480,7 +480,11 @@ class Tab(Connection):
         return items
 
     async def get(
-        self, url: str = "about:blank", new_tab: bool = False, new_window: bool = False
+        self,
+        url: str = "about:blank",
+        new_tab: bool = False,
+        new_window: bool = False,
+        timeout: Union[int, float] = 10,
     ) -> Tab:
         """top level get. utilizes the first tab to retrieve given url.
 
@@ -491,7 +495,9 @@ class Tab(Connection):
         :param url: the url to navigate to
         :param new_tab: open new tab
         :param new_window:  open new window
+        :param timeout: seconds to wait for the navigation to start
         :return: Page
+        :raises asyncio.TimeoutError:
         """
         if not self.browser:
             raise AttributeError(
@@ -501,9 +507,9 @@ class Tab(Connection):
             new_tab = True
 
         if new_tab:
-            return await self.browser.get(url, new_tab, new_window)
+            return await self.browser.get(url, new_tab, new_window, timeout)
         else:
-            await self.send(cdp.page.navigate(url))
+            await asyncio.wait_for(self.send(cdp.page.navigate(url)), timeout)
             await self.wait()
             return self
 
