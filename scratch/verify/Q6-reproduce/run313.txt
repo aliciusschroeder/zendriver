@@ -1,0 +1,27 @@
+python 3.13.16 zendriver /home/user/zendriver/zendriver/__init__.py
+request-imgs: MISMATCH req=img0.png?t=a0(27586.2) attr_id=27586.14 resp=img12.png?t=a0(27586.14) value=RequestWillBeSent:img0.png?t=a0 body=96
+request-imgs: MISMATCH req=img0.png?t=a1(27586.137) attr_id=27586.138 resp=img1.png?t=a1(27586.138) value=RequestWillBeSent:img0.png?t=a1 body=96
+request-imgs: MISMATCH req=img0.png?t=a2(27586.271) attr_id=27586.286 resp=img15.png?t=a2(27586.286) value=RequestWillBeSent:img0.png?t=a2 body=96
+request-imgs: MISMATCH req=img0.png?t=a3(27586.405) attr_id=27586.409 resp=img4.png?t=a3(27586.409) value=RequestWillBeSent:img0.png?t=a3 body=96
+request-imgs: MISMATCH req=img0.png?t=a4(27586.539) attr_id=27586.554 resp=img15.png?t=a4(27586.554) value=RequestWillBeSent:img0.png?t=a4 body=96
+== request-imgs: mismatches 5/5
+response-imgs: MISMATCH req=img0.png?t=b0(27586.64) attr_id=27586.77 resp=img13.png?t=b0(27586.77) value=ResponseReceived:img13.png?t=b0 body=96
+response-imgs: MISMATCH req=img0.png?t=b1(27586.198) attr_id=27586.211 resp=img13.png?t=b1(27586.211) value=ResponseReceived:img13.png?t=b1 body=96
+response-imgs: MISMATCH req=img0.png?t=b2(27586.332) attr_id=27586.343 resp=img11.png?t=b2(27586.343) value=ResponseReceived:img11.png?t=b2 body=96
+response-imgs: MISMATCH req=img0.png?t=b3(27586.466) attr_id=27586.476 resp=img10.png?t=b3(27586.476) value=ResponseReceived:img10.png?t=b3 body=96
+response-imgs: MISMATCH req=img0.png?t=b4(27586.600) attr_id=27586.609 resp=img9.png?t=b4(27586.609) value=ResponseReceived:img9.png?t=b4 body=96
+== response-imgs: mismatches 5/5
+request-fetch: MISMATCH req=data?n=0&t=c0(27586.125) attr_id=27586.129 resp=data?n=4&t=c0(27586.129) value=RequestWillBeSent:data?n=0&t=c0 body='payload for /data?n=4&t=c0'
+request-fetch: MISMATCH req=data?n=0&t=c1(27586.259) attr_id=27586.263 resp=data?n=4&t=c1(27586.263) value=RequestWillBeSent:data?n=0&t=c1 body='payload for /data?n=4&t=c1'
+request-fetch: MISMATCH req=data?n=0&t=c2(27586.393) attr_id=27586.397 resp=data?n=4&t=c2(27586.397) value=RequestWillBeSent:data?n=0&t=c2 body='payload for /data?n=4&t=c2'
+request-fetch: MISMATCH req=data?n=0&t=c3(27586.527) attr_id=27586.531 resp=data?n=4&t=c3(27586.531) value=RequestWillBeSent:data?n=0&t=c3 body='payload for /data?n=4&t=c3'
+request-fetch: MISMATCH req=data?n=0&t=c4(27586.661) attr_id=27586.665 resp=data?n=4&t=c4(27586.665) value=RequestWillBeSent:data?n=0&t=c4 body='payload for /data?n=4&t=c4'
+== request-fetch: mismatches 5/5
+response-fetch: MISMATCH req=data?n=0&t=d0(27586.131) attr_id=27586.135 resp=data?n=4&t=d0(27586.135) value=ResponseReceived:data?n=4&t=d0 body='payload for /data?n=4&t=d0'
+response-fetch: MISMATCH req=data?n=0&t=d1(27586.265) attr_id=27586.269 resp=data?n=4&t=d1(27586.269) value=ResponseReceived:data?n=4&t=d1 body='payload for /data?n=4&t=d1'
+response-fetch: MISMATCH req=data?n=0&t=d2(27586.399) attr_id=27586.403 resp=data?n=4&t=d2(27586.403) value=ResponseReceived:data?n=4&t=d2 body='payload for /data?n=4&t=d2'
+response-fetch: MISMATCH req=data?n=0&t=d3(27586.533) attr_id=27586.537 resp=data?n=4&t=d3(27586.537) value=ResponseReceived:data?n=4&t=d3 body='payload for /data?n=4&t=d3'
+response-fetch: MISMATCH req=data?n=0&t=d4(27586.667) attr_id=27586.671 resp=data?n=4&t=d4(27586.671) value=ResponseReceived:data?n=4&t=d4 body='payload for /data?n=4&t=d4'
+== response-fetch: mismatches 5/5
+loop exception handler calls: 143 InvalidStateError: 143
+sample: InvalidStateError('invalid state') | Task exception was never retrieved

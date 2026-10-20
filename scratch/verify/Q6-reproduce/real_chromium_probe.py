@@ -41,7 +41,7 @@ class H(http.server.BaseHTTPRequestHandler):
             n = int(q.get("n", ["5"])[0])
             t = q.get("t", ["0"])[0]
             js = "Promise.all([" + ",".join(
-                f"fetch('/data?n={i}&t={t}')" for i in range(n)
+                f"fetch('/data?n={i}&t={t}').then(r => r.text())" for i in range(n)
             ) + "])"
             body = f"<html><body><script>{js}</script></body></html>"
             self._send(body.encode(), "text/html")

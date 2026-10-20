@@ -37,12 +37,12 @@ class H(http.server.BaseHTTPRequestHandler):
         elif p.startswith("/fetch2.html"):
             body = (
                 "<html><body><script>"
-                "Promise.all([fetch('/a.json?'+Math.random()),fetch('/b.json?'+Math.random())])"
+                "Promise.all([fetch('/a.json?'+Math.random()).then(r=>r.text()),fetch('/b.json?'+Math.random()).then(r=>r.text())])"
                 "</script></body></html>"
             ).encode()
             ct = "text/html"
         elif p.startswith("/single.html"):
-            body = b"<html><body><img src='/img0.png?x'><script>fetch('/a.json?'+Math.random())</script></body></html>"
+            body = b"<html><body><img src='/img0.png?x'><script>fetch('/a.json?'+Math.random()).then(r=>r.text())</script></body></html>"
             ct = "text/html"
         elif ".png" in p:
             body = PNG

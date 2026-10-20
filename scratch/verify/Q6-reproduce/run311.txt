@@ -1,0 +1,26 @@
+python 3.11.17 zendriver /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q6-reproduce/pkg/zendriver/__init__.py
+request-imgs: OK       req=img0.png?t=a0(28105.2) attr_id=28105.2 resp=img0.png?t=a0(28105.2) value=RequestWillBeSent:img0.png?t=a0 body=96
+request-imgs: OK       req=img0.png?t=a1(28105.137) attr_id=28105.137 resp=img0.png?t=a1(28105.137) value=RequestWillBeSent:img0.png?t=a1 body=96
+request-imgs: OK       req=img0.png?t=a2(28105.271) attr_id=28105.271 resp=img0.png?t=a2(28105.271) value=RequestWillBeSent:img0.png?t=a2 body=96
+request-imgs: OK       req=img0.png?t=a3(28105.405) attr_id=28105.405 resp=img0.png?t=a3(28105.405) value=RequestWillBeSent:img0.png?t=a3 body=96
+request-imgs: OK       req=img0.png?t=a4(28105.539) attr_id=28105.539 resp=img0.png?t=a4(28105.539) value=RequestWillBeSent:img0.png?t=a4 body=96
+== request-imgs: mismatches 0/5
+response-imgs: OK       req=img0.png?t=b0(28105.64) attr_id=28105.64 resp=img0.png?t=b0(28105.64) value=ResponseReceived:img0.png?t=b0 body=96
+response-imgs: OK       req=img0.png?t=b1(28105.198) attr_id=28105.198 resp=img0.png?t=b1(28105.198) value=ResponseReceived:img0.png?t=b1 body=96
+response-imgs: OK       req=img0.png?t=b2(28105.332) attr_id=28105.332 resp=img0.png?t=b2(28105.332) value=ResponseReceived:img0.png?t=b2 body=96
+response-imgs: OK       req=img0.png?t=b3(28105.466) attr_id=28105.466 resp=img0.png?t=b3(28105.466) value=ResponseReceived:img0.png?t=b3 body=96
+response-imgs: OK       req=img0.png?t=b4(28105.600) attr_id=28105.600 resp=img0.png?t=b4(28105.600) value=ResponseReceived:img0.png?t=b4 body=96
+== response-imgs: mismatches 0/5
+request-fetch: OK       req=data?n=0&t=c0(28105.125) attr_id=28105.125 resp=data?n=0&t=c0(28105.125) value=RequestWillBeSent:data?n=0&t=c0 body='payload for /data?n=0&t=c0'
+request-fetch: OK       req=data?n=0&t=c1(28105.259) attr_id=28105.259 resp=data?n=0&t=c1(28105.259) value=RequestWillBeSent:data?n=0&t=c1 body='payload for /data?n=0&t=c1'
+request-fetch: OK       req=data?n=0&t=c2(28105.393) attr_id=28105.393 resp=data?n=0&t=c2(28105.393) value=RequestWillBeSent:data?n=0&t=c2 body='payload for /data?n=0&t=c2'
+request-fetch: OK       req=data?n=0&t=c3(28105.527) attr_id=28105.527 resp=data?n=0&t=c3(28105.527) value=RequestWillBeSent:data?n=0&t=c3 body='payload for /data?n=0&t=c3'
+request-fetch: OK       req=data?n=0&t=c4(28105.661) attr_id=28105.661 resp=data?n=0&t=c4(28105.661) value=RequestWillBeSent:data?n=0&t=c4 body='payload for /data?n=0&t=c4'
+== request-fetch: mismatches 0/5
+response-fetch: OK       req=data?n=0&t=d0(28105.131) attr_id=28105.131 resp=data?n=0&t=d0(28105.131) value=ResponseReceived:data?n=0&t=d0 body='payload for /data?n=0&t=d0'
+response-fetch: OK       req=data?n=0&t=d1(28105.265) attr_id=28105.265 resp=data?n=0&t=d1(28105.265) value=ResponseReceived:data?n=0&t=d1 body='payload for /data?n=0&t=d1'
+response-fetch: OK       req=data?n=0&t=d2(28105.399) attr_id=28105.399 resp=data?n=0&t=d2(28105.399) value=ResponseReceived:data?n=0&t=d2 body='payload for /data?n=0&t=d2'
+response-fetch: OK       req=data?n=0&t=d3(28105.533) attr_id=28105.533 resp=data?n=0&t=d3(28105.533) value=ResponseReceived:data?n=0&t=d3 body='payload for /data?n=0&t=d3'
+response-fetch: OK       req=data?n=0&t=d4(28105.667) attr_id=28105.667 resp=data?n=0&t=d4(28105.667) value=ResponseReceived:data?n=0&t=d4 body='payload for /data?n=0&t=d4'
+== response-fetch: mismatches 0/5
+loop exception handler calls: 0 InvalidStateError: 0

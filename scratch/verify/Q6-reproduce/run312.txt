@@ -1,0 +1,7 @@
+python 3.12.3 zendriver /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q6-reproduce/pkg/zendriver/__init__.py
+== request-imgs: mismatches 5/5
+== response-imgs: mismatches 4/5
+== request-fetch: mismatches 5/5
+== response-fetch: mismatches 5/5
+loop exception handler calls: 144 InvalidStateError: 144
+sample: InvalidStateError('invalid state') | Task exception was never retrieved
