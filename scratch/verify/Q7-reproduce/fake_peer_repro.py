@@ -20,7 +20,10 @@ async def handler(ws):
     async for raw in ws:
         msg = json.loads(raw)
         SENT.append(msg["method"])
-        await ws.send(json.dumps({"id": msg["id"], "result": {}}))
+        result = {}
+        if msg["method"] == "Runtime.evaluate":
+            result = {"result": {"type": "number", "value": 2}}
+        await ws.send(json.dumps({"id": msg["id"], "result": result}))
 
 
 def names(conn):
@@ -33,7 +36,7 @@ async def scenario(port, second_domain_event, label):
     h = lambda e: None
     h2 = lambda e: None
     conn.add_handler(cdp.network.RequestWillBeSent, h)
-    await conn.send(cdp.runtime.evaluate("1"))
+    await asyncio.wait_for(conn.send(cdp.runtime.evaluate("1")), 10)
     print(f"[{label}] after 1st send enabled_domains={names(conn)} peer saw={SENT}")
     conn.remove_handlers(cdp.network.RequestWillBeSent, h)
     conn.add_handler(second_domain_event, h2)
