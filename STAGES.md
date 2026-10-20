@@ -50,3 +50,11 @@ then an adversarial reviewer; at most 2 rounds, else BLOCKED.
 Planned: merge fix branches one by one (same-file groups sequentially), lint + unit tests
 after each, CHANGELOG lines, full headless suite vs baseline, 5x loop of new tests, final
 review workflow (2–3 reviewers), push, final report, `scratch/PR.md`.
+
+## Persistence (set up 22:30, during Stage 3)
+* State worktree `/home/user/bughunt-state` on branch `ccr-9a8a26e1-b0l7bh-state`, synced and pushed every 5 min by
+  `tools/sync-loop.sh` (see README). SessionStart hook in `~/.claude/settings.json` restarts the loop after a container restart.
+* Self-tested: committed + uncommitted + untracked work in an extra worktree was pushed as `fix/_sync-selftest` and
+  `wip/fix/_sync-selftest` without touching the worktree's index. Those two refs could not be deleted afterwards
+  (the proxy answers 403 to remote branch deletion) and remain on origin.
+* Stage 4+ prompts tell fixers to start from `origin/fix/<slug>` / `origin/wip/...` if an earlier attempt was interrupted.

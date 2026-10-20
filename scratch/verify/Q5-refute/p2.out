@@ -6,3 +6,4 @@ http 404                                 n=20  +0 bytes  (0 B/op) 2.7s
 evaluate console.log 2KB                 n=20  +144 bytes  (7 B/op) 0.5s
 connection refused                       n=10  +0 bytes  (0 B/op) 1.6s
 dns failure                              n=10  +0 bytes  (0 B/op) 1.8s
+self-signed https                        n=10  +3458 bytes  (346 B/op) 25.8s
