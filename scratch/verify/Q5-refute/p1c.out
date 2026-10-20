@@ -1,0 +1,7 @@
+udd /tmp/uc_crd7mmcv
+hung at round 10
+main status line: S
+0 waitpid (9409, 9) nonzombie threads: FileNotF
+stop: ConnectionClosedError(None, None, None)
+udd exists: True
+exit 0

@@ -1,3 +1,10 @@
 iteration 140: ok stderr pending=49432 t=441s
 iteration 160: ok stderr pending=55254 t=504s
 iteration 180: ok stderr pending=61639 t=568s
+iteration 188: navigate TIMEOUT, stderr pending=63627 after 605s, browser wchan=poll_schedule_timeout.constprop.0
+Browser.getVersion answered
+after draining 64 KiB, evaluate answered again
+stop ok
+exit=0
+
+[killed]

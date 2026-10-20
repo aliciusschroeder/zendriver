@@ -15,3 +15,15 @@ iteration 120: ok stderr pending=43752 t=377s
 iteration 140: ok stderr pending=49432 t=441s
 iteration 160: ok stderr pending=55254 t=504s
 iteration 180: ok stderr pending=61639 t=568s
+iteration 188: navigate TIMEOUT, stderr pending=63627 after 605s, browser wchan=poll_schedule_timeout.constprop.0
+Stack for <Task pending name='Task-383' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Page.navigate
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 662, in send
+    return await tx
+Browser.getVersion answered
+stderr sample lines: ['[5030:5057:1020/223122.445179:ERROR:net/socket/ssl_client_socket_impl.cc:902] handshake failed; returned -1, SSL error code 1, net_error -202', '[5030:5057:1020/223122.447236:ERROR:net/socket/ssl_client_socket_impl.cc:902] handshake failed; returned -1, SSL error code 1, net_error -202']
+after draining 64 KiB, evaluate answered again
+stop ok
+exit=0

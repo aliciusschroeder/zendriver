@@ -11,3 +11,23 @@ Stack for <Task pending name='Task-7' coro=<Browser.stop() running at /home/user
 killing
 children killed
 killed main
+Timeout (0:01:35)!
+Thread 0x00007f68cbb876c0 (most recent call first):
+  File "/usr/lib/python3.13/concurrent/futures/thread.py", line 90 in _worker
+  File "/usr/lib/python3.13/threading.py", line 995 in run
+  File "/usr/lib/python3.13/threading.py", line 1044 in _bootstrap_inner
+  File "/usr/lib/python3.13/threading.py", line 1015 in _bootstrap
+
+Thread 0x00007f68ce51a080 (most recent call first):
+  File "/usr/lib/python3.13/subprocess.py", line 2044 in _try_wait
+  File "/usr/lib/python3.13/subprocess.py", line 2086 in _wait
+  File "/usr/lib/python3.13/subprocess.py", line 1281 in wait
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q5-refute/p1b_stop.py", line 27 in main
+  File "/usr/lib/python3.13/asyncio/events.py", line 89 in _run
+  File "/usr/lib/python3.13/asyncio/base_events.py", line 2061 in _run_once
+  File "/usr/lib/python3.13/asyncio/base_events.py", line 684 in run_forever
+  File "/usr/lib/python3.13/asyncio/base_events.py", line 713 in run_until_complete
+  File "/usr/lib/python3.13/asyncio/runners.py", line 119 in run
+  File "/usr/lib/python3.13/asyncio/runners.py", line 196 in run
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q5-refute/p1b_stop.py", line 34 in <module>
+exit 124
