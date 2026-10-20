@@ -1,0 +1,7 @@
+zendriver from /home/user/zendriver/zendriver/__init__.py python 3.13.16
+[visibility:hidden click] OK -> None
+  vhClicked = 1
+[detached click] EXC builtins.Exception: could not find position for <button id="det" onclick="window.detClicked=1">det</button> 
+  detClicked = None
+[detached apply el.click()] OK -> None
+  detClicked after apply = 1

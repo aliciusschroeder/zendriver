@@ -1,0 +1,57 @@
+zendriver from /home/user/zendriver/zendriver/__init__.py python 3.13.16
+[vis click] OK -> None
+  window.visClicked = 1
+  hid tree is None? False
+  raw DOM.getContentQuads for #hid -> []
+[hid click] EXC builtins.Exception: could not find position for <button id="hid" style="display:none" onclick="window.hidClicked=(window.hidClicked||0)+1">hidden</button> 
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/element.py", line 432, in click
+    await self.flash(0.25)
+  File "/home/user/zendriver/zendriver/core/element.py", line 940, in flash
+    pos = await self.get_position()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/element.py", line 529, in get_position
+    raise Exception("could not find position for %s " % self)
+Exception: could not find position for <button id="hid" style="display:none" onclick="window.hidClicked=(window.hidClicked||0)+1">hidden</button> 
+  window.hidClicked after click() = None
+[hid apply el.click()] OK -> None
+  window.hidClicked after apply(el.click) = 1
+[nested click] EXC builtins.Exception: could not find position for <button id="nested" onclick="window.nestedClicked=(window.nestedClicked||0)+1">nested</button> 
+  window.nestedClicked = None
+[file-input click] EXC builtins.Exception: could not find position for <input type="file" id="file" style="display:none" onclick="window.fileClicked=(window.fileClicked||0)+1"></input> 
+  window.fileClicked = None
+[hid get_position (annotated Position|None)] EXC builtins.Exception: could not find position for <button id="hid" style="display:none" onclick="window.hidClicked=(window.hidClicked||0)+1">hidden</button> 
+[hid mouse_click (should warn+return)] EXC builtins.Exception: could not find position for <button id="hid" style="display:none" onclick="window.hidClicked=(window.hidClicked||0)+1">hidden</button> 
+[hid mouse_move (should warn+return)] EXC builtins.Exception: could not find position for <button id="hid" style="display:none" onclick="window.hidClicked=(window.hidClicked||0)+1">hidden</button> 
+[hid mouse_drag -> (10,10) (should warn+return)] EXC builtins.Exception: could not find position for <button id="hid" style="display:none" onclick="window.hidClicked=(window.hidClicked||0)+1">hidden</button> 
+[vis mouse_drag -> hid element (should warn+return)] EXC builtins.Exception: could not find position for <button id="hid" style="display:none" onclick="window.hidClicked=(window.hidClicked||0)+1">hidden</button> 
+[hid flash (should warn+return)] EXC builtins.Exception: could not find position for <button id="hid" style="display:none" onclick="window.hidClicked=(window.hidClicked||0)+1">hidden</button> 
+[hid screenshot_b64 (doc: RuntimeError)] EXC builtins.Exception: could not find position for <button id="hid" style="display:none" onclick="window.hidClicked=(window.hidClicked||0)+1">hidden</button> 
+  screenshot_b64 exception is RuntimeError? False
+  lnk tree: None  _remote_object: None
+[lnk click 1] EXC builtins.RuntimeError: could not get parent since the element has no tree set
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/element.py", line 940, in flash
+    pos = await self.get_position()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/element.py", line 520, in get_position
+    if not self._remote_object or not self.parent or not self.object_id:
+                                      ^^^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/element.py", line 367, in parent
+    raise RuntimeError("could not get parent since the element has no tree set")
+RuntimeError: could not get parent since the element has no tree set
+  window.lnkClicks after click 1 = None
+[lnk click 2] EXC builtins.RuntimeError: could not get parent since the element has no tree set
+  window.lnkClicks after click 2 = None
+[lnk get_position] EXC builtins.RuntimeError: could not get parent since the element has no tree set
+[lnk mouse_move] EXC builtins.RuntimeError: could not get parent since the element has no tree set
+[lnk flash] EXC builtins.RuntimeError: could not get parent since the element has no tree set
+[lnk screenshot_b64] EXC builtins.RuntimeError: could not get parent since the element has no tree set
+[lnk2 mouse_click 1 (fresh)] OK -> None
+  window.lnkClicks after lnk2 mouse_click 1 = 1
+[lnk2 mouse_click 2] EXC builtins.RuntimeError: could not get parent since the element has no tree set
+  window.lnkClicks after lnk2 mouse_click 2 = 1
+  lnk3 tree after update() is None? False
+[lnk3 click after update()] OK -> None
+  window.lnkClicks after lnk3 click = 2
+  query_selector #lnk tree is None? False

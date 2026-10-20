@@ -1,0 +1,30 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zendriver/core/connection.py
+--- a/zendriver/core/connection.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/connection.py	2026-10-20 23:37:26.338192572 +0000
+@@ -706,7 +706,13 @@
+ 
+                     await self.send(domain_mod.enable(), _is_update=True)
+ 
+-                except:  # noqa - as broad as possible, we don't want an error before the "actual" request is sent
++                except asyncio.CancelledError:
++                    # the enable may not have reached the browser, so do not keep
++                    # the domain marked as enabled
++                    if domain_mod in self.enabled_domains:
++                        self.enabled_domains.remove(domain_mod)
++                    raise
++                except Exception:  # as broad as possible, we don't want an error before the "actual" request is sent
+                     logger.debug("", exc_info=True)
+                     try:
+                         self.enabled_domains.remove(domain_mod)
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/element.py b/zendriver/core/element.py
+--- a/zendriver/core/element.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/element.py	2026-10-20 23:37:15.162264712 +0000
+@@ -573,7 +573,7 @@
+         )
+         try:
+             await self.flash()
+-        except:  # noqa
++        except Exception:
+             pass
+ 
+     async def mouse_move(self) -> None:

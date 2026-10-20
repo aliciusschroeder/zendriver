@@ -1,0 +1,1160 @@
+from __future__ import annotations
+
+import asyncio
+import copy
+import http
+import http.cookiejar
+import json
+import logging
+import os
+import pathlib
+import pickle
+import platform
+import re
+import shutil
+import ssl
+import subprocess
+import sys
+import urllib.parse
+import urllib.request
+import warnings
+from collections import defaultdict
+from typing import Any, List, Literal, Tuple, Union, overload
+
+import asyncio_atexit
+
+from .. import cdp
+from . import tab, util
+from ._contradict import ContraDict
+from .config import BrowserType, Config, PathLike, is_posix
+from .connection import Connection
+from .proxy import ProxyForwarder, UpstreamProxy
+
+logger = logging.getLogger(__name__)
+
+
+def _user_agent_platform(user_agent: str) -> str | None:
+    """
+    the platform of the chrome sending the given user agent, named as in its
+    Sec-CH-UA-Platform hint, or None when unknown
+    """
+    # "Linux" also appears in the user agents of android and chrome os
+    for token, platform_name in (
+        ("Windows", "Windows"),
+        ("Macintosh", "macOS"),
+        ("Android", "Android"),
+        ("CrOS", "Chrome OS"),
+        ("Linux", "Linux"),
+    ):
+        if token in user_agent:
+            return platform_name
+    return None
+
+
+def _host_platform() -> str | None:
+    """the platform running this process, named as in chrome's Sec-CH-UA-Platform hint"""
+    if sys.platform == "win32":
+        return "Windows"
+    if sys.platform == "darwin":
+        return "macOS"
+    if sys.platform.startswith("linux"):
+        return "Linux"
+    return None
+
+
+if sys.platform == "win32":
+
+    def _windows_platform_version() -> str:
+        """
+        the version of the Windows.Foundation.UniversalApiContract, which chrome
+        reports as the platform version of windows: "<major>.<minor>.0"
+        """
+        import winreg
+
+        build = sys.getwindowsversion().build
+        if build < 17763:
+            # the windows 10 releases before 1809, whose contract version chrome knows
+            major = next(
+                (
+                    version
+                    for release_build, version in (
+                        (17134, 6),
+                        (16299, 5),
+                        (15063, 4),
+                        (14393, 3),
+                        (10586, 2),
+                    )
+                    if build >= release_build
+                ),
+                1,
+            )
+            return f"{major}.0.0"
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"SOFTWARE\Microsoft\WindowsRuntime\WellKnownContracts",
+                0,
+                winreg.KEY_QUERY_VALUE | winreg.KEY_WOW64_64KEY,
+            ) as key:
+                value, _ = winreg.QueryValueEx(
+                    key, "Windows.Foundation.UniversalApiContract"
+                )
+        except OSError:
+            # the highest version chrome knows, reported when the key is missing
+            return "19.0.0"
+        return f"{value >> 16}.{value & 0xFFFF}.0"
+
+
+def _host_platform_version() -> str:
+    """the Sec-CH-UA-Platform-Version hint of a chrome running on this host"""
+    if sys.platform == "darwin":
+        # major.minor.bugfix of the os, e.g. "15.5.0"
+        parts = platform.mac_ver()[0].split(".")
+        return ".".join((parts + ["0", "0"])[:3])
+    if sys.platform == "win32":
+        return _windows_platform_version()
+    # chrome reports no platform version on linux
+    return ""
+
+
+def _host_architecture() -> str:
+    """the Sec-CH-UA-Arch hint of a chrome running on this host: "x86" or "arm" """
+    machine = platform.machine()
+    if sys.platform == "win32":
+        # an x86 or x64 chrome emulated on an arm64 windows reports "arm"
+        machine = os.environ.get("PROCESSOR_ARCHITEW6432", machine)
+    if machine.lower().startswith(("arm", "aarch")):
+        return "arm"
+    return "x86"
+
+
+def _headless_user_agent(
+    user_agent: str,
+) -> tuple[str, cdp.emulation.UserAgentMetadata] | None:
+    """
+    the user agent and client hint metadata :py:meth:`Connection._prepare_headless`
+    applies to the targets of a headless browser sending the given user agent, or
+    None when that browser does not run on the platform of this process.
+
+    the metadata only carries the fields the protocol requires: chrome fills in the
+    others (brands, fullVersionList, bitness, wow64...) with its own values, which a
+    headless chrome shares with a visible one. the platform version and architecture
+    are those of this host, which launched the headless browser.
+    """
+    platform_name = _user_agent_platform(user_agent)
+    if platform_name is None or platform_name != _host_platform():
+        return None
+    metadata = cdp.emulation.UserAgentMetadata(
+        platform=platform_name,
+        platform_version=_host_platform_version(),
+        architecture=_host_architecture(),
+        model="",
+        mobile=False,
+        # only recent chromes fill this one in when it is omitted
+        form_factors=["Desktop"],
+    )
+    return user_agent.replace("Headless", ""), metadata
+
+
+class Browser:
+    """
+    The Browser object is the "root" of the hierarchy and contains a reference
+    to the browser parent process.
+    there should usually be only 1 instance of this.
+
+    All opened tabs, extra browser screens and resources will not cause a new Browser process,
+    but rather create additional :class:`zendriver.Tab` objects.
+
+    So, besides starting your instance and first/additional tabs, you don't actively use it a lot under normal conditions.
+
+    Tab objects will represent and control
+     - tabs (as you know them)
+     - browser windows (new window)
+     - iframe
+     - background processes
+
+    note:
+    the Browser object is not instantiated by __init__ but using the asynchronous :meth:`zendriver.Browser.create` method.
+
+    note:
+    in Chromium based browsers, there is a parent process which keeps running all the time, even if
+    there are no visible browser windows. sometimes it's stubborn to close it, so make sure after using
+    this library, the browser is correctly and fully closed/exited/killed.
+
+    """
+
+    _process: subprocess.Popen[bytes] | None
+    _process_pid: int | None
+    _http: HTTPApi | None = None
+    _cookies: CookieJar | None = None
+    _update_target_info_mutex: asyncio.Lock = asyncio.Lock()
+
+    config: Config
+    connection: Connection | None
+
+    @classmethod
+    async def create(
+        cls,
+        config: Config | None = None,
+        *,
+        user_data_dir: PathLike | None = None,
+        headless: bool = False,
+        user_agent: str | None = None,
+        browser_executable_path: PathLike | None = None,
+        browser: BrowserType = "auto",
+        browser_args: List[str] | None = None,
+        sandbox: bool = True,
+        lang: str | None = None,
+        host: str | None = None,
+        port: int | None = None,
+        **kwargs: Any,
+    ) -> Browser:
+        """
+        entry point for creating an instance
+        """
+        if not config:
+            config = Config(
+                user_data_dir=user_data_dir,
+                headless=headless,
+                user_agent=user_agent,
+                browser_executable_path=browser_executable_path,
+                browser=browser,
+                browser_args=browser_args or [],
+                sandbox=sandbox,
+                lang=lang,
+                host=host,
+                port=port,
+                **kwargs,
+            )
+        instance = cls(config)
+        await instance.start()
+        asyncio_atexit.register(instance._atexit_cleanup)
+        return instance
+
+    async def _atexit_cleanup(self) -> None:
+        # stop() unregisters atexit callbacks, which would mutate the list asyncio_atexit is iterating
+        if not self.stopped:
+            await self._stop()
+        await self._cleanup_temporary_profile()
+
+    def __init__(self, config: Config):
+        """
+        constructor. to create a instance, use :py:meth:`Browser.create(...)`
+
+        :param config:
+        """
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            raise RuntimeError(
+                "{0} objects of this class are created using await {0}.create()".format(
+                    self.__class__.__name__
+                )
+            )
+        # weakref.finalize(self, self._quit, self)
+
+        # each instance gets it's own copy so this class gets a copy that it can
+        # use to help manage the browser instance data (needed for multiple browsers)
+        self.config = copy.deepcopy(config)
+
+        self.targets: List[Connection] = []
+        """current targets (all types)"""
+        self.info: ContraDict | None = None
+        self._target = None
+        self._process = None
+        self._process_pid = None
+        self._is_updating = asyncio.Event()
+        self.connection = None
+        self._proxy_forwarders: List[ProxyForwarder] = []
+        self._headless_user_agent: (
+            tuple[str, cdp.emulation.UserAgentMetadata] | None
+        ) = None
+        """user agent and client hint metadata of a headless browser, built at startup"""
+        logger.debug("Session object initialized: %s" % vars(self))
+
+    @property
+    def websocket_url(self) -> str:
+        if not self.info:
+            raise RuntimeError("Browser not yet started. use await browser.start()")
+
+        return str(self.info.webSocketDebuggerUrl)
+
+    @property
+    def main_tab(self) -> tab.Tab | None:
+        """returns the target which was launched with the browser"""
+        results = sorted(self.targets, key=lambda x: x.type_ == "page", reverse=True)
+        if len(results) > 0:
+            result = results[0]
+            if isinstance(result, tab.Tab):
+                return result
+        return None
+
+    @property
+    def tabs(self) -> List[tab.Tab]:
+        """returns the current targets which are of type "page"
+        :return:
+        """
+        return [
+            target
+            for target in self.targets
+            if isinstance(target, tab.Tab) and target.type_ == "page"
+        ]
+
+    async def get_tab(self, text: str) -> tab.Tab | None:
+        """
+        returns the first tab whose url or title contains the given text (case-insensitive),
+        or None if no tab matches
+        """
+        await self.update_targets()
+        text = text.lower()
+        for t in self.tabs:
+            if t.target and (
+                text in t.target.url.lower() or text in t.target.title.lower()
+            ):
+                return t
+        return None
+
+    @property
+    def cookies(self) -> CookieJar:
+        if not self._cookies:
+            self._cookies = CookieJar(self)
+        return self._cookies
+
+    @property
+    def stopped(self) -> bool:
+        return not (self._process and self._process.poll() is None)
+
+    async def wait(self, time: Union[float, int] = 1) -> Browser:
+        """wait for <time> seconds. important to use, especially in between page navigation
+
+        :param time:
+        :return:
+        """
+        return await asyncio.sleep(time, result=self)
+
+    sleep = wait
+    """alias for wait"""
+
+    async def _handle_target_update(
+        self,
+        event: Union[
+            cdp.target.TargetInfoChanged,
+            cdp.target.TargetDestroyed,
+            cdp.target.TargetCreated,
+            cdp.target.TargetCrashed,
+        ],
+    ) -> None:
+        """this is an internal handler which updates the targets when chrome emits the corresponding event"""
+
+        async with self._update_target_info_mutex:
+            if isinstance(event, cdp.target.TargetInfoChanged):
+                target_info = event.target_info
+
+                current_tab = next(
+                    filter(
+                        lambda item: item.target_id == target_info.target_id,
+                        self.targets,
+                    )
+                )
+                current_target = current_tab.target
+
+                if logger.getEffectiveLevel() <= 10:
+                    changes = util.compare_target_info(current_target, target_info)
+                    changes_string = ""
+                    for change in changes:
+                        key, old, new = change
+                        changes_string += f"\n{key}: {old} => {new}\n"
+                    logger.debug(
+                        "target #%d has changed: %s"
+                        % (self.targets.index(current_tab), changes_string)
+                    )
+
+                current_tab.target = target_info
+
+            elif isinstance(event, cdp.target.TargetCreated):
+                target_info = event.target_info
+                if any(t.target_id == target_info.target_id for t in self.targets):
+                    return
+                new_target = self._create_tab(target_info)
+
+                self.targets.append(new_target)
+
+                logger.debug("target #%d created => %s", len(self.targets), new_target)
+
+            elif isinstance(event, cdp.target.TargetDestroyed):
+                current_tab = next(
+                    filter(lambda item: item.target_id == event.target_id, self.targets)
+                )
+                logger.debug(
+                    "target removed. id # %d => %s"
+                    % (self.targets.index(current_tab), current_tab)
+                )
+                self.targets.remove(current_tab)
+
+    async def get(
+        self,
+        url: str = "about:blank",
+        new_tab: bool = False,
+        new_window: bool = False,
+        timeout: Union[int, float] = 10,
+    ) -> tab.Tab:
+        """top level get. utilizes the first tab to retrieve given url.
+
+        convenience function known from selenium.
+        this function handles waits/sleeps and detects when DOM events fired, so it's the safest
+        way of navigating.
+
+        :param url: the url to navigate to
+        :param new_tab: open new tab
+        :param new_window:  open new window
+        :param timeout: seconds to wait for the navigation to start
+        :return: Page
+        :raises asyncio.TimeoutError:
+        """
+        if not self.connection:
+            raise RuntimeError("Browser not yet started. use await browser.start()")
+
+        navigated_target_ids: set[cdp.target.TargetID] = set()
+        navigated = asyncio.Event()
+        event_type = cdp.target.TargetInfoChanged
+
+        async def get_handler(event: cdp.target.TargetInfoChanged) -> None:
+            # ignore TargetInfoChanged event from browser startup
+            if event.target_info.url != "about:blank" or url == "about:blank":
+                navigated_target_ids.add(event.target_info.target_id)
+                navigated.set()
+
+        async def wait_for_navigation(target_id: cdp.target.TargetID) -> None:
+            while target_id not in navigated_target_ids:
+                navigated.clear()
+                await navigated.wait()
+
+        self.connection.add_handler(event_type, get_handler)
+        try:
+            if new_tab or new_window:
+                # create new target using the browser session
+                target_id = await self.connection.send(
+                    cdp.target.create_target(
+                        url, new_window=new_window, enable_begin_frame_control=True
+                    )
+                )
+                connection = await self._get_tab(target_id)
+            else:
+                if not self.tabs:
+                    raise RuntimeError(
+                        "Browser has no open tab to navigate. Use new_tab=True to open one."
+                    )
+                connection = self.tabs[0]
+                # use the tab to navigate to new url
+                await connection.send(cdp.page.navigate(url))
+            connection.browser = self
+            if connection.target_id is None:
+                raise RuntimeError("Tab has no target to wait for navigation on")
+
+            await asyncio.wait_for(wait_for_navigation(connection.target_id), timeout)
+        finally:
+            self.connection.remove_handlers(event_type, get_handler)
+
+        return connection
+
+    async def create_context(
+        self,
+        url: str = "about:blank",
+        *,
+        new_window: bool = True,
+        dispose_on_detach: bool = True,
+        proxy_server: str | None = None,
+        proxy_bypass_list: List[str] | None = None,
+        proxy_ssl_context: ssl.SSLContext | None = None,
+        origins_with_universal_network_access: List[str] | None = None,
+    ) -> tab.Tab:
+        """creates a new browser context, which is similar to an incognito profile, and opens a tab in it.
+
+        each context can use its own proxy, while browser arguments apply one proxy to the whole browser.
+
+        :param url: the url to open in the new tab
+        :param new_window: open the tab in a new window
+        :param dispose_on_detach: dispose the context when the debugging session disconnects
+        :param proxy_server: proxy for this context, such as ``http://host:port`` or ``socks5://host:port``.
+            credentials are supported for http, https and socks5 proxies, e.g. ``http://user:pass@host:port``.
+            since chrome can not pass proxy credentials itself, zendriver then runs a local proxy which
+            forwards to the given one. it is stopped when the browser is stopped.
+        :param proxy_bypass_list: hosts which should not use the proxy, such as ``*.example.com``.
+            chrome never proxies loopback addresses unless ``<-loopback>`` is included.
+        :param proxy_ssl_context: ssl context for connecting to an authenticated https proxy
+        :param origins_with_universal_network_access: origins to grant unlimited cross-origin access to
+        :return: the tab opened in the new context
+        """
+        if not self.connection:
+            raise RuntimeError("Browser not yet started. use await browser.start()")
+
+        if proxy_server is not None:
+            upstream = UpstreamProxy.from_url(proxy_server, proxy_ssl_context)
+            if upstream is not None:
+                forwarder = ProxyForwarder(upstream)
+                await forwarder.start()
+                self._proxy_forwarders.append(forwarder)
+                proxy_server = forwarder.proxy_server
+
+        context_id = await self.connection.send(
+            cdp.target.create_browser_context(
+                dispose_on_detach=dispose_on_detach,
+                proxy_server=proxy_server,
+                proxy_bypass_list=",".join(proxy_bypass_list)
+                if proxy_bypass_list
+                else None,
+                origins_with_universal_network_access=origins_with_universal_network_access,
+            )
+        )
+        target_id = await self.connection.send(
+            cdp.target.create_target(
+                url, browser_context_id=context_id, new_window=new_window
+            )
+        )
+        return await self._get_tab(target_id)
+
+    async def start(self) -> Browser:
+        """launches the actual browser"""
+        if not self:
+            raise ValueError(
+                "Cannot be called as a class method. Use `await Browser.create()` to create a new instance"
+            )
+
+        if self._process or self._process_pid:
+            if self._process and self._process.poll() is not None:
+                return await self.create(config=self.config)
+            warnings.warn("ignored! this call has no effect when already running.")
+            return self
+
+        connect_existing = False
+        if self.config.host is not None and self.config.port is not None:
+            connect_existing = True
+        else:
+            self.config.host = "127.0.0.1"
+            self.config.port = util.free_port()
+
+        if not connect_existing:
+            logger.debug(
+                "BROWSER EXECUTABLE PATH: %s", self.config.browser_executable_path
+            )
+            if not pathlib.Path(self.config.browser_executable_path).exists():
+                raise FileNotFoundError(
+                    (
+                        """
+                    ---------------------
+                    Could not determine browser executable.
+                    ---------------------
+                    Make sure your browser is installed in the default location (path).
+                    If you are sure about the browser executable, you can specify it using
+                    the `browser_executable_path='{}` parameter."""
+                    ).format(
+                        "/path/to/browser/executable"
+                        if is_posix
+                        else "c:/path/to/your/browser.exe"
+                    )
+                )
+
+        if getattr(self.config, "_extensions", None):  # noqa
+            self.config.add_argument(
+                "--load-extension=%s"
+                % ",".join(str(_) for _ in self.config._extensions)
+            )  # noqa
+
+        exe = self.config.browser_executable_path
+        params = self.config()
+        params.append("about:blank")
+
+        logger.info(
+            "starting\n\texecutable :%s\n\narguments:\n%s", exe, "\n\t".join(params)
+        )
+        if not connect_existing:
+            self._process = util._start_process(
+                exe, params, is_posix, env=getattr(self.config, "env", None)
+            )
+            self._process_pid = self._process.pid
+
+        self._http = HTTPApi((self.config.host, self.config.port))
+        util.get_registered_instances().add(self)
+        # try to connect immediately, then retry at the configured interval
+        connected = await self.test_connection()
+        for _ in range(self.config.browser_connection_max_tries):
+            if connected:
+                break
+            await asyncio.sleep(self.config.browser_connection_timeout)
+            connected = await self.test_connection()
+
+        if not self.info:
+            if self._process is not None:
+                stderr = await util._read_process_stderr(self._process)
+                logger.info(
+                    "Browser stderr: %s", stderr if stderr else "No output from browser"
+                )
+
+            await self.stop()
+            raise Exception(
+                (
+                    """
+                ---------------------
+                Failed to connect to browser
+                ---------------------
+                One of the causes could be when you are running as root.
+                In that case you need to pass sandbox=False
+                """
+                )
+            )
+
+        self.connection = Connection(self.info.webSocketDebuggerUrl, _owner=self)
+
+        if self.config.autodiscover_targets:
+            logger.info("enabling autodiscover targets")
+
+            # self.connection.add_handler(
+            #     cdp.target.TargetInfoChanged, self._handle_target_update
+            # )
+            # self.connection.add_handler(
+            #     cdp.target.TargetCreated, self._handle_target_update
+            # )
+            # self.connection.add_handler(
+            #     cdp.target.TargetDestroyed, self._handle_target_update
+            # )
+            # self.connection.add_handler(
+            #     cdp.target.TargetCreated, self._handle_target_update
+            # )
+            #
+            self.connection.handlers[cdp.target.TargetInfoChanged] = [
+                self._handle_target_update
+            ]
+            self.connection.handlers[cdp.target.TargetCreated] = [
+                self._handle_target_update
+            ]
+            self.connection.handlers[cdp.target.TargetDestroyed] = [
+                self._handle_target_update
+            ]
+            self.connection.handlers[cdp.target.TargetCrashed] = [
+                self._handle_target_update
+            ]
+            await self.connection.send(cdp.target.set_discover_targets(discover=True))
+        await self.update_targets()
+        if not connect_existing:
+            await self._wait_for_initial_tab()
+        if self.config.headless:
+            await self._read_headless_user_agent()
+        return self
+
+    async def _wait_for_initial_tab(self) -> None:
+        for _ in range(self.config.browser_connection_max_tries):
+            if self.tabs:
+                return
+            await asyncio.sleep(self.config.browser_connection_timeout)
+            await self.update_targets()
+
+    async def _read_headless_user_agent(self) -> None:
+        """
+        read the user agent of the headless browser, for
+        :py:meth:`Connection._prepare_headless` to override on every target without
+        its "HeadlessChrome" token, the only thing telling a headless chrome from a
+        visible one. the override carries client hint metadata (see
+        :py:func:`_headless_user_agent`): without it, the browser would drop its
+        client hints (the Sec-CH-UA* request headers and navigator.userAgentData),
+        which no real chrome does.
+        """
+        if not self.connection:
+            return
+        _, _, _, user_agent, _ = await self.connection.send(cdp.browser.get_version())
+        self._headless_user_agent = _headless_user_agent(user_agent)
+        if self._headless_user_agent is None:
+            logger.warning(
+                "the headless browser does not run on the platform of this process "
+                "(user agent: %s): its user agent override will drop the client hints",
+                user_agent,
+            )
+
+    async def test_connection(self) -> bool:
+        if not self._http:
+            raise ValueError("HTTPApi not yet initialized")
+
+        try:
+            self.info = ContraDict(await self._http.get("version"), silent=True)
+            return True
+        except Exception:
+            logger.debug("Could not start", exc_info=True)
+            return False
+
+    async def grant_all_permissions(self) -> None:
+        """
+        grant permissions for:
+            accessibilityEvents
+            audioCapture
+            backgroundSync
+            backgroundFetch
+            clipboardReadWrite
+            clipboardSanitizedWrite
+            displayCapture
+            durableStorage
+            geolocation
+            idleDetection
+            localFonts
+            midi
+            midiSysex
+            nfc
+            notifications
+            paymentHandler
+            periodicBackgroundSync
+            protectedMediaIdentifier
+            sensors
+            storageAccess
+            topLevelStorageAccess
+            videoCapture
+            videoCapturePanTiltZoom
+            wakeLockScreen
+            wakeLockSystem
+            windowManagement
+        """
+        if not self.connection:
+            raise RuntimeError("Browser not yet started. use await browser.start()")
+
+        permissions = list(cdp.browser.PermissionType)
+        permissions.remove(cdp.browser.PermissionType.CAPTURED_SURFACE_CONTROL)
+        await self.connection.send(cdp.browser.grant_permissions(permissions))
+
+    async def tile_windows(
+        self, windows: List[tab.Tab] | None = None, max_columns: int = 0
+    ) -> List[List[int]]:
+        import math
+
+        import mss
+
+        m = mss.mss()
+        screen, screen_width, screen_height = 3 * (None,)
+        if m.monitors and len(m.monitors) >= 1:
+            screen = m.monitors[0]
+            screen_width = screen["width"]
+            screen_height = screen["height"]
+        if not screen or not screen_width or not screen_height:
+            warnings.warn("no monitors detected")
+            return []
+        await self.update_targets()
+        distinct_windows = defaultdict(list)
+
+        if windows:
+            tabs = windows
+        else:
+            tabs = self.tabs
+        for tab_ in tabs:
+            window_id, bounds = await tab_.get_window()
+            distinct_windows[window_id].append(tab_)
+
+        num_windows = len(distinct_windows)
+        req_cols = max_columns or int(num_windows * (19 / 6))
+        req_rows = int(num_windows / req_cols)
+
+        while req_cols * req_rows < num_windows:
+            req_rows += 1
+
+        box_w = math.floor((screen_width / req_cols) - 1)
+        box_h = math.floor(screen_height / req_rows)
+
+        distinct_windows_iter = iter(distinct_windows.values())
+        grid = []
+        for x in range(req_cols):
+            for y in range(req_rows):
+                try:
+                    tabs = next(distinct_windows_iter)
+                except StopIteration:
+                    continue
+                if not tabs:
+                    continue
+                tab_ = tabs[0]
+
+                try:
+                    pos = [x * box_w, y * box_h, box_w, box_h]
+                    grid.append(pos)
+                    await tab_.set_window_size(*pos)
+                except Exception:
+                    logger.info(
+                        "could not set window size. exception => ", exc_info=True
+                    )
+                    continue
+        return grid
+
+    async def _get_targets(self) -> List[cdp.target.TargetInfo]:
+        if not self.connection:
+            raise RuntimeError("Browser not yet started. use await browser.start()")
+        info = await self.connection.send(cdp.target.get_targets(), _is_update=True)
+        return info
+
+    async def _get_tab(self, target_id: cdp.target.TargetID) -> tab.Tab:
+        """
+        the TargetCreated handler may not have processed a newly created target yet,
+        in which case the target is added by updating the targets
+        """
+        for _ in range(2):
+            for target in self.targets:
+                if target.target_id == target_id and isinstance(target, tab.Tab):
+                    return target
+            await self.update_targets()
+        raise RuntimeError(f"target {target_id} not found")
+
+    @property
+    def headless_user_agent(
+        self,
+    ) -> tuple[str, cdp.emulation.UserAgentMetadata] | None:
+        """
+        the user agent and client hint metadata applied to the targets of a headless
+        browser, or None when the browser does not run on the platform of this process
+        (its user agent override then drops the client hints)
+        """
+        return self._headless_user_agent
+
+    def _create_tab(self, target_info: cdp.target.TargetInfo) -> tab.Tab:
+        return tab.Tab(
+            (
+                f"ws://{self.config.host}:{self.config.port}"
+                f"/devtools/page"  # all types are 'page' internally in chrome apparently
+                f"/{target_info.target_id}"
+            ),
+            target=target_info,
+            browser=self,
+        )
+
+    async def update_targets(self) -> None:
+        targets: List[cdp.target.TargetInfo]
+        targets = await self._get_targets()
+        for t in targets:
+            for existing_tab in self.targets:
+                if existing_tab.target_id == t.target_id:
+                    existing_tab.target.__dict__.update(t.__dict__)
+                    break
+            else:
+                self.targets.append(self._create_tab(t))
+
+        await asyncio.sleep(0)
+
+    async def __aenter__(self) -> Browser:
+        return self
+
+    async def __aexit__(
+        self, exc_type: type[BaseException] | None, exc_val: Any, exc_tb: Any
+    ) -> None:
+        if exc_type and exc_val:
+            raise exc_type(exc_val)
+
+    def __iter__(self) -> Browser:
+        main_tab = self.main_tab
+        if not main_tab:
+            return self
+        self._i = self.tabs.index(main_tab)
+        return self
+
+    def __reversed__(self) -> List[tab.Tab]:
+        return list(reversed(list(self.tabs)))
+
+    def __next__(self) -> tab.Tab:
+        try:
+            return self.tabs[self._i]
+        except IndexError:
+            del self._i
+            raise StopIteration
+        except AttributeError:
+            del self._i
+            raise StopIteration
+        finally:
+            if hasattr(self, "_i"):
+                if self._i != len(self.tabs):
+                    self._i += 1
+                else:
+                    del self._i
+
+    async def stop(self) -> None:
+        asyncio_atexit.unregister(self._atexit_cleanup)
+        util.get_registered_instances().discard(self)
+        await self._stop()
+
+    async def _stop(self) -> None:
+        if not self.connection and not self._process:
+            return
+
+        for target in self.targets:
+            await target.aclose()
+
+        if self.connection and not self.connection.closed:
+            try:
+                await self.connection.send(cdp.browser.close())
+            except Exception:
+                logger.warning(
+                    "Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection."
+                )
+            await self.connection.aclose()
+            logger.debug("closed the connection")
+
+        for forwarder in self._proxy_forwarders:
+            await forwarder.close()
+        self._proxy_forwarders.clear()
+
+        if self._process:
+            try:
+                self._process.terminate()
+                logger.debug("gracefully stopping browser process")
+                # wait 3 seconds for the browser to stop
+                for _ in range(12):
+                    if self._process.poll() is not None:
+                        break
+                    await asyncio.sleep(0.25)
+                else:
+                    logger.debug("browser process did not stop. killing it")
+                    self._process.kill()
+                    logger.debug("killed browser process")
+
+                await asyncio.to_thread(self._process.wait)
+
+            except ProcessLookupError:
+                # ignore this well known race condition because it only means that
+                # the process was not found while trying to terminate or kill it
+                pass
+
+            self._process = None
+            self._process_pid = None
+
+        await self._cleanup_temporary_profile()
+
+    async def _cleanup_temporary_profile(self) -> None:
+        if not self.config or self.config.uses_custom_data_dir:
+            return
+
+        for attempt in range(5):
+            try:
+                shutil.rmtree(self.config.user_data_dir, ignore_errors=False)
+                logger.debug(
+                    "successfully removed temp profile %s" % self.config.user_data_dir
+                )
+            except FileNotFoundError:
+                break
+            except (PermissionError, OSError) as e:
+                if attempt == 4:
+                    logger.debug(
+                        "problem removing data dir %s\nConsider checking whether it's there and remove it by hand\nerror: %s",
+                        self.config.user_data_dir,
+                        e,
+                    )
+                await asyncio.sleep(0.15)
+                continue
+
+    def __del__(self) -> None:
+        pass
+
+
+class CookieJar:
+    def __init__(self, browser: Browser):
+        self._browser = browser
+
+    @overload
+    async def get_all(
+        self, requests_cookie_format: Literal[False] = False
+    ) -> list[cdp.network.Cookie]: ...
+
+    @overload
+    async def get_all(
+        self, requests_cookie_format: Literal[True]
+    ) -> list[http.cookiejar.Cookie]: ...
+
+    @overload
+    async def get_all(
+        self, requests_cookie_format: bool = False
+    ) -> list[cdp.network.Cookie] | list[http.cookiejar.Cookie]: ...
+
+    async def get_all(
+        self, requests_cookie_format: bool = False
+    ) -> list[cdp.network.Cookie] | list[http.cookiejar.Cookie]:
+        """
+        get all cookies
+
+        :param requests_cookie_format: when True, returns python http.cookiejar.Cookie objects, compatible  with requests library and many others.
+        :return:
+        :rtype:
+
+        """
+        connection: Connection | None = None
+        for tab_ in self._browser.tabs:
+            if tab_.closed:
+                continue
+            connection = tab_
+            break
+        else:
+            connection = self._browser.connection
+        if not connection:
+            raise RuntimeError("Browser not yet started. use await browser.start()")
+
+        cookies = await connection.send(cdp.storage.get_cookies())
+        if requests_cookie_format:
+            return [_to_cookiejar_cookie(c) for c in cookies]
+        return cookies
+
+    async def set_all(self, cookies: List[cdp.network.CookieParam]) -> None:
+        """
+        set cookies
+
+        :param cookies: list of cookies
+        :return:
+        :rtype:
+        """
+        connection: Connection | None = None
+        for tab_ in self._browser.tabs:
+            if tab_.closed:
+                continue
+            connection = tab_
+            break
+        else:
+            connection = self._browser.connection
+        if not connection:
+            raise RuntimeError("Browser not yet started. use await browser.start()")
+
+        await connection.send(cdp.storage.set_cookies(cookies))
+
+    async def save(self, file: PathLike = ".session.dat", pattern: str = ".*") -> None:
+        """
+        save all cookies (or a subset, controlled by `pattern`) to a file to be restored later
+
+        :param file:
+        :param pattern: regex style pattern string.
+               any cookie that has a  domain, key or value field which matches the pattern will be included.
+               default = ".*"  (all)
+
+               eg: the pattern "(cf|.com|nowsecure)" will include those cookies which:
+                    - have a string "cf" (cloudflare)
+                    - have ".com" in them, in either domain, key or value field.
+                    - contain "nowsecure"
+        :return:
+        :rtype:
+        """
+        compiled_pattern = re.compile(pattern)
+        save_path = pathlib.Path(file).resolve()
+
+        cookies = await self.get_all(requests_cookie_format=False)
+        included_cookies = []
+        for cookie in cookies:
+            for match in compiled_pattern.finditer(str(cookie.__dict__)):
+                logger.debug(
+                    "saved cookie for matching pattern '%s' => (%s: %s)",
+                    compiled_pattern.pattern,
+                    cookie.name,
+                    cookie.value,
+                )
+                included_cookies.append(cookie)
+                break
+        with save_path.open("w+b") as save_file:
+            pickle.dump(included_cookies, save_file)
+
+    async def load(self, file: PathLike = ".session.dat", pattern: str = ".*") -> None:
+        """
+        load all cookies (or a subset, controlled by `pattern`) from a file created by :py:meth:`~save_cookies`.
+
+        :param file:
+        :param pattern: regex style pattern string.
+               any cookie that has a  domain, key or value field which matches the pattern will be included.
+               default = ".*"  (all)
+
+               eg: the pattern "(cf|.com|nowsecure)" will include those cookies which:
+                    - have a string "cf" (cloudflare)
+                    - have ".com" in them, in either domain, key or value field.
+                    - contain "nowsecure"
+        :return:
+        :rtype:
+        """
+        import re
+
+        compiled_pattern = re.compile(pattern)
+        save_path = pathlib.Path(file).resolve()
+        with save_path.open("r+b") as save_file:
+            cookies = pickle.load(save_file)
+        included_cookies = []
+        for cookie in cookies:
+            for match in compiled_pattern.finditer(str(cookie.__dict__)):
+                included_cookies.append(cookie)
+                logger.debug(
+                    "loaded cookie for matching pattern '%s' => (%s: %s)",
+                    compiled_pattern.pattern,
+                    cookie.name,
+                    cookie.value,
+                )
+                break
+        await self.set_all(included_cookies)
+
+    async def clear(self) -> None:
+        """
+        clear current cookies
+
+        note: this includes all open tabs/windows for this browser
+
+        :return:
+        :rtype:
+        """
+        connection: Connection | None = None
+        for tab_ in self._browser.tabs:
+            if tab_.closed:
+                continue
+            connection = tab_
+            break
+        else:
+            connection = self._browser.connection
+        if not connection:
+            raise RuntimeError("Browser not yet started. use await browser.start()")
+
+        await connection.send(cdp.storage.clear_cookies())
+
+
+class HTTPApi:
+    def __init__(self, addr: Tuple[str, int]):
+        self.host, self.port = addr
+        self.api = "http://%s:%d" % (self.host, self.port)
+
+    async def get(self, endpoint: str) -> Any:
+        return await self._request(endpoint)
+
+    async def post(self, endpoint: str, data: dict[str, str]) -> Any:
+        return await self._request(endpoint, method="POST", data=data)
+
+    async def _request(
+        self, endpoint: str, method: str = "GET", data: dict[str, str] | None = None
+    ) -> Any:
+        url = urllib.parse.urljoin(
+            self.api, f"json/{endpoint}" if endpoint else "/json"
+        )
+        if data and method.lower() == "get":
+            raise ValueError("get requests cannot contain data")
+        if not url:
+            url = self.api + endpoint
+        request = urllib.request.Request(url)
+        request.method = method
+        request.data = None
+        if data:
+            request.data = json.dumps(data).encode("utf-8")
+
+        response = await asyncio.get_running_loop().run_in_executor(
+            None, lambda: urllib.request.urlopen(request, timeout=10)
+        )
+        return json.loads(response.read())
+
+
+def _to_cookiejar_cookie(cookie: cdp.network.Cookie) -> http.cookiejar.Cookie:
+    return http.cookiejar.Cookie(
+        version=0,
+        name=cookie.name,
+        value=cookie.value,
+        port=None,
+        port_specified=False,
+        domain=cookie.domain,
+        domain_specified=bool(cookie.domain),
+        domain_initial_dot=cookie.domain.startswith("."),
+        path=cookie.path,
+        path_specified=bool(cookie.path),
+        secure=cookie.secure,
+        expires=(
+            None if cookie.session or cookie.expires is None else int(cookie.expires)
+        ),
+        discard=cookie.session,
+        comment=None,
+        comment_url=None,
+        rest={"HttpOnly": ""} if cookie.http_only else {},
+        rfc2109=False,
+    )
