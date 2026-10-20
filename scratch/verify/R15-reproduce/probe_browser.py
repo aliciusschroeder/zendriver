@@ -12,10 +12,14 @@ def dups(args):
     return {a: n for a, n in collections.Counter(args).items() if n > 1}
 
 started = []
+import itertools
+_n = itertools.count()
+def prof():
+    d = os.path.join(HERE, "profiles", "p%d" % next(_n)); os.makedirs(d, exist_ok=True); return d
 
 async def k2():
     print("\n=== K2 (real chromium): duplicate / conflicting Config-owned flags in argv ===")
-    b = await zendriver.start(headless=True, lang="de-DE",
+    b = await zendriver.start(headless=True, lang="de-DE", user_data_dir=prof(),
                               browser_args=["--headless=new", "--no-sandbox", "--lang=fr-FR",
                                             "--webrtc-ip-handling-policy=default_public_interface_only"])
     started.append(b)
@@ -30,7 +34,7 @@ async def k2():
 
 async def k3():
     print("\n=== K3 (real chromium): --load-extension appended on every start ===")
-    cfg = Config(headless=True)
+    cfg = Config(headless=True, user_data_dir=prof())
     cfg.add_extension(os.path.join(HERE, "ext", "plain"))
     b = await Browser.create(cfg)
     started.append(b)
@@ -65,7 +69,7 @@ async def k3():
 
 async def k5():
     print("\n=== K5 (real start): extension path containing 'headless' ===")
-    cfg = Config(headless=True)
+    cfg = Config(headless=True, user_data_dir=prof())
     cfg.add_extension(os.path.join(HERE, "ext", "headless-scraper", "ext"))
     try:
         b = await asyncio.wait_for(Browser.create(cfg), 30)
