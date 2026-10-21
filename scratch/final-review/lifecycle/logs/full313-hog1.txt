@@ -5,3 +5,589 @@ bringing up nodes...
 ....................................................s................... [ 36%]
 ............................................F........................... [ 72%]
 .........................................F..F.FFF.FFFF                   [100%]
+=================================== FAILURES ===================================
+__________ test_handler_raising_type_error_is_called_once[headless0] ___________
+[gw2] linux -- Python 3.13.16 /home/user/zendriver/.venv/bin/python
+
+browser = <zendriver.core.browser.Browser object at 0x7faa08e54210>
+
+    async def test_handler_raising_type_error_is_called_once(
+        browser: zd.Browser,
+    ) -> None:
+        tab = await browser.get(sample_file("groceries.html"))
+        calls: list[tuple[Any, ...]] = []
+        called = asyncio.Event()
+    
+        async def handler(*args: Any) -> None:
+            calls.append(args)
+            called.set()
+            raise TypeError("raised by the handler itself")
+    
+        tab.add_handler(zd.cdp.page.LoadEventFired, handler)
+        await tab.reload()
+        await asyncio.wait_for(called.wait(), 5)
+        await tab.wait(0.5)
+    
+>       assert len(calls) == 1
+E       assert 2 == 1
+E        +  where 2 = len([(LoadEventFired(timestamp=MonotonicTime(38697.029603)), <Tab [60E566E63594346FDA82727C334ED033] [page] [url: file:///...ndriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/sample_data/groceries.html]>)])
+
+tests/core/test_tab.py:353: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    asyncio:base_events.py:1890 Task exception was never retrieved
+future: <Task finished name='Task-460' coro=<test_handler_raising_type_error_is_called_once.<locals>.handler() done, defined at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/core/test_tab.py:343> exception=TypeError('raised by the handler itself')>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/core/test_tab.py", line 346, in handler
+    raise TypeError("raised by the handler itself")
+TypeError: raised by the handler itself
+ERROR    asyncio:base_events.py:1890 Task exception was never retrieved
+future: <Task finished name='Task-462' coro=<test_handler_raising_type_error_is_called_once.<locals>.handler() done, defined at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/core/test_tab.py:343> exception=TypeError('raised by the handler itself')>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/core/test_tab.py", line 346, in handler
+    raise TypeError("raised by the handler itself")
+TypeError: raised by the handler itself
+_________________ test_account_creation_tutorial_1[headless0] __________________
+[gw0] linux -- Python 3.13.16 /home/user/zendriver/.venv/bin/python
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f009902c050>
+mock_print = <MagicMock name='print' id='139640564153856'>
+mock_start = <AsyncMock name='start' id='139640564140416'>
+
+    async def test_account_creation_tutorial_1(
+        mocker: MockerFixture, mock_print: Mock, mock_start: Mock
+    ) -> None:
+>       module = import_from_path("docs/tutorials/tutorial-code/account-creation-1.py")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/docs/tutorials/test_account_creation_tutorial.py:15: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/docs/__init__.py:18: in import_from_path
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:1023: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1160: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7f009a3798b0>
+path = '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/account-creation-1.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/account-creation-1.py'
+
+<frozen importlib._bootstrap_external>:1218: FileNotFoundError
+------------------------------ Captured log setup ------------------------------
+INFO     zendriver.core.browser:browser.py:571 starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc__kcv17x_
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=33061
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO     zendriver.core.browser:browser.py:631 enabling autodiscover targets
+---------------------------- Captured log teardown -----------------------------
+INFO     tests.conftest:conftest.py:165 Saved artifacts for tab 0 (about:blank) to test-artifacts/tests_docs_tutorials_test_account_creation_tutorial.py__test_account_creation_tutorial_1_headless0_
+___________________ test_api_responses_tutorial_2[headless0] ___________________
+[gw1] linux -- Python 3.13.16 /home/user/zendriver/.venv/bin/python
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f63bd9c3d90>
+mock_print = <MagicMock name='print' id='140066359211216'>
+mock_start = <AsyncMock name='start' id='140066359200464'>
+
+    async def test_api_responses_tutorial_2(
+        mocker: MockerFixture, mock_print: Mock, mock_start: Mock
+    ) -> None:
+>       module = import_from_path("docs/tutorials/tutorial-code/api-responses-2.py")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/docs/tutorials/test_api_responses_tutorial.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/docs/__init__.py:18: in import_from_path
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:1023: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1160: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7f63bd8a25d0>
+path = '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/api-responses-2.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/api-responses-2.py'
+
+<frozen importlib._bootstrap_external>:1218: FileNotFoundError
+------------------------------ Captured log setup ------------------------------
+INFO     zendriver.core.browser:browser.py:571 starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_xl6atbx3
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=58409
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO     zendriver.core.browser:browser.py:631 enabling autodiscover targets
+---------------------------- Captured log teardown -----------------------------
+INFO     tests.conftest:conftest.py:165 Saved artifacts for tab 0 (about:blank) to test-artifacts/tests_docs_tutorials_test_api_responses_tutorial.py__test_api_responses_tutorial_2_headless0_
+___________________ test_api_responses_tutorial_1[headless0] ___________________
+[gw2] linux -- Python 3.13.16 /home/user/zendriver/.venv/bin/python
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7faa08e1aad0>
+mock_print = <MagicMock name='print' id='140368270815792'>
+mock_start = <AsyncMock name='start' id='140368270812768'>
+
+    async def test_api_responses_tutorial_1(
+        mocker: MockerFixture, mock_print: Mock, mock_start: Mock
+    ) -> None:
+>       module = import_from_path("docs/tutorials/tutorial-code/api-responses-1.py")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/docs/tutorials/test_api_responses_tutorial.py:15: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/docs/__init__.py:18: in import_from_path
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:1023: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1160: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7faa08dd0d10>
+path = '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/api-responses-1.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/api-responses-1.py'
+
+<frozen importlib._bootstrap_external>:1218: FileNotFoundError
+------------------------------ Captured log setup ------------------------------
+INFO     zendriver.core.browser:browser.py:571 starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_fwqy_v3p
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=49033
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO     zendriver.core.browser:browser.py:631 enabling autodiscover targets
+---------------------------- Captured log teardown -----------------------------
+INFO     tests.conftest:conftest.py:165 Saved artifacts for tab 0 (about:blank) to test-artifacts/tests_docs_tutorials_test_api_responses_tutorial.py__test_api_responses_tutorial_1_headless0_
+_________________ test_account_creation_tutorial_2[headless0] __________________
+[gw0] linux -- Python 3.13.16 /home/user/zendriver/.venv/bin/python
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f009a1e7360>
+mock_print = <MagicMock name='print' id='139640563532192'>
+mock_start = <AsyncMock name='start' id='139640563534880'>
+
+    async def test_account_creation_tutorial_2(
+        mocker: MockerFixture, mock_print: Mock, mock_start: Mock
+    ) -> None:
+>       module = import_from_path("docs/tutorials/tutorial-code/account-creation-2.py")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/docs/tutorials/test_account_creation_tutorial.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/docs/__init__.py:18: in import_from_path
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:1023: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1160: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7f009a30e690>
+path = '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/account-creation-2.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/account-creation-2.py'
+
+<frozen importlib._bootstrap_external>:1218: FileNotFoundError
+------------------------------ Captured log setup ------------------------------
+INFO     zendriver.core.browser:browser.py:571 starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_0ecupeza
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=32783
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO     zendriver.core.browser:browser.py:631 enabling autodiscover targets
+---------------------------- Captured log teardown -----------------------------
+INFO     tests.conftest:conftest.py:165 Saved artifacts for tab 0 (about:blank) to test-artifacts/tests_docs_tutorials_test_account_creation_tutorial.py__test_account_creation_tutorial_2_headless0_
+________________________ test_cdp_tutorial_1[headless0] ________________________
+[gw1] linux -- Python 3.13.16 /home/user/zendriver/.venv/bin/python
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f63bd918410>
+mock_print = <MagicMock name='print' id='140066359208528'>
+mock_start = <AsyncMock name='start' id='140066359201136'>
+
+    async def test_cdp_tutorial_1(
+        mocker: MockerFixture, mock_print: Mock, mock_start: Mock
+    ) -> None:
+>       module = import_from_path("docs/tutorials/tutorial-code/cdp-1.py")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/docs/tutorials/test_cdp_tutorial.py:15: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/docs/__init__.py:18: in import_from_path
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:1023: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1160: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7f63bd7b3ef0>
+path = '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/cdp-1.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/cdp-1.py'
+
+<frozen importlib._bootstrap_external>:1218: FileNotFoundError
+------------------------------ Captured log setup ------------------------------
+INFO     zendriver.core.browser:browser.py:571 starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_879opobr
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=41465
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO     zendriver.core.browser:browser.py:631 enabling autodiscover targets
+---------------------------- Captured log teardown -----------------------------
+INFO     tests.conftest:conftest.py:165 Saved artifacts for tab 0 (about:blank) to test-artifacts/tests_docs_tutorials_test_cdp_tutorial.py__test_cdp_tutorial_1_headless0_
+________________________ test_cdp_tutorial_2[headless0] ________________________
+[gw2] linux -- Python 3.13.16 /home/user/zendriver/.venv/bin/python
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7faa08d9cf30>
+mock_print = <MagicMock name='print' id='140368270817472'>
+mock_start = <AsyncMock name='start' id='140368270818144'>
+
+    async def test_cdp_tutorial_2(
+        mocker: MockerFixture, mock_print: Mock, mock_start: Mock
+    ) -> None:
+>       module = import_from_path("docs/tutorials/tutorial-code/cdp-2.py")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/docs/tutorials/test_cdp_tutorial.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/docs/__init__.py:18: in import_from_path
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:1023: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1160: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7faa08ed40b0>
+path = '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/cdp-2.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/cdp-2.py'
+
+<frozen importlib._bootstrap_external>:1218: FileNotFoundError
+------------------------------ Captured log setup ------------------------------
+INFO     zendriver.core.browser:browser.py:571 starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_mhk4twej
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=40515
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO     zendriver.core.browser:browser.py:631 enabling autodiscover targets
+---------------------------- Captured log teardown -----------------------------
+INFO     tests.conftest:conftest.py:165 Saved artifacts for tab 0 (about:blank) to test-artifacts/tests_docs_tutorials_test_cdp_tutorial.py__test_cdp_tutorial_2_headless0_
+________________ test_infinite_scrolling_tutorial_1[headless0] _________________
+[gw3] linux -- Python 3.13.16 /home/user/zendriver/.venv/bin/python
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7fa94d01c980>
+mock_print = <MagicMock name='print' id='140365118176096'>
+mock_start = <AsyncMock name='start' id='140365108101536'>
+
+    async def test_infinite_scrolling_tutorial_1(
+        mocker: MockerFixture, mock_print: Mock, mock_start: Mock
+    ) -> None:
+>       module = import_from_path("docs/tutorials/tutorial-code/infinite-scrolling-1.py")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/docs/tutorials/test_infinite_scrolling_tutorial.py:15: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/docs/__init__.py:18: in import_from_path
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:1023: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1160: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7fa94cfabb30>
+path = '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/infinite-scrolling-1.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/infinite-scrolling-1.py'
+
+<frozen importlib._bootstrap_external>:1218: FileNotFoundError
+------------------------------ Captured log setup ------------------------------
+INFO     zendriver.core.browser:browser.py:571 starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_d5xaf2my
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=58103
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO     zendriver.core.browser:browser.py:631 enabling autodiscover targets
+---------------------------- Captured log teardown -----------------------------
+INFO     tests.conftest:conftest.py:165 Saved artifacts for tab 0 (about:blank) to test-artifacts/tests_docs_tutorials_test_infinite_scrolling_tutorial.py__test_infinite_scrolling_tutorial_1_headless0_
+________________ test_infinite_scrolling_tutorial_2[headless0] _________________
+[gw0] linux -- Python 3.13.16 /home/user/zendriver/.venv/bin/python
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f009a1e6b10>
+mock_print = <MagicMock name='print' id='139640563536224'>
+mock_start = <AsyncMock name='start' id='139640563536896'>
+
+    async def test_infinite_scrolling_tutorial_2(
+        mocker: MockerFixture, mock_print: Mock, mock_start: Mock
+    ) -> None:
+>       module = import_from_path("docs/tutorials/tutorial-code/infinite-scrolling-2.py")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/docs/tutorials/test_infinite_scrolling_tutorial.py:25: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/docs/__init__.py:18: in import_from_path
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:1023: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1160: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7f009a31deb0>
+path = '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/infinite-scrolling-2.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/infinite-scrolling-2.py'
+
+<frozen importlib._bootstrap_external>:1218: FileNotFoundError
+------------------------------ Captured log setup ------------------------------
+INFO     zendriver.core.browser:browser.py:571 starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_ad1ocpem
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=36247
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO     zendriver.core.browser:browser.py:631 enabling autodiscover targets
+---------------------------- Captured log teardown -----------------------------
+INFO     tests.conftest:conftest.py:165 Saved artifacts for tab 0 (about:blank) to test-artifacts/tests_docs_tutorials_test_infinite_scrolling_tutorial.py__test_infinite_scrolling_tutorial_2_headless0_
+________________ test_infinite_scrolling_tutorial_3[headless0] _________________
+[gw1] linux -- Python 3.13.16 /home/user/zendriver/.venv/bin/python
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f63bd934e90>
+mock_print = <MagicMock name='print' id='140066359211552'>
+mock_start = <AsyncMock name='start' id='140066359208192'>
+
+    async def test_infinite_scrolling_tutorial_3(
+        mocker: MockerFixture, mock_print: Mock, mock_start: Mock
+    ) -> None:
+>       module = import_from_path("docs/tutorials/tutorial-code/infinite-scrolling-3.py")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/docs/tutorials/test_infinite_scrolling_tutorial.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/docs/__init__.py:18: in import_from_path
+    spec.loader.exec_module(module)
+<frozen importlib._bootstrap_external>:1023: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1160: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7f63bd418230>
+path = '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/infinite-scrolling-3.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/docs/tutorials/tutorial-code/infinite-scrolling-3.py'
+
+<frozen importlib._bootstrap_external>:1218: FileNotFoundError
+------------------------------ Captured log setup ------------------------------
+INFO     zendriver.core.browser:browser.py:571 starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_awxc1t9s
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=52019
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO     zendriver.core.browser:browser.py:631 enabling autodiscover targets
+---------------------------- Captured log teardown -----------------------------
+INFO     tests.conftest:conftest.py:165 Saved artifacts for tab 0 (about:blank) to test-artifacts/tests_docs_tutorials_test_infinite_scrolling_tutorial.py__test_infinite_scrolling_tutorial_3_headless0_
+=========================== short test summary info ============================
+FAILED tests/core/test_tab.py::test_handler_raising_type_error_is_called_once[headless0]
+FAILED tests/docs/tutorials/test_account_creation_tutorial.py::test_account_creation_tutorial_1[headless0]
+FAILED tests/docs/tutorials/test_api_responses_tutorial.py::test_api_responses_tutorial_2[headless0]
+FAILED tests/docs/tutorials/test_api_responses_tutorial.py::test_api_responses_tutorial_1[headless0]
+FAILED tests/docs/tutorials/test_account_creation_tutorial.py::test_account_creation_tutorial_2[headless0]
+FAILED tests/docs/tutorials/test_cdp_tutorial.py::test_cdp_tutorial_1[headless0]
+FAILED tests/docs/tutorials/test_cdp_tutorial.py::test_cdp_tutorial_2[headless0]
+FAILED tests/docs/tutorials/test_infinite_scrolling_tutorial.py::test_infinite_scrolling_tutorial_1[headless0]
+FAILED tests/docs/tutorials/test_infinite_scrolling_tutorial.py::test_infinite_scrolling_tutorial_2[headless0]
+FAILED tests/docs/tutorials/test_infinite_scrolling_tutorial.py::test_infinite_scrolling_tutorial_3[headless0]
+SKIPPED [1] tests/core/test_drm.py:23: Chromium does not include Widevine
+10 failed, 187 passed, 1 skipped in 29.77s
+exit=1
