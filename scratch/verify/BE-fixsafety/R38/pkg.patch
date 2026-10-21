@@ -1,0 +1,113 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/keys.py b/zendriver/core/keys.py
+--- a/zendriver/core/keys.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/keys.py	2026-10-21 02:49:00.768448150 +0000
+@@ -23,7 +23,7 @@
+ class SpecialKeys(Enum):
+     """Enumeration of special keys with their corresponding names and key codes."""
+ 
+-    SPACE = (" ", 32)  # space key
++    SPACE = ("Space", 32)  # space key
+     ENTER = ("Enter", 13)
+     TAB = ("Tab", 9)
+ 
+@@ -188,9 +188,12 @@
+             ValueError: If key is invalid for CHAR event type
+         """
+         if key_press_event == KeyPressEvent.CHAR:
+-            if isinstance(self.key, SpecialKeys):
+-                self.key = self.conv_to_str(self.key)
+-            return self.key, self.key
++            key = (
++                self.conv_to_str(self.key)
++                if isinstance(self.key, SpecialKeys)
++                else self.key
++            )
++            return key, key
+ 
+         return self._build_action_data(modifiers)
+ 
+@@ -323,20 +326,54 @@
+                     raise ValueError(
+                         f"Key '{self.key}' is not supported for CHAR event type. Only str characters are allowed"
+                     )
+-                return [self._to_basic_event(key_press_event)]
++                payload = self._to_basic_event(key_press_event)
++                if payload["text"] is None:
++                    return [payload]
++                # chrome rejects the text of a key event when it has more than
++                # 3 UTF-16 code units (skin toned emojis, flags, ZWJ sequences...),
++                # so such a grapheme is sent as several char events
++                payloads: List[KeyEvents.Payload] = []
++                for chunk in self._split_text(payload["text"]):
++                    chunk_payload = payload.copy()
++                    chunk_payload["text"] = chunk
++                    payloads.append(chunk_payload)
++                return payloads
+ 
+             case KeyPressEvent.DOWN_AND_UP:
+                 cur_modifier = (
+                     self.modifiers if override_modifiers is None else override_modifiers
+                 )
+-                self.key, override_modifiers = self._normalise_key(
+-                    self.key, cur_modifier
++                # normalise into a new instance, so that this one sends the same
++                # events every time it is used
++                key, override_modifiers = self._normalise_key(self.key, cur_modifier)
++                return type(self)(key, self.modifiers).to_down_up_sequence(
++                    override_modifiers
+                 )
+-                return self.to_down_up_sequence(override_modifiers)
+ 
+             case _:
+                 raise ValueError(f"Unsupported key press event type: {key_press_event}")
+ 
++    # the most UTF-16 code units chrome accepts in the text of a key event
++    # (blink::WebKeyboardEvent::kTextLengthCap, which includes the terminator)
++    MAX_TEXT_UTF16_UNITS = 3
++
++    @classmethod
++    def _split_text(cls, text: str) -> List[str]:
++        """Split text into chunks chrome accepts, without splitting surrogate pairs."""
++        chunks: List[str] = []
++        chunk = ""
++        chunk_units = 0
++        for char in text:
++            units = 2 if ord(char) > 0xFFFF else 1
++            if chunk and chunk_units + units > cls.MAX_TEXT_UTF16_UNITS:
++                chunks.append(chunk)
++                chunk, chunk_units = "", 0
++            chunk += char
++            chunk_units += units
++        if chunk:
++            chunks.append(chunk)
++        return chunks
++
+     def _handle_string_key_lookup(
+         self, key: str
+     ) -> Tuple[Optional[str], Optional[int]]:
+@@ -485,8 +522,12 @@
+                 self._to_basic_event(KeyPressEvent.KEY_DOWN, current_modifiers)
+             )
+ 
+-        # 3: Add modifier key up events (in reverse order)
+-        for modifier_key, modifier_flag in modifier_events:
++        # 3: Add main key up (if itself is not a modifier key), modifiers still held
++        if not is_modifier_key:
++            events.append(self._to_basic_event(KeyPressEvent.KEY_UP, current_modifiers))
++
++        # 4: Add modifier key up events (in reverse order)
++        for modifier_key, modifier_flag in reversed(modifier_events):
+             current_modifiers &= ~modifier_flag
+             # remove the modifier from current modifiers (the same idea)
+             modifier_payload = modifier_key._to_basic_event(
+@@ -494,10 +535,6 @@
+             )
+             events.append(modifier_payload)
+ 
+-        # 4: Add main key up (if itself is not a modifier key)
+-        if not is_modifier_key:
+-            events.append(self._to_basic_event(KeyPressEvent.KEY_UP, current_modifiers))
+-
+         return events
+ 
+     @classmethod
