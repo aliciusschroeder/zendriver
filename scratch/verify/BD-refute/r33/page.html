@@ -1,0 +1,8 @@
+<!doctype html><html><body>
+<input id="inp" value="input text">
+<textarea id="ta">some text</textarea>
+<div id="ce" contenteditable="true">editable</div>
+<div id="circ">circ</div>
+<script>const c = document.getElementById('circ'); c.__fiber = {self: null}; c.__fiber.self = c.__fiber;
+window.__inputs = 0; document.getElementById('ta').addEventListener('input', () => window.__inputs++);</script>
+</body></html>

@@ -1,0 +1,5 @@
+<!doctype html><html><body><div id="wrap"><div id="box">x</div></div>
+<script>
+function mk(){ const d = document.createElement('div'); d.id='box'; d.textContent = 'x'.repeat(200000) + Math.random();
+  const w = document.getElementById('wrap'); w.replaceChildren(d); }
+</script></body></html>

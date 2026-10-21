@@ -1,0 +1,117 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/element.py b/zendriver/core/element.py
+--- a/zendriver/core/element.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/element.py	2026-10-21 02:34:26.901899208 +0000
+@@ -504,17 +504,19 @@
+                 arguments=[
+                     cdp.runtime.CallArgument(object_id=self._remote_object.object_id)
+                 ],
+-                return_by_value=True,
++                return_by_value=return_by_value,
+                 user_gesture=True,
+                 await_promise=await_promise,
+             )
+         )
+-        if result and result[0]:
+-            if return_by_value:
+-                return result[0].value
+-            return result[0]
+-        elif result[1]:
+-            return result[1]
++        remote_object, errors = result
++        if errors:
++            from .connection import ProtocolException
++
++            raise ProtocolException(errors)
++        if return_by_value:
++            return remote_object.value
++        return remote_object
+ 
+     async def get_position(self, abs: bool = False) -> Position | None:
+         if not self._remote_object or not self.parent or not self.object_id:
+@@ -654,7 +656,18 @@
+         await self.apply(
+             """
+                 (el) => {
+-                    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, '');
++                    // look the setter up on the prototype chain (HTMLInputElement,
++                    // HTMLTextAreaElement, ...), skipping the instance-level one
++                    let proto = Object.getPrototypeOf(el);
++                    let desc;
++                    while (proto && !(desc = Object.getOwnPropertyDescriptor(proto, 'value'))) {
++                        proto = Object.getPrototypeOf(proto);
++                    }
++                    if (desc && desc.set) {
++                        desc.set.call(el, '');
++                    } else {
++                        el.value = '';
++                    }
+                     el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true }));
+                 }
+             """
+@@ -672,14 +685,23 @@
+             """
+                 async function clearByDeleting(n, d = 50) {
+                     n.focus();
+-                    const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
++                    let proto = Object.getPrototypeOf(n);
++                    let desc;
++                    while (proto && !(desc = Object.getOwnPropertyDescriptor(proto, 'value'))) {
++                        proto = Object.getPrototypeOf(proto);
++                    }
++                    const nativeSetter = desc && desc.set ? desc.set : function (v) { this.value = v; };
+                     while (n.value.length > 0) {
+                         // Place cursor at end before each keydown. Using Backspace (keyCode 8)
+                         // from the end is more reliable than Delete at position 0, which can
+                         // be a no-op on some VM environments where VK_DELETE is treated as
+                         // backward-delete, causing an infinite loop.
+                         const len = n.value.length;
+-                        n.setSelectionRange(len, len);
++                        try {
++                            n.setSelectionRange(len, len);
++                        } catch (e) {
++                            // input types such as email and number do not support selection
++                        }
+                         n.dispatchEvent(
+                             new KeyboardEvent("keydown", {
+                                 key: "Backspace",
+@@ -854,7 +876,16 @@
+             raise RuntimeError(
+                 "could not determine position of element. probably because it's not in view, or hidden"
+             )
++        if format.lower() in ["jpg", "jpeg"]:
++            format = "jpeg"
++        elif format.lower() in ["png"]:
++            format = "png"
++        # content quads are relative to the viewport, while the clip of a
++        # capture_beyond_viewport screenshot is relative to the document
++        css_visual_viewport = (await self._tab.send(cdp.page.get_layout_metrics()))[4]
+         viewport = pos.to_viewport(float(scale if scale else 1))
++        viewport.x += css_visual_viewport.page_x
++        viewport.y += css_visual_viewport.page_y
+         await self.tab.sleep()
+ 
+         data = await self._tab.send(
+@@ -1168,16 +1199,13 @@
+ 
+     def __init__(self, points: list[float]):
+         super().__init__(points)
+-        (
+-            self.left,
+-            self.top,
+-            self.right,
+-            self.top,
+-            self.right,
+-            self.bottom,
+-            self.left,
+-            self.bottom,
+-        ) = points
++        # use the bounding box of the quad: the order of the points depends on
++        # css transforms (e.g. scaleX(-1) or rotate()), so fixed indices could
++        # give a negative or zero width/height
++        xs = points[0::2]
++        ys = points[1::2]
++        self.left, self.right = min(xs), max(xs)
++        self.top, self.bottom = min(ys), max(ys)
+         self.abs_x: float = 0
+         self.abs_y: float = 0
+         self.x = self.left
