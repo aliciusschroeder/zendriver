@@ -1,7 +1,66 @@
 diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/element.py b/zendriver/core/element.py
 --- a/zendriver/core/element.py	2026-10-20 18:32:07.000000000 +0000
-+++ b/zendriver/core/element.py	2026-10-21 02:34:26.901899208 +0000
-@@ -504,17 +504,19 @@
++++ b/zendriver/core/element.py	2026-10-21 02:36:02.526510859 +0000
+@@ -8,7 +8,7 @@
+ import secrets
+ import typing
+ import urllib.parse
+-from deprecated import deprecated
++import warnings
+ 
+ from .. import cdp
+ from . import util
+@@ -217,8 +217,20 @@
+                 return frame
+         return None
+ 
+-    @deprecated(reason="Use get() instead")
+     def __getattr__(self, item: str) -> str | None:
++        # private and dunder names are never forwarded: raising AttributeError
++        # keeps hasattr()/getattr(obj, name, default) working, which copy, pickle
++        # and highlight_overlay rely on (self._attrs is missing on a copy made
++        # with __new__, which would otherwise recurse forever)
++        if item.startswith("_"):
++            raise AttributeError(
++                f"{type(self).__name__!r} object has no attribute {item!r}"
++            )
++        warnings.warn(
++            "Call to deprecated method __getattr__. (Use get() instead)",
++            category=DeprecationWarning,
++            stacklevel=2,
++        )
+         # if attribute is not found on the element python object
+         # check if it may be present in the element attributes (eg, href=, src=, alt=)
+         # returns None when attribute is not found
+@@ -236,6 +248,9 @@
+         :return: The value of the attribute, or None if it does not exist.
+         :rtype: str | None
+         """
++        if name == "class":
++            # stored as class_, see _make_attrs
++            name = "class_"
+         value = self.attrs.get(name)
+         if value is None:
+             return None
+@@ -243,7 +258,7 @@
+ 
+     def __setattr__(self, key: str, value: typing.Any) -> None:
+         if key[0] != "_":
+-            if key[1:] not in vars(self).keys():
++            if "_" + key not in vars(self).keys():
+                 # we probably deal with an attribute of
+                 # the html element, so forward it
+                 self.attrs.__setattr__(key, value)
+@@ -262,6 +277,8 @@
+     def __getitem__(self, item: str) -> typing.Any:
+         # we probably deal with an attribute of
+         # the html element, so forward it
++        if item == "class":
++            item = "class_"
+         return self.attrs.get(item, None)
+ 
+     async def save_to_dom(self) -> None:
+@@ -504,17 +521,19 @@
                  arguments=[
                      cdp.runtime.CallArgument(object_id=self._remote_object.object_id)
                  ],
@@ -28,7 +87,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/element.py b/zendriv
  
      async def get_position(self, abs: bool = False) -> Position | None:
          if not self._remote_object or not self.parent or not self.object_id:
-@@ -654,7 +656,18 @@
+@@ -654,7 +673,18 @@
          await self.apply(
              """
                  (el) => {
@@ -48,7 +107,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/element.py b/zendriv
                      el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true }));
                  }
              """
-@@ -672,14 +685,23 @@
+@@ -672,14 +702,23 @@
              """
                  async function clearByDeleting(n, d = 50) {
                      n.focus();
@@ -74,7 +133,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/element.py b/zendriv
                          n.dispatchEvent(
                              new KeyboardEvent("keydown", {
                                  key: "Backspace",
-@@ -854,7 +876,16 @@
+@@ -854,7 +893,16 @@
              raise RuntimeError(
                  "could not determine position of element. probably because it's not in view, or hidden"
              )
@@ -91,7 +150,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/element.py b/zendriv
          await self.tab.sleep()
  
          data = await self._tab.send(
-@@ -1168,16 +1199,13 @@
+@@ -1168,16 +1216,13 @@
  
      def __init__(self, points: list[float]):
          super().__init__(points)

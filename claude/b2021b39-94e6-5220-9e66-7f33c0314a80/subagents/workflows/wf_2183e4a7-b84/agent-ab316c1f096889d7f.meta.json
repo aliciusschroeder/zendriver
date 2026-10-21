@@ -1,0 +1,1 @@
+{"agentType":"workflow-subagent","description":"BE:reproduce","workflowPhase":"Verify bundles","spawnDepth":1,"requestShape":"foreground","requestNonInteractive":true}

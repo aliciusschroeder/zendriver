@@ -1,0 +1,6 @@
+<!doctype html><html><body>p
+<script>
+window.__a = null; window.__b = null;
+fetch('/a.json').then(r=>r.text()).then(t=>window.__a=t);
+fetch('/b.json').then(r=>r.text()).then(t=>window.__b=t);
+</script></body></html>
