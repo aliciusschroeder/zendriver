@@ -1,0 +1,94 @@
+[project]
+name = "zendriver"
+version = "0.17.1"
+description = "A blazing fast, async-first, undetectable webscraping/web automation framework"
+readme = "README.md"
+authors = [{ name = "Stephan Lensky", email = "oss@slensky.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "asyncio-atexit>=1.0.1",
+    "deprecated>=1.2.14",
+    "emoji>=2.14.1",
+    "grapheme>=0.6.0",
+    "mss>=9.0.2",
+    "websockets>=14.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "mkdocs-material>=9.5.42",
+    "mkdocstrings[python]>=0.26.2",
+    "mypy>=1.12.0",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=6.1.1",
+    "pytest>=8.3.3",
+    "pyyaml>=6.0.2",
+    "ruff>=0.7.4",
+    "types-pyyaml>=6.0.12.20240917",
+    "types-requests>=2.32.0.20241016",
+    "pytest-mock>=3.14.0",
+    "types-deprecated>=1.2.15.20241117",
+    "inflection>=0.5.1",
+    "psutil>=7.1.0",
+    "types-psutil>=7.0.0.20251001",
+    "pytest-xdist>=3.8.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+markers = [
+    "fresh_browser: start a new browser for this test instead of reusing the shared one",
+    "external: loads pages from external websites; saves page artifacts on failure",
+]
+log_level = "INFO"
+
+[tool.ruff]
+exclude = ["zendriver/cdp"]
+
+[tool.ruff.lint]
+exclude = [
+    "examples/demo.py",
+    "examples/fetch_domain.py",
+    "examples/imgur_upload_image.py",
+    "examples/mouse_drag_boxes.py",
+]
+
+[tool.mypy]
+exclude = [
+    "zendriver/cdp",
+    "examples/demo.py",
+    "examples/fetch_domain.py",
+    "examples/imgur_upload_image.py",
+    "examples/mouse_drag_boxes.py",
+    "examples/network_monitor.py",
+    "examples/wait_for_page.py",
+    "examples/set_user_agent.py",
+    "examples/expect_download.py",
+]
+strict = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "asyncio_atexit",
+    "grapheme",
+]
+ignore_missing_imports = true
