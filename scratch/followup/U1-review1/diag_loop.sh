@@ -10,8 +10,8 @@ if [ "$v" = 313 ]; then py=$S/venv313/bin/python; else py=$W/.venv/bin/python; f
 for i in $(seq 1 "$runs"); do
   out=$(timeout 300 "$py" "$S/probes/stress_diag.py" "$seed" "${ROUNDS:-200}" 2>&1)
   echo "run $i: $(echo "$out" | grep -E '^seed')"
-  if echo "$out" | grep -q PROBLEM; then
+  if echo "$out" | grep -q DIAG; then
     echo "$out" | grep -E "DIAG|PROBLEM" | cut -c1-1500
-    break
+    true
   fi
 done

@@ -1,0 +1,7 @@
+run 1: seed=20 events=383 sent=960 problems=0
+run 1: seed=21 events=520 sent=1049 problems=0
+run 1: seed=22 events=431 sent=1013 problems=0
+DIAG after first timeout T3: session=S72 inbox=0 listener_running=True enabled=['log', 'page'] manual=[] handlers=['ConsoleAPICalled', 'RequestWillBeSent', 'EntryAdded', 'FrameStoppedLoading'] mapper={1007: Network.enable/Transaction/CANCELLED} bc_listener=True bc_mapper=[] bc_sessions=[SessionID('S69'), SessionID('S70'), SessionID('S71'), SessionID('S72')] fake_attached={'S7': 'T0', 'S8': 'T2', 'S9': 'T0', 'S17': 'T2', 'S31': 'T0', 'S36': 'T2', 'S37': 'T2', 'S46': 'T2', 'S69': 'T0', 'S70': 'T2', 'S71': 'T1', 'S72': 'T3'}
+DIAG last sent: [(996, 'Log.enable', 'S71'), (997, 'Runtime.enable', 'S71'), (999, 'Runtime.enable', 'S71'), (998, 'Page.bringToFront', 'S71'), (1000, 'Page.bringToFront', 'S69'), (1001, 'Runtime.enable', 'S71'), (1002, 'Page.bringToFront', 'S71'), (1003, 'Page.bringToFront', 'S70'), (1004, 'Target.attachToTarget', None), (1005, 'Page.enable', 'S72'), (1006, 'Log.enable', 'S72'), (1007, 'Network.enable', 'S72')]
+DIAG pending frames: 0
+run 1: seed=23 events=554 sent=1030 problems=0
