@@ -209,14 +209,16 @@ class ProxyForwarder:
         )
 
     async def close(self) -> None:
-        if self._server is None:
+        # taken before the first await, so that a concurrent close(), such as
+        # by a second Browser.stop(), returns instead of closing it again
+        server, self._server = self._server, None
+        if server is None:
             return
-        self._server.close()
+        server.close()
         for task in self._client_tasks:
             task.cancel()
         await asyncio.gather(*self._client_tasks, return_exceptions=True)
-        await self._server.wait_closed()
-        self._server = None
+        await server.wait_closed()
 
     async def _handle_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter

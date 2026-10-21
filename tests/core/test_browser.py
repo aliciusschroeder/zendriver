@@ -563,6 +563,7 @@ EXITS_A_WHILE_AFTER_SIGTERM = """
 import os, signal, time
 def exit_soon(*_):
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    print('terminating', flush=True)
     time.sleep(0.4)
     os._exit(0)
 signal.signal(signal.SIGTERM, exit_soon)
@@ -785,15 +786,57 @@ async def test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone(
     assert not os.path.exists(browser.config.user_data_dir)
 
 
+async def test_concurrent_browser_stop_calls_do_not_raise_with_a_proxy_forwarder(
+    stub_browser: StubBrowserFactory,
+) -> None:
+    browser, process = stub_browser()
+    # like a browser which crashed, so that both calls reach the forwarder at once
+    process.kill()
+    process.wait()
+    browser.connection = zd.Connection(
+        "ws://127.0.0.1:1/devtools/browser/gone", _owner=browser
+    )
+    forwarder = ProxyForwarder(UpstreamProxy("http", "127.0.0.1", 1, "user", "pass"))
+    await forwarder.start()
+    browser._proxy_forwarders.append(forwarder)
+    # a connection of the browser to the forwarder, whose task close() waits for
+    port = int(forwarder.proxy_server.rsplit(":", 1)[1])
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+
+    async def accepted() -> None:
+        while not forwarder._client_tasks:
+            await asyncio.sleep(0.01)
+
+    try:
+        await asyncio.wait_for(accepted(), timeout=10)
+        results = await asyncio.wait_for(
+            asyncio.gather(browser.stop(), browser.stop(), return_exceptions=True),
+            timeout=10,
+        )
+
+        assert list(results) == [None, None]
+        assert await asyncio.wait_for(reader.read(), timeout=10) == b""
+    finally:
+        writer.close()
+        await forwarder.close()
+
+    assert not browser._proxy_forwarders
+    assert not os.path.exists(browser.config.user_data_dir)
+
+
 async def test_browser_stop_keeps_a_process_started_while_it_ran(
     stub_browser: StubBrowserFactory,
 ) -> None:
     browser, process = stub_browser(EXITS_A_WHILE_AFTER_SIGTERM)
+    _, new_process = stub_browser()
+    assert process.stdout is not None
 
     stop = asyncio.create_task(browser.stop())
-    await asyncio.sleep(0.1)
+    # stop() has taken the old process once it terminates it. on windows,
+    # terminate() kills it, which ends its output instead
+    line = await asyncio.wait_for(asyncio.to_thread(process.stdout.readline), 10)
+    assert line.strip() == (b"" if sys.platform == "win32" else b"terminating")
     # as if the browser was started again while stop() waits for the old process
-    _, new_process = stub_browser()
     browser._process, browser._process_pid = new_process, new_process.pid
     await asyncio.wait_for(stop, timeout=10)
 
