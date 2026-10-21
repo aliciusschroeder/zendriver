@@ -57,23 +57,25 @@ async def run(mode: str) -> None:
             res = await asyncio.gather(tab.evaluate("1"), closer(), return_exceptions=True)
             first = f"{type(res[0]).__name__}: {str(res[0]).splitlines()[0] if str(res[0]) else ''}"
             print("   stale tx left in tab.mapper after race:", [(k, v.method, v.done()) for k, v in tab.mapper.items()])
-        elif mode == "closetarget":
+        elif mode in ("closetarget", "closetarget_early"):
             async def closer():
-                while tab.session_id is None:
+                while mode == "closetarget" and tab.session_id is None:
                     await asyncio.sleep(0)
                 await browser.connection.send(zd.cdp.target.close_target(tab.target_id))
 
             res = await asyncio.gather(tab.evaluate("1"), closer(), return_exceptions=True)
-            print(f"mode=closetarget first-send={res[0]!r:.80} flag={tab.__dict__.get('_prep_headless_done')}")
+            print(f"mode={mode} first-send={res[0]!r:.80} flag={tab.__dict__.get('_prep_headless_done')}")
             await asyncio.sleep(0.5)
-            return
-        flag_after_detach = tab.__dict__.get("_prep_headless_done")
-        session_after_detach = tab.session_id
-        u = await ua(tab)
-        print(
+        if mode.startswith("closetarget"):
+            pass
+        else:
+          flag_after_detach = tab.__dict__.get("_prep_headless_done")
+          session_after_detach = tab.session_id
+          u = await ua(tab)
+          print(
             f"mode={mode:10s} first-send={first!r} session_after_detach={session_after_detach} "
             f"_prep_headless_done_after_detach={flag_after_detach} UA_after_reattach_has_Headless={'Headless' in u}"
-        )
+          )
         # now prove Chrome drops the override on detach: send override by hand on a session,
         # detach, reattach WITHOUT override (bypass zendriver's prep by sending raw on browser conn)
     finally:

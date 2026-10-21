@@ -1,4 +1,4 @@
---- /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R16-fixsafety/orig/zendriver/core/connection.py	2026-10-21 00:11:19.102361000 +0000
+--- /home/user/zendriver/zendriver/core/connection.py	2026-10-20 18:39:13.857036538 +0000
 +++ /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R16-fixsafety/pkg/zendriver/core/connection.py	2026-10-21 00:17:42.927987592 +0000
 @@ -508,23 +508,30 @@
          """
