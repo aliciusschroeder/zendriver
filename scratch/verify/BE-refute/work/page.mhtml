@@ -1,0 +1,71 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: http://127.0.0.1:41293/docs/index.html
+Subject: 
+Date: Wed, 21 Oct 2026 02:44:34 +0000
+MIME-Version: 1.0
+Content-Type: multipart/related;
+	type="text/html";
+	boundary="----MultipartBoundary--Y6epUYm1JyhgZaOFyefbaf6D4n07vyeUgIQhAUfnou----"
+
+
+------MultipartBoundary--Y6epUYm1JyhgZaOFyefbaf6D4n07vyeUgIQhAUfnou----
+Content-Type: text/html
+Content-ID: <frame-C5FC749EADAAC57DB910A2214D11CF96@mhtml.blink>
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://127.0.0.1:41293/docs/index.html
+
+<html><head><meta http-equiv=3D"Content-Type" content=3D"text/html; charset=
+=3Dwindows-1252"><script src=3D"cid:js-bdb18889-bd57-4e00-818c-fea1dc8b0a06=
+@mhtml.blink"></script><link rel=3D"stylesheet" href=3D"http://127.0.0.1:41=
+293/docs/style.css"></head><body>
+<a href=3D"http://127.0.0.1:41293/docs/sub/page.html">sub</a>
+<a href=3D"http://127.0.0.1:41293/docs/other.html">other</a>
+<a href=3D"http://127.0.0.1:41293/up.html">up</a>
+<a href=3D"http://127.0.0.1:41293/root.html">root</a>
+<a href=3D"https://example.org/page#frag">frag</a>
+<img src=3D"http://127.0.0.1:41293/docs/images/a.png">
+<a id=3D"dl" href=3D"http://127.0.0.1:41293/docs/data.txt" download=3D"from=
+link.txt">download link</a>
+<p>Hello snapshot body text</p>
+
+</body></html>
+------MultipartBoundary--Y6epUYm1JyhgZaOFyefbaf6D4n07vyeUgIQhAUfnou----
+Content-Type: text/javascript
+Content-Transfer-Encoding: quoted-printable
+Content-Location: cid:js-bdb18889-bd57-4e00-818c-fea1dc8b0a06@mhtml.blink
+
+(()=3D>{
+function addCustomElement(def) {
+  if (def.is_autonomous) {
+      window.customElements.define(def.name, class extends HTMLElement{});
+  } else {
+    const templateElement =3D document.createElement(def.local_name);
+    const baseName =3D Object.getPrototypeOf(templateElement).constructor.n=
+ame;
+    const ElementBase =3D window[baseName];
+    window.customElements.define(def.name, class extends ElementBase {},
+      {extends: def.local_name});
+  }
+}
+
+function addCustomElements(metadata) {
+  for (const def of metadata.custom_elements) {
+    try {
+      addCustomElement(def);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+}
+
+function main(metadata) {
+  addCustomElements(metadata);
+}
+main({"custom_elements":[]});})();
+------MultipartBoundary--Y6epUYm1JyhgZaOFyefbaf6D4n07vyeUgIQhAUfnou----
+Content-Type: text/css
+Content-Transfer-Encoding: quoted-printable
+Content-Location: http://127.0.0.1:41293/docs/style.css
+
+body{}=0A
+------MultipartBoundary--Y6epUYm1JyhgZaOFyefbaf6D4n07vyeUgIQhAUfnou------

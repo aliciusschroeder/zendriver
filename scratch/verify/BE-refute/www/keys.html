@@ -1,0 +1,4 @@
+<html><body><textarea id="t"></textarea><script>
+window.log=[];
+for (const t of ['keydown','keypress','keyup']) document.addEventListener(t, e => log.push(`${t}:${JSON.stringify(e.key)}:${e.code}:${e.keyCode}:ctrl=${e.ctrlKey}:shift=${e.shiftKey}`), true);
+</script></body></html>

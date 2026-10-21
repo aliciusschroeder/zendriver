@@ -15,8 +15,8 @@ async def main():
     try:
         tab = await browser.get("about:blank")
         # scenario 1: nested
-        async with tab.intercept("*a.json*", RequestStage.REQUEST, ResourceType.FETCH) as a:
-            async with tab.intercept("*b.json*", RequestStage.REQUEST, ResourceType.FETCH) as b:
+        async with tab.intercept("*a.json*", RequestStage.REQUEST, ResourceType.XHR) as a:
+            async with tab.intercept("*b.json*", RequestStage.REQUEST, ResourceType.XHR) as b:
                 await tab.get(base + "/page.html")
                 ra = await asyncio.wait_for(a.request, 10)
                 rb = await asyncio.wait_for(b.request, 10)
@@ -31,8 +31,8 @@ async def main():
         print("S1 page values:", await tab.evaluate("[window.__a, window.__b]"))
         # scenario 2: inner exits first
         tab = await browser.get("about:blank", new_tab=True)
-        async with tab.intercept("*a.json*", RequestStage.REQUEST, ResourceType.FETCH) as a:
-            async with tab.intercept("*b.json*", RequestStage.REQUEST, ResourceType.FETCH) as b:
+        async with tab.intercept("*a.json*", RequestStage.REQUEST, ResourceType.XHR) as a:
+            async with tab.intercept("*b.json*", RequestStage.REQUEST, ResourceType.XHR) as b:
                 pass
             print("S2 fetch manual:", cdp.fetch in tab.manually_enabled_domains, "handlers:", len(tab.handlers.get(cdp.fetch.RequestPaused, [])))
             try:
