@@ -1,0 +1,92 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zendriver/core/connection.py
+--- a/zendriver/core/connection.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/connection.py	2026-10-21 02:00:13.002098671 +0000
+@@ -210,6 +210,9 @@
+         self.recv_task = None
+         self.enabled_domains: list[Any] = []
+         self.manually_enabled_domains: list[Any] = []
++        # domains the user disabled while handlers for them were still registered;
++        # those are not enabled again (without the user's params) by _register_handlers
++        self.manually_disabled_domains: list[Any] = []
+         self._last_result: list[Any] = []
+         self.listener: Listener | None = None
+         self.session_id: str | None = None
+@@ -492,6 +495,7 @@
+             self.listener.cancel()
+         self.enabled_domains.clear()
+         self.manually_enabled_domains.clear()
++        self.manually_disabled_domains.clear()
+         self.__dict__.pop("_prep_headless_done", None)
+         self.__dict__.pop("_prep_expert_done", None)
+         self._fail_pending_transactions(
+@@ -531,6 +535,7 @@
+                 self.listener.cancel()
+                 self.enabled_domains.clear()
+                 self.manually_enabled_domains.clear()
++                self.manually_disabled_domains.clear()
+             await self.websocket.close()
+             self.websocket = None
+             self._fail_pending_transactions(ProtocolException("connection was closed"))
+@@ -678,6 +683,7 @@
+         # so at the end this variable will hold the domains that
+         # are not represented by handlers, and can be removed
+         enabled_domains = self.enabled_domains.copy()
++        used_domains = []
+         for event_type in self.handlers.copy():
+             if len(self.handlers[event_type]) == 0:
+                 self.handlers.pop(event_type)
+@@ -685,6 +691,9 @@
+             if not isinstance(event_type, type):
+                 continue
+             domain_mod = util.cdp_get_module(event_type.__module__)
++            used_domains.append(domain_mod)
++            if domain_mod in self.manually_disabled_domains:
++                continue
+             if domain_mod in self.enabled_domains:
+                 # at this point, the domain is being used by a handler
+                 # so remove that domain from temp variable 'enabled_domains' if present
+@@ -713,11 +722,23 @@
+                     except:  # noqa
+                         logger.debug("NOT GOOD", exc_info=True)
+                         continue
++        # a manual disable only sticks while handlers for the domain remain
++        self.manually_disabled_domains = [
++            d for d in self.manually_disabled_domains if d in used_domains
++        ]
+         for ed in enabled_domains:
+             # we started with a copy of self.enabled_domains and removed a domain from this
+             # temp variable when we registered it or saw handlers for it.
+             # items still present at this point are unused and need removal
++            if ed not in self.enabled_domains:
++                # already removed by a concurrent call
++                continue
+             self.enabled_domains.remove(ed)
++            if True:
++                try:
++                    await self.send(ed.disable(), _is_update=True)
++                except:  # noqa
++                    logger.debug("", exc_info=True)
+ 
+     def _update_manual_domain(
+         self, domain_name: str, action: Literal["enable", "disable"]
+@@ -744,10 +765,16 @@
+         # manual enables/disables always overwrite auto enabled domains
+         if domain_mod in self.enabled_domains:
+             self.enabled_domains.remove(domain_mod)
+-        if action == "disable" and domain_mod in self.manually_enabled_domains:
+-            self.manually_enabled_domains.remove(domain_mod)
+-        elif action == "enable" and domain_mod not in self.manually_enabled_domains:
+-            self.manually_enabled_domains.append(domain_mod)
++        if action == "disable":
++            if domain_mod in self.manually_enabled_domains:
++                self.manually_enabled_domains.remove(domain_mod)
++            if domain_mod not in self.manually_disabled_domains:
++                self.manually_disabled_domains.append(domain_mod)
++        elif action == "enable":
++            if domain_mod in self.manually_disabled_domains:
++                self.manually_disabled_domains.remove(domain_mod)
++            if domain_mod not in self.manually_enabled_domains:
++                self.manually_enabled_domains.append(domain_mod)
+ 
+     async def _prepare_headless(self) -> None:
+         """

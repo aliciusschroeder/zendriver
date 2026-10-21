@@ -1,0 +1,162 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/expect.py b/zendriver/core/expect.py
+--- a/zendriver/core/expect.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/expect.py	2026-10-21 02:02:17.966067688 +0000
+@@ -3,7 +3,7 @@
+ from typing import Any, TypeVar, Union
+ 
+ from .. import cdp
+-from .connection import Connection
++from .connection import Connection, ProtocolException
+ 
+ BaseRequestExpectationT = TypeVar(
+     "BaseRequestExpectationT", bound="BaseRequestExpectation"
+@@ -64,6 +64,20 @@
+             self._remove_loading_finished_handler()
+             self.loading_finished_future.set_result(event)
+ 
++    async def _loading_failed_handler(self, event: cdp.network.LoadingFailed) -> None:
++        """
++        Internal handler for loading failed events.
++        :param event: The loading failed event.
++        """
++        if event.request_id == self.request_id:
++            self._teardown()
++            exception = ProtocolException(f"loading failed: {event.error_text}")
++            for future in (self.response_future, self.loading_finished_future):
++                if not future.done():
++                    future.set_exception(exception)
++                    # nobody may ever await this future, don't log that
++                    future.exception()
++
+     def _remove_request_handler(self) -> None:
+         """
+         Remove the request event handler.
+@@ -103,11 +117,18 @@
+         self.tab.add_handler(
+             cdp.network.LoadingFinished, self._loading_finished_handler
+         )
++        self.tab.add_handler(cdp.network.LoadingFailed, self._loading_failed_handler)
++        # enable the network domain now, the awaited request may be started by
++        # the page itself, without any further command being sent
++        await self.tab._register_handlers()
+ 
+     def _teardown(self) -> None:
+         self._remove_request_handler()
+         self._remove_response_handler()
+         self._remove_loading_finished_handler()
++        self.tab.remove_handlers(
++            cdp.network.LoadingFailed, self._loading_failed_handler
++        )
+ 
+     async def reset(self) -> None:
+         """
+@@ -127,7 +148,7 @@
+         :return: The matched request.
+         :rtype: cdp.network.Request
+         """
+-        return (await self.request_future).request
++        return (await asyncio.shield(self.request_future)).request
+ 
+     @property
+     async def response(self) -> cdp.network.Response:
+@@ -136,7 +157,7 @@
+         :return: The matched response.
+         :rtype: cdp.network.Response
+         """
+-        return (await self.response_future).response
++        return (await asyncio.shield(self.response_future)).response
+ 
+     @property
+     async def response_body(self) -> tuple[str, bool]:
+@@ -145,10 +166,9 @@
+         :return: The response body.
+         :rtype: str
+         """
+-        request_id = (await self.response_future).request_id
+-        await (
+-            self.loading_finished_future
+-        )  # Ensure the loading is finished before fetching the body
++        request_id = (await asyncio.shield(self.response_future)).request_id
++        # Ensure the loading is finished before fetching the body
++        await asyncio.shield(self.loading_finished_future)
+         body = await self.tab.send(cdp.network.get_response_body(request_id=request_id))
+         return body
+ 
+@@ -168,7 +188,7 @@
+         :return: The matched request event.
+         :rtype: cdp.network.RequestWillBeSent
+         """
+-        return await self.request_future
++        return await asyncio.shield(self.request_future)
+ 
+ 
+ class ResponseExpectation(BaseRequestExpectation):
+@@ -186,7 +206,7 @@
+         :return: The matched response event.
+         :rtype: cdp.network.ResponseReceived
+         """
+-        return await self.response_future
++        return await asyncio.shield(self.response_future)
+ 
+ 
+ class DownloadExpectation:
+@@ -233,4 +253,4 @@
+ 
+     @property
+     async def value(self) -> cdp.browser.DownloadWillBegin:
+-        return await self.future
++        return await asyncio.shield(self.future)
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/intercept.py b/zendriver/core/intercept.py
+--- a/zendriver/core/intercept.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/intercept.py	2026-10-21 02:02:17.960447720 +0000
+@@ -93,7 +93,7 @@
+         :return: The matched request.
+         :rtype: cdp.network.request
+         """
+-        return (await self.response_future).request
++        return (await asyncio.shield(self.response_future)).request
+ 
+     @property
+     async def response_body(self) -> tuple[str, bool]:
+@@ -102,12 +102,12 @@
+         :return: The response body.
+         :rtype: str
+         """
+-        request_id = (await self.response_future).request_id
++        request_id = (await asyncio.shield(self.response_future)).request_id
+         body = await self.tab.send(cdp.fetch.get_response_body(request_id=request_id))
+         return body
+ 
+     async def fail_request(self, error_reason: cdp.network.ErrorReason) -> None:
+-        request_id = (await self.response_future).request_id
++        request_id = (await asyncio.shield(self.response_future)).request_id
+         await self.tab.send(
+             cdp.fetch.fail_request(request_id=request_id, error_reason=error_reason)
+         )
+@@ -120,7 +120,7 @@
+         headers: typing.Optional[typing.List[HeaderEntry]] = None,
+         intercept_response: typing.Optional[bool] = None,
+     ) -> None:
+-        request_id = (await self.response_future).request_id
++        request_id = (await asyncio.shield(self.response_future)).request_id
+         await self.tab.send(
+             cdp.fetch.continue_request(
+                 request_id=request_id,
+@@ -140,7 +140,7 @@
+         body: typing.Optional[str] = None,
+         response_phrase: typing.Optional[str] = None,
+     ) -> None:
+-        request_id = (await self.response_future).request_id
++        request_id = (await asyncio.shield(self.response_future)).request_id
+         await self.tab.send(
+             cdp.fetch.fulfill_request(
+                 request_id=request_id,
+@@ -159,7 +159,7 @@
+         response_headers: typing.Optional[typing.List[HeaderEntry]] = None,
+         binary_response_headers: typing.Optional[str] = None,
+     ) -> None:
+-        request_id = (await self.response_future).request_id
++        request_id = (await asyncio.shield(self.response_future)).request_id
+         await self.tab.send(
+             cdp.fetch.continue_response(
+                 request_id=request_id,

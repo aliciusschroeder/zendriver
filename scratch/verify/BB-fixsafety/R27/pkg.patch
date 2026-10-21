@@ -1,0 +1,18 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/util.py b/zendriver/core/util.py
+--- a/zendriver/core/util.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/util.py	2026-10-21 02:01:21.279045289 +0000
+@@ -320,6 +320,14 @@
+             if not domain_mod:
+                 raise AttributeError
+         except AttributeError:
++            # multi word domains like "WebAuthn" live in snake case modules (web_authn)
++            normalized = domain.replace("_", "").lower()
++            for name, mod in vars(cdp).items():
++                if (
++                    isinstance(mod, types.ModuleType)
++                    and name.replace("_", "") == normalized
++                ):
++                    return mod
+             try:
+                 domain_mod = importlib.import_module(domain)
+             except ModuleNotFoundError:
