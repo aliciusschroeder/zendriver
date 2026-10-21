@@ -34,13 +34,22 @@ Note: the machine has 4 CPUs, so each workflow runs at most 2 agents at a time.
   R17, R25, R26, R31, R35, R37, R46. Remaining R groups are small report-only groups.
 * Files: `scratch/TRIAGE.md`, `scratch/triage/spec.py` (source of truth), `scratch/triage/groups.json`, `scratch/triage/groups/<id>.md`.
 
-## Stage 3 — verify (running since ~21:08)
-* Workflow `zendriver-verify`, run `wf_2183e4a7-b84`.
-* Units: Q1–Q12 and R13–R16, R18–R24 one pipeline each; the other 24 small groups in 6
-  bundles of 4 (BA–BF). Each unit gets 3 independent verifiers: reproduce, refute/realism,
-  fix-safety (prototype + regression test that fails on the repo and passes on the prototype).
-* A group survives with >= 2 of 3 confirming (confirmed or partially-confirmed).
-* Per-verifier scratch: `scratch/verify/<unit>-<lens>/` (prototype `pkg.patch` + tests).
+## Stage 3 — verify (done, 21:08 → 03:20 next day; 87 agents, ~6.2 h)
+* Workflow `zendriver-verify`, run `wf_2183e4a7-b84`. Units: Q1–Q12 and R13–R16, R18–R24 one pipeline each;
+  24 small groups in 6 bundles of 4 (BA–BF). 3 independent verifiers per unit: reproduce, refute/realism, fix-safety.
+* Result: **all 47 groups survive** (>= 2 of 3 confirming). Only member refuted: SEED-X3 (proxy.py `open_tunnel`
+  `except BaseException` re-raises, so cancellation propagates; 0/3). SEED-K3 (`--load-extension` re-added) 2/3.
+* Important refinements carried into Stage 4:
+  - Q2: a strict `wait_for(loop, timeout)` wrap regresses timeout=0 one-shots and cuts the last attempt; Q2 also needs
+    Q12's `_register_handlers` fix, otherwise a pending Domain.enable swallows the timeout's cancellation.
+  - Q1: the receive-error path must `break` (a `continue` freezes the loop on py>=3.12 for a persistent error).
+  - Q4: in attach mode (host+port), cleanup must not send Browser.close to a browser zendriver did not launch.
+  - Q6: only reproduces on Python >= 3.12 (3.10/3.11 yield between messages).
+  - Q12: the swallow site in element.py is `Element.mouse_click`, not `click`; proxy.py needs no change.
+* Outputs: `scratch/stage3.json` (raw), `scratch/stage3_digest.txt`, per-group `scratch/triage/verified/<id>.md`
+  (all three lens reports with prototype diffs, regression tests and risks), prototypes as `scratch/verify/<unit>-fixsafety/pkg.patch`.
+* Decision: fix queue = Q1–Q12 (all confirmed, 12 groups ≈ "top 10 or so"; Q12 is a prerequisite of Q2's fix).
+  All R groups are verified and REPORT-ONLY (below the cap or design/API).
 
 ## Stage 4 — fix (pending)
 Planned: one fixer per confirmed queue group (worktree isolation, branch `fix/<slug>`),
