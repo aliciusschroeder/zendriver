@@ -1,6 +1,6 @@
 diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/core/tab.py
 --- a/zendriver/core/tab.py	2026-10-20 18:32:07.000000000 +0000
-+++ b/zendriver/core/tab.py	2026-10-21 02:53:58.081928465 +0000
++++ b/zendriver/core/tab.py	2026-10-21 02:59:46.278021336 +0000
 @@ -1426,7 +1426,7 @@
              filename = filename.split("?")[0]
  
@@ -50,7 +50,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/c
              file.write(data)
  
      async def screenshot_b64(
-@@ -1533,13 +1537,18 @@
+@@ -1533,13 +1537,19 @@
          :return: the path/filename of saved screenshot
          :rtype: str
          """
@@ -61,16 +61,16 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/c
          elif format.lower() in ["png"]:
              ext = ".png"
  
--        if not filename or filename == "auto":
 +        elif format.lower() in ["webp"]:
 +            ext = ".webp"
 +
-+        auto_name = not filename or filename == "auto"
-+        if auto_name:
++        auto_name = False
+         if not filename or filename == "auto":
++            auto_name = True
              assert self.target is not None
              parsed = urllib.parse.urlparse(self.target.url)
              parts = parsed.path.split("/")
-@@ -1557,6 +1566,14 @@
+@@ -1557,6 +1567,14 @@
          data_bytes = base64.b64decode(data)
          if not path:
              raise RuntimeError("invalid filename or path: '%s'" % filename)
@@ -85,7 +85,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/c
          path.write_bytes(data_bytes)
          return str(path)
  
-@@ -1575,9 +1592,24 @@
+@@ -1575,9 +1593,24 @@
                  f"filename {filename} must be a file path, not a directory"
              )
  
@@ -112,7 +112,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/c
          filename.write_bytes(data_bytes)
          return filename
  
-@@ -1620,6 +1652,11 @@
+@@ -1620,6 +1653,11 @@
  
          res: list[str] = []
          all_assets = await self.query_selector_all(selector="a,link,img,script,meta")
@@ -124,7 +124,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/c
          for asset in all_assets:
              if not absolute:
                  res_to_add = asset.src or asset.href
-@@ -1628,13 +1665,10 @@
+@@ -1628,13 +1666,10 @@
              else:
                  for k, v in asset.attrs.items():
                      if k in ("src", "href"):
@@ -141,7 +141,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/c
                          if not abs_url.startswith(("http", "//", "ws")):
                              continue
                          res.append(abs_url)
-@@ -1941,11 +1975,20 @@
+@@ -1941,11 +1976,20 @@
                      "Could not read existing user agent from navigator object"
                  )
  
