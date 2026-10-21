@@ -11,11 +11,18 @@ print("zendriver from", zendriver.__file__, "python", sys.version.split()[0])
 log = []
 
 async def direct_get(url):
+    # what a real forwarding proxy (squid/cntlm/px) sends upstream: origin-form, HTTP/1.1
     u = urllib.parse.urlsplit(url)
     r, w = await asyncio.open_connection(u.hostname, u.port)
-    w.write(f"GET {u.path} HTTP/1.0\r\nHost: {u.netloc}\r\n\r\n".encode()); await w.drain()
-    data = await r.read(); w.close()
-    return data
+    w.write(f"GET {u.path} HTTP/1.1\r\nHost: {u.netloc}\r\nConnection: close\r\n\r\n".encode()); await w.drain()
+    head = await r.readuntil(b"\r\n\r\n")
+    n = 0
+    for l in head.split(b"\r\n"):
+        if l.lower().startswith(b"content-length:"):
+            n = int(l.split(b":", 1)[1])
+    body = await r.readexactly(n)
+    w.close()
+    return head + body
 
 async def proxy(reader, writer):
     line = await reader.readline()
@@ -25,6 +32,8 @@ async def proxy(reader, writer):
     entry = {"req": line.decode().strip()}
     log.append(entry)
     if mode == "reject":
+        if not url.startswith("http://127.0.0.1"):
+            writer.close(); return
         try:
             data = await direct_get(url)
             entry["direct_status"] = data.split(b"\r\n", 1)[0].decode()
@@ -34,8 +43,15 @@ async def proxy(reader, writer):
         writer.write(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
         await writer.drain(); writer.close()
     elif mode == "forward":
-        data = await direct_get(url)
-        writer.write(data); await writer.drain(); writer.close()
+        try:
+            data = await direct_get(url)
+        except Exception as e:
+            entry["fwd_err"] = repr(e)
+            writer.write(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+        else:
+            entry["fwd_status"] = data.split(b"\r\n", 1)[0].decode()
+            writer.write(data)
+        await writer.drain(); writer.close()
     elif mode == "blackhole":
         await asyncio.sleep(3600)
 

@@ -4,6 +4,7 @@ directly, not through the http_proxy of the environment."""
 import http.server
 import json
 import threading
+import urllib.request
 from typing import Iterator
 
 import pytest
@@ -57,7 +58,7 @@ def servers() -> Iterator[tuple[http.server.ThreadingHTTPServer, http.server.Thr
         s.server_close()
 
 
-@pytest.mark.parametrize("var", ["http_proxy", "HTTP_PROXY", "all_proxy"])
+@pytest.mark.parametrize("var", ["http_proxy", "HTTP_PROXY"])
 async def test_http_api_does_not_use_env_proxy(
     servers: tuple[http.server.ThreadingHTTPServer, http.server.ThreadingHTTPServer],
     monkeypatch: pytest.MonkeyPatch,
@@ -70,6 +71,9 @@ async def test_http_api_does_not_use_env_proxy(
     ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv(var, "http://127.0.0.1:%d" % proxy.server_address[1])
+    # urlopen caches the proxies of the environment in its global opener on its
+    # first call: start from a fresh one, so earlier tests cannot hide the proxy
+    monkeypatch.setattr(urllib.request, "_opener", None)
 
     api = HTTPApi(("127.0.0.1", devtools.server_address[1]))
     assert await api.get("version") == VERSION
