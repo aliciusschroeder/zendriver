@@ -121,13 +121,22 @@ class Transaction(asyncio.Future[T], Generic[T]):
         if "error" in response:
             # set exception and bail out
             return self.set_exception(ProtocolException(response["error"]))
+        cause: Exception | None = None
         try:
             # try to parse the result according to the py cdp docs.
             self.__cdp_obj__.send(response["result"])
         except StopIteration as e:
             # exception value holds the parsed response
             return self.set_result(e.value)
-        raise ProtocolException("could not parse the cdp response:\n%s" % response)
+        except Exception as e:
+            # e.g. a result from a newer chrome that the parser rejects. it must
+            # fail this command, not the listener that dispatches the response
+            cause = e
+        exception = ProtocolException(
+            "could not parse the cdp response:\n%s" % response
+        )
+        exception.__cause__ = cause
+        self.set_exception(exception)
 
     def __repr__(self) -> str:
         success = False if (self.done() and self.has_exception) else True
@@ -432,6 +441,16 @@ class Connection(metaclass=CantTouchThis):
         browser_connection = self._browser_connection
         if browser_connection is not None:
             await self._attach_session(browser_connection)
+            # the parent's listener reads the websocket for this session as well.
+            # restart it if it stopped, without an await in between, so that
+            # concurrent sends cannot start two readers
+            parent = self._session_parent
+            if (
+                parent is not None
+                and parent.websocket is not None
+                and (not parent.listener or not parent.listener.running)
+            ):
+                parent.listener = Listener(parent)
         elif self.websocket is None:
             # concurrent callers must not each open (and leak) their own websocket
             async with self._open_lock:
@@ -954,6 +973,24 @@ class Listener:
                     session._detach_session()
                 self.connection._fail_pending_transactions(e)
                 break
+            except Exception as e:
+                if self.connection.closed:
+                    # closed or detached meanwhile, so nothing is left to read
+                    # (before python 3.12, asyncio.wait_for can raise this
+                    # instead of the cancellation that came with the close)
+                    break
+                # fail the commands waiting for a response instead of leaving
+                # them hanging. stop rather than retry, since the error may
+                # persist; the next send() starts a new listener
+                logger.warning(
+                    "unexpected exception while reading websocket: %s",
+                    e,
+                    exc_info=True,
+                )
+                for session in list(self.connection._sessions.values()):
+                    session._fail_pending_transactions(e)
+                self.connection._fail_pending_transactions(e)
+                break
 
             if not self.running:
                 # if we have been cancelled or otherwise stopped running
@@ -1017,7 +1054,6 @@ class Listener:
                                 e,
                                 exc_info=True,
                             )
-                            raise
                 except asyncio.CancelledError:
                     break
                 except Exception:
