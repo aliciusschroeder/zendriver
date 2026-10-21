@@ -1,6 +1,6 @@
 diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zendriver/core/connection.py
 --- a/zendriver/core/connection.py	2026-10-20 18:32:07.000000000 +0000
-+++ b/zendriver/core/connection.py	2026-10-21 01:58:50.143910239 +0000
++++ b/zendriver/core/connection.py	2026-10-21 02:06:49.053107459 +0000
 @@ -210,6 +210,9 @@
          self.recv_task = None
          self.enabled_domains: list[Any] = []
@@ -66,7 +66,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zend
 +                # continues them once the last handler is gone
 +                try:
 +                    await self.send(cdp.fetch.disable(), _is_update=True)
-+                except:  # noqa
++                except Exception:
 +                    logger.debug("", exc_info=True)
  
      def _update_manual_domain(

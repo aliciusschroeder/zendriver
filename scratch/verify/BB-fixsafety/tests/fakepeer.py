@@ -7,6 +7,11 @@ from typing import Any, Callable, Optional
 import websockets.asyncio.server
 
 
+def _reject_constant(name: str) -> Any:
+    # chrome's parser, unlike python's, rejects NaN / Infinity
+    raise ValueError(name)
+
+
 class FakePeer:
     def __init__(self) -> None:
         self.received: list[dict[str, Any]] = []
@@ -25,7 +30,7 @@ class FakePeer:
         async for raw in ws:
             self.raw.append(raw)
             try:
-                msg = json.loads(raw)
+                msg = json.loads(raw, parse_constant=_reject_constant)
             except ValueError:
                 # emulate chrome: unparsable frame -> id-less error
                 self.received.append({"method": "<invalid>", "raw": raw})

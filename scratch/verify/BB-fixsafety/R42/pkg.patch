@@ -1,0 +1,75 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zendriver/core/connection.py
+--- a/zendriver/core/connection.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/connection.py	2026-10-21 02:05:08.742060019 +0000
+@@ -2,6 +2,7 @@
+ 
+ import asyncio
+ import collections
++import copy
+ import inspect
+ import itertools
+ import json
+@@ -46,10 +47,12 @@
+     def __init__(self, *args: Any):
+         self.message = None
+         self.code = None
++        self.data = None
+         self.args = args
+         if isinstance(args[0], dict):
+             self.message = args[0].get("message", None)  # noqa
+             self.code = args[0].get("code", None)
++            self.data = args[0].get("data", None)
+ 
+         elif hasattr(args[0], "to_json"):
+ 
+@@ -70,7 +73,8 @@
+             self.message = "| ".join(str(x) for x in args)
+ 
+     def __str__(self) -> str:
+-        return f"{self.message} [code: {self.code}]" if self.code else f"{self.message}"
++        res = f"{self.message} [code: {self.code}]" if self.code else f"{self.message}"
++        return f"{res}\ndata: {self.data}" if self.data else res
+ 
+ 
+ class SettingClassVarNotAllowedException(PermissionError):
+@@ -98,7 +102,8 @@
+         message = {"method": self.method, "params": self.params, "id": self.id}
+         if self.session_id is not None:
+             message["sessionId"] = self.session_id
+-        return json.dumps(message)
++        # NaN/Infinity are not valid JSON: chrome would answer without an id
++        return json.dumps(message, allow_nan=False)
+ 
+     @property
+     def has_exception(self) -> bool:
+@@ -387,7 +392,7 @@
+ 
+     def remove_handlers(
+         self,
+-        event_type: Optional[type] = None,
++        event_type: Optional[Union[type, types.ModuleType]] = None,
+         handler: Optional[Callable[..., Any]] = None,
+     ) -> None:
+         """
+@@ -417,6 +422,11 @@
+             self.handlers.clear()
+             return
+ 
++        if isinstance(event_type, types.ModuleType):
++            for module_event_type in cdp.util.get_event_classes(event_type):
++                self.remove_handlers(module_event_type, handler)
++            return
++
+         if not handler:
+             self.handlers.pop(event_type, None)
+             return
+@@ -501,7 +511,8 @@
+     def _fail_pending_transactions(self, exception: BaseException) -> None:
+         for tx in self.mapper.values():
+             if not tx.done():
+-                tx.set_exception(exception)
++                # each waiter gets its own copy, as send() adds its command to it
++                tx.set_exception(copy.copy(exception))
+         self.mapper.clear()
+ 
+     async def aclose(self) -> None:
