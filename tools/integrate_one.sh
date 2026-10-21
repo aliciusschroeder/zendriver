@@ -16,4 +16,5 @@ fi
 bash scripts/lint.sh > "$LOG/$slug.lint.txt" 2>&1; lint=$?
 export PATH=$SCR/bin:$PATH
 ZENDRIVER_TEST_BROWSERS=headless timeout 900 uv run pytest -n 4 -p no:cacheprovider -q -rfs > "$LOG/$slug.tests.txt" 2>&1; tests=$?
+grep "^FAILED" "$LOG/$slug.tests.txt"
 echo "$b merged as $(git rev-parse --short HEAD): lint=$lint tests=$tests :: $(tail -1 "$LOG/$slug.tests.txt")"
