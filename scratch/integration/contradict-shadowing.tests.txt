@@ -1,0 +1,9 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+bringing up nodes...
+bringing up nodes...
+
+...............s........................................................ [ 58%]
+....................................................                     [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/core/test_drm.py:23: Chromium does not include Widevine
+123 passed, 1 skipped in 22.49s

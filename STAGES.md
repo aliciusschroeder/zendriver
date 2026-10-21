@@ -51,16 +51,35 @@ Note: the machine has 4 CPUs, so each workflow runs at most 2 agents at a time.
 * Decision: fix queue = Q1–Q12 (all confirmed, 12 groups ≈ "top 10 or so"; Q12 is a prerequisite of Q2's fix).
   All R groups are verified and REPORT-ONLY (below the cap or design/API).
 
-## Stage 4 — fix (running since ~03:27)
-* Workflow `zendriver-fix`, run `wf_453a9023-a6b`. For each of Q1–Q12: fixer (worktree isolation, branch
-  `fix/<slug>` from `ccr-9a8a26e1-b0l7bh`, one commit, regression tests shown failing on base sources and passing
-  on the fix, format + lint + affected tests) → adversarial reviewer (own worktree, re-runs the tests against base
-  sources, 3x flake check) → if changes requested: round-2 fixer (amends the single commit) → reviewer 2 → else BLOCKED.
-* Branches: fix/listener-robustness, fix/timeout-bounds, fix/stop-cleanup, fix/start-cleanup, fix/stderr-pipe,
-  fix/expect-pairing, fix/register-handlers-snapshot, fix/contradict-shadowing, fix/aexit-reraise,
-  fix/tab-call-args, fix/ready-state-order, fix/swallowed-cancellation (pushed by the sync as they appear;
-  uncommitted fixer work goes to `wip/<name>`).
-* Fixers do not touch CHANGELOG.md; the supervisor adds those lines in Stage 5.
+## Stage 4 — fix (done, 03:27 → 06:10; 28 agents, ~2.7 h)
+* Workflow `zendriver-fix`, run `wf_453a9023-a6b`. Fixer per group in its own worktree → adversarial reviewer
+  (re-ran the new tests on base sources: all fail there, pass on the fix; 3x flake check) → round 2 when needed.
+* **12/12 APPROVED, 0 BLOCKED.** Q2 and Q3 needed a second round (Q2: xpath(timeout<=0) could hang forever on the
+  first version; Q3: spurious asyncio ERROR log on 3.10/3.11 when stop() is cancelled during detach).
+* Fixers ran the full headless suite in their worktrees (their .venv is Python 3.10.20, some also on 3.11–3.13).
+
+| group | branch | commit | status | tests added | source files |
+|---|---|---|---|---|---|
+| Q1 | fix/listener-robustness | 258db4cf8 | APPROVED (round 1) | 8 | zendriver/core/connection.py |
+| Q2 | fix/timeout-bounds | c37681300 | APPROVED (round 2) | 12 | zendriver/core/tab.py, zendriver/core/cloudflare.py |
+| Q3 | fix/stop-cleanup | f783e5884 | APPROVED (round 2) | 10 | zendriver/core/browser.py |
+| Q4 | fix/start-cleanup | f1e18489f | APPROVED (round 1) | 3 | zendriver/core/browser.py |
+| Q5 | fix/stderr-pipe | 5b41bf1b8 | APPROVED (round 1) | 5 | zendriver/core/util.py |
+| Q6 | fix/expect-pairing | 03610e826 | APPROVED (round 1) | 4 | zendriver/core/expect.py |
+| Q7 | fix/register-handlers-snapshot | 40e8420ab | APPROVED (round 1) | 1 | zendriver/core/connection.py |
+| Q8 | fix/contradict-shadowing | b5b3c318c | APPROVED (round 1) | 5 | zendriver/core/_contradict.py |
+| Q9 | fix/aexit-reraise | 56e759351 | APPROVED (round 1) | 10 | zendriver/core/browser.py, zendriver/core/connection.py |
+| Q10 | fix/tab-call-args | 9531d1c01 | APPROVED (round 1) | 2 | zendriver/core/tab.py |
+| Q11 | fix/ready-state-order | ecceb40af | APPROVED (round 1) | 5 | zendriver/core/tab.py |
+| Q12 | fix/swallowed-cancellation | 0cb04efc1 | APPROVED (round 1) | 3 | zendriver/core/connection.py, zendriver/core/element.py |
+
+* Non-blocking reviewer notes to weigh in Stage 5: Q2 cuts a single DOM attempt longer than timeout+0.5 s (heavy
+  pages) and `timeout=None` now raises TypeError; Q3 leaves ProxyForwarder.close() unbounded and concurrent stop()
+  with live proxy clients can still raise; Q12 leaves a never-sent tx in mapper if a cancel lands in send()'s own
+  _register_handlers (R16 territory); Q1 logs a traceback per event for a handler with the wrong arity.
+  Full fixer/reviewer reports: `scratch/stage4.json`.
+* Sync fix: fixers detach their branch when done, so the sync now pushes every local `fix/*` ref each round
+  (before, five branches had not reached origin). All 12 verified on origin.
 
 ## Stage 5 — integrate (pending)
 Planned: merge fix branches one by one (same-file groups sequentially), lint + unit tests
