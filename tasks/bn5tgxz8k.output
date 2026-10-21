@@ -1,0 +1,27 @@
+M  zendriver/core/cloudflare.py
+M  zendriver/core/tab.py
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/flaky-check/zendriver/__init__.py
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+FAILED tests/core/test_tab.py::test_is_scrolled_to_bottom[headless0] - zendri...
+17 failed, 145 passed, 1 skipped in 39.02s
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+                # In case task cancellation failed with some
+16 failed, 146 passed, 1 skipped in 39.34s
