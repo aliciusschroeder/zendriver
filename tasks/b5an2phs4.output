@@ -1,0 +1,2 @@
+ M tests/core/test_util.py
+5b41bf1 Drain the browser's stderr so a full pipe cannot stall Chrome
