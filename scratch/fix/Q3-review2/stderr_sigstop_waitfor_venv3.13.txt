@@ -1,0 +1,1 @@
+Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
