@@ -414,6 +414,63 @@ async def test_wait_for_ready_state_times_out_when_evaluate_hangs(
         await asyncio.wait_for(tab.wait_for_ready_state("complete", timeout=1), 5)
 
 
+def make_ready_state_tab(
+    monkeypatch: pytest.MonkeyPatch, *states: str
+) -> tuple[zd.Tab, list[str]]:
+    """Tab whose evaluate() returns the given readyStates, repeating the last."""
+    seen: list[str] = []
+
+    async def evaluate(expression: str, *args: Any, **kwargs: Any) -> str:
+        assert expression == "document.readyState"
+        state = states[min(len(seen), len(states) - 1)]
+        seen.append(state)
+        return state
+
+    tab = zd.Tab.__new__(zd.Tab)
+    monkeypatch.setattr(tab, "evaluate", evaluate)
+    return tab, seen
+
+
+@pytest.mark.parametrize(
+    "until, current",
+    [
+        ("interactive", "complete"),
+        ("loading", "interactive"),
+        ("loading", "complete"),
+    ],
+)
+async def test_wait_for_ready_state_accepts_later_state(
+    monkeypatch: pytest.MonkeyPatch, until: Any, current: str
+) -> None:
+    tab, seen = make_ready_state_tab(monkeypatch, current)
+
+    # the outer wait_for is only a safety net; the inner timeout would raise
+    # a TimeoutError with a message
+    assert await asyncio.wait_for(tab.wait_for_ready_state(until, timeout=2), 5) is True
+    assert seen == [current]
+
+
+async def test_wait_for_ready_state_default_on_complete_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tab, seen = make_ready_state_tab(monkeypatch, "complete")
+
+    assert await asyncio.wait_for(tab.wait_for_ready_state(timeout=2), 5) is True
+    assert seen == ["complete"]
+
+
+async def test_wait_for_ready_state_waits_for_earlier_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tab, seen = make_ready_state_tab(monkeypatch, "loading", "loading", "interactive")
+    assert await asyncio.wait_for(tab.wait_for_ready_state(timeout=2), 5) is True
+    assert seen == ["loading", "loading", "interactive"]
+
+    tab, _ = make_ready_state_tab(monkeypatch, "loading", "interactive")
+    with pytest.raises(asyncio.TimeoutError, match="until complete"):
+        await asyncio.wait_for(tab.wait_for_ready_state("complete", timeout=1), 5)
+
+
 async def test_expect_request(browser: zd.Browser) -> None:
     tab = browser.main_tab
     assert tab is not None

@@ -1331,16 +1331,21 @@ class Tab(Connection):
         """
         Waits for the page to reach a certain ready state.
         :param until: The ready state to wait for. Can be one of "loading", "interactive", or "complete".
+            A later state counts as reached, so this returns at once on a page that is already past it.
         :param timeout: The maximum number of seconds to wait.
         :raises asyncio.TimeoutError: If the timeout is reached before the ready state is reached.
         :return: True if the ready state is reached.
         :rtype: bool
         """
+        # a document goes loading -> interactive -> complete, so a page that is
+        # in a later state has already reached the requested one
+        states = ("loading", "interactive", "complete")
+        reached = states[states.index(until) :]
 
         async def _poll() -> bool:
             while True:
                 ready_state = await self.evaluate("document.readyState")
-                if ready_state == until:
+                if ready_state in reached:
                     return True
                 await asyncio.sleep(0.1)
 
