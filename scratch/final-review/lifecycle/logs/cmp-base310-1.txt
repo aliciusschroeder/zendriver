@@ -1,0 +1,83 @@
+/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/zendriver/__init__.py
+bringing up nodes...
+bringing up nodes...
+
+...........s............................................................ [ 66%]
+..................................F..                                    [100%]Task exception was never retrieved
+future: <Task finished name='Task-15' coro=<Listener.listener_loop() done, defined at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 432, in wait_for
+    await waiter
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 435, in wait_for
+    return fut.result()
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+
+=================================== FAILURES ===================================
+____________________ test_is_scrolled_to_bottom[headless0] _____________________
+[gw1] linux -- Python 3.10.20 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/flaky-check/.venv/bin/python
+
+browser = <zendriver.core.browser.Browser object at 0x7f23fb562a10>
+
+    async def test_is_scrolled_to_bottom(browser: zd.Browser) -> None:
+        tab = await browser.get(sample_file("groceries.html"))
+>       await tab.evaluate("document.body.style.height = '5000px'")
+
+tests/core/test_tab.py:731: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Tab [A3FDB33DA3C00CC5336DC38233EC155A] [page] [url: file:///tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/tests/sample_data/groceries.html]>
+expression = "document.body.style.height = '5000px'", await_promise = False
+return_by_value = True
+
+    async def evaluate(
+        self, expression: str, await_promise: bool = False, return_by_value: bool = True
+    ) -> Any:
+        ser: cdp.runtime.SerializationOptions | None = None
+        if not return_by_value:
+            ser = cdp.runtime.SerializationOptions(
+                serialization="deep",
+                max_depth=10,
+                additional_parameters={"maxNodeDepth": 10, "includeShadowTree": "all"},
+            )
+    
+        remote_object, errors = await self.send(
+            cdp.runtime.evaluate(
+                expression=expression,
+                user_gesture=True,
+                await_promise=await_promise,
+                return_by_value=return_by_value,
+                allow_unsafe_eval_blocked_by_csp=True,
+                serialization_options=ser,
+            )
+        )
+        if errors:
+>           raise ProtocolException(errors)
+E           zendriver.core.connection.ProtocolException: 
+E           exceptionId: 1
+E           text: Uncaught
+E           lineNumber: 0
+E           columnNumber: 14
+E           scriptId: 5
+E           exception: 
+E           	type: object
+E           	subtype: error
+E           	className: TypeError
+E           	description: TypeError: Cannot read properties of null (reading 'style')
+E               at <anonymous>:1:15
+E           	objectId: 5490375381301854668.2.2
+
+zendriver/core/tab.py:870: ProtocolException
+=========================== short test summary info ============================
+FAILED tests/core/test_tab.py::test_is_scrolled_to_bottom[headless0] - zendri...
+SKIPPED [1] tests/core/test_drm.py:23: Chromium does not include Widevine
+1 failed, 107 passed, 1 skipped in 18.36s
+exit=1

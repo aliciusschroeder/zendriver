@@ -1,0 +1,67 @@
+3.13.16 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/zendriver/__init__.py
+ERROR:asyncio:Transaction exception was never retrieved
+future: <Transaction
+	method: Browser.close
+	status: finished
+	success: False>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/zendriver/core/connection.py", line 951, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/zendriver/core/connection.py", line 862, in _receive_message
+    message: dict[str, Any] = json.loads(await self.websocket.recv())
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/websockets/asyncio/connection.py", line 313, in recv
+    raise self.protocol.close_exc from self.recv_exc
+websockets.exceptions.ConnectionClosedOK: sent 1000 (OK); then received 1000 (OK)
+run 0: forwarder clients before stop=2 results=['None', 'None'] profile_left=False process=None
+ERROR:asyncio:Transaction exception was never retrieved
+future: <Transaction
+	method: Browser.close
+	status: finished
+	success: False>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/zendriver/core/connection.py", line 951, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/zendriver/core/connection.py", line 862, in _receive_message
+    message: dict[str, Any] = json.loads(await self.websocket.recv())
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/websockets/asyncio/connection.py", line 313, in recv
+    raise self.protocol.close_exc from self.recv_exc
+websockets.exceptions.ConnectionClosedOK: sent 1000 (OK); then received 1000 (OK)
+run 1: forwarder clients before stop=3 results=['None', 'None'] profile_left=False process=None
+ERROR:asyncio:Transaction exception was never retrieved
+future: <Transaction
+	method: Browser.close
+	status: finished
+	success: False>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/zendriver/core/connection.py", line 951, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/zendriver/core/connection.py", line 862, in _receive_message
+    message: dict[str, Any] = json.loads(await self.websocket.recv())
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/zendriver/.venv/lib/python3.13/site-packages/websockets/asyncio/connection.py", line 313, in recv
+    raise self.protocol.close_exc from self.recv_exc
+websockets.exceptions.ConnectionClosedOK: sent 1000 (OK); then received 1000 (OK)
+run 2: forwarder clients before stop=4 results=['AttributeError("\'NoneType\' object has no attribute \'wait_closed\'")', 'None'] profile_left=False process=None

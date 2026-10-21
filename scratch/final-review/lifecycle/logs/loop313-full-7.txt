@@ -1,0 +1,74 @@
+/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/zendriver/__init__.py
+bringing up nodes...
+bringing up nodes...
+
+....................................................s................... [ 36%]
+........................................................................ [ 72%]
+..........................................F...........                   [100%]
+=================================== FAILURES ===================================
+_________ test_shadow_children_includes_closed_shadow_root[headless0] __________
+[gw3] linux -- Python 3.13.16 /home/user/zendriver/.venv/bin/python
+
+browser = <zendriver.core.browser.Browser object at 0x7f5239670ad0>
+
+    async def test_shadow_children_includes_closed_shadow_root(
+        browser: zd.Browser,
+    ) -> None:
+        tab = await browser.get(sample_file("groceries.html"))
+>       await tab.evaluate(
+            """
+            const root = document.querySelector("h1").attachShadow({ mode: "closed" });
+            root.innerHTML = "<button id='shadow-button'>Shadow</button>";
+            """
+        )
+
+tests/core/test_tab.py:986: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Tab [34163D251534A31216C7D4C98E757369] [page] [url: file:///tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/sample_data/groceries.html]>
+expression = '\n        const root = document.querySelector("h1").attachShadow({ mode: "closed" });\n        root.innerHTML = "<button id=\'shadow-button\'>Shadow</button>";\n        '
+await_promise = False, return_by_value = True
+
+    async def evaluate(
+        self, expression: str, await_promise: bool = False, return_by_value: bool = True
+    ) -> Any:
+        ser: cdp.runtime.SerializationOptions | None = None
+        if not return_by_value:
+            ser = cdp.runtime.SerializationOptions(
+                serialization="deep",
+                max_depth=10,
+                additional_parameters={"maxNodeDepth": 10, "includeShadowTree": "all"},
+            )
+    
+        remote_object, errors = await self.send(
+            cdp.runtime.evaluate(
+                expression=expression,
+                user_gesture=True,
+                await_promise=await_promise,
+                return_by_value=return_by_value,
+                allow_unsafe_eval_blocked_by_csp=True,
+                serialization_options=ser,
+            )
+        )
+        if errors:
+>           raise ProtocolException(errors)
+E           zendriver.core.connection.ProtocolException: 
+E           exceptionId: 1
+E           text: Uncaught
+E           lineNumber: 1
+E           columnNumber: 49
+E           scriptId: 5
+E           exception: 
+E           	type: object
+E           	subtype: error
+E           	className: TypeError
+E           	description: TypeError: Cannot read properties of null (reading 'attachShadow')
+E               at <anonymous>:2:50
+E           	objectId: 5937038006463132322.2.2
+
+zendriver/core/tab.py:928: ProtocolException
+=========================== short test summary info ============================
+FAILED tests/core/test_tab.py::test_shadow_children_includes_closed_shadow_root[headless0]
+SKIPPED [1] tests/core/test_drm.py:23: Chromium does not include Widevine
+1 failed, 196 passed, 1 skipped in 32.71s
+exit=1

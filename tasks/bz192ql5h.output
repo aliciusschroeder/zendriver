@@ -1,0 +1,18 @@
+loop310-full-1.txt: 195 passed, 3 skipped in 31.95s 
+loop310-full-2.txt: 195 passed, 3 skipped in 32.26s 
+loop310-full-3.txt: FAILED tests/core/test_tab.py::test_shadow_children_includes_closed_shadow_root[headless0] 1 failed, 194 passed, 3 skipped in 31.73s 
+loop310-full-4.txt: ERROR    asyncio:base_events.py:1758 Task exception was never retrieved ERROR    asyncio:base_events.py:1758 Task exception was never retrieved FAILED tests/core/test_tab.py::test_handler_raising_type_error_is_called_once[headless0] FAILED tests/core/test_tab.py::test_is_scrolled_to_bottom[headless0] - zendri... FAILED tests/core/test_tab.py::test_shadow_children_includes_closed_shadow_root[headless0] FAILED tests/core/test_tab.py::test_element_get_returns_empty_attribute_value[headless0] 4 failed, 191 passed, 3 skipped in 33.71s 
+loop310-full-5.txt: 195 passed, 3 skipped in 31.43s 
+loop310-full-6.txt: 195 passed, 3 skipped in 32.44s 
+loop310-full-7.txt: 195 passed, 3 skipped in 31.79s 
+loop310-full-8.txt: 195 passed, 3 skipped in 32.40s 
+loop313-full-1.txt: 197 passed, 1 skipped in 31.74s 
+loop313-full-2.txt: FAILED tests/core/test_tab.py::test_is_scrolled_to_bottom[headless0] - zendri... 1 failed, 196 passed, 1 skipped in 31.94s 
+loop313-full-3.txt: 197 passed, 1 skipped in 32.72s 
+loop313-full-4.txt: 197 passed, 1 skipped in 32.29s 
+loop313-full-5.txt: 197 passed, 1 skipped in 34.90s 
+loop313-full-6.txt: 197 passed, 1 skipped in 31.32s 
+loop313-full-7.txt: FAILED tests/core/test_tab.py::test_shadow_children_includes_closed_shadow_root[headless0] 1 failed, 196 passed, 1 skipped in 32.71s 
+loop313-full-8.txt: 197 passed, 1 skipped in 31.02s 
+
+[exited with code 0]

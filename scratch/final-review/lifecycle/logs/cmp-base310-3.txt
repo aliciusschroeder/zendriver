@@ -1,0 +1,27 @@
+/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/zendriver/__init__.py
+bringing up nodes...
+bringing up nodes...
+
+...........s............................................................ [ 66%]
+.....................................                                    [100%]Task exception was never retrieved
+future: <Task finished name='Task-15' coro=<Listener.listener_loop() done, defined at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 432, in wait_for
+    await waiter
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 435, in wait_for
+    return fut.result()
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+
+=========================== short test summary info ============================
+SKIPPED [1] tests/core/test_drm.py:23: Chromium does not include Widevine
+108 passed, 1 skipped in 18.12s
+exit=0

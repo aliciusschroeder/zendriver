@@ -1,0 +1,6 @@
+Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
+run 2: results=[None, None] asyncio errors=[]
+Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
+run 3: results=[None, None] asyncio errors=['Transaction exception was never retrieved :: <Transaction\n\tmethod: Browser.close\n\tstatus: finished\n\tsuccess: False>']
+Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
+run 4: results=[None, None] asyncio errors=['Transaction exception was never retrieved :: <Transaction\n\tmethod: Browser.close\n\tstatus: finished\n\tsuccess: False>']
