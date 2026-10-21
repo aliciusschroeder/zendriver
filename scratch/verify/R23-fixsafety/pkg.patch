@@ -1,0 +1,73 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
+--- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/browser.py	2026-10-21 01:21:47.117987260 +0000
+@@ -228,12 +228,12 @@
+             )
+         instance = cls(config)
+         await instance.start()
+-        asyncio_atexit.register(instance._atexit_cleanup)
+         return instance
+ 
+     async def _atexit_cleanup(self) -> None:
+         # stop() unregisters atexit callbacks, which would mutate the list asyncio_atexit is iterating
+-        if not self.stopped:
++        # a browser connected to through host and port is left running
++        if self._process and not self.stopped:
+             await self._stop()
+         await self._cleanup_temporary_profile()
+ 
+@@ -323,7 +323,10 @@
+ 
+     @property
+     def stopped(self) -> bool:
+-        return not (self._process and self._process.poll() is None)
++        if self._process:
++            return self._process.poll() is not None
++        # a browser connected to through host and port runs as long as its connection
++        return not self.connection or self.connection.closed
+ 
+     async def wait(self, time: Union[float, int] = 1) -> Browser:
+         """wait for <time> seconds. important to use, especially in between page navigation
+@@ -521,9 +524,10 @@
+                 "Cannot be called as a class method. Use `await Browser.create()` to create a new instance"
+             )
+ 
+-        if self._process or self._process_pid:
+-            if self._process and self._process.poll() is not None:
+-                return await self.create(config=self.config)
++        if self._process and self._process.poll() is not None:
++            # the browser was closed or crashed: clean up after it, then launch a new one
++            await self._stop()
++        if not self.stopped:
+             warnings.warn("ignored! this call has no effect when already running.")
+             return self
+ 
+@@ -576,6 +580,10 @@
+ 
+         self._http = HTTPApi((self.config.host, self.config.port))
+         util.get_registered_instances().add(self)
++        asyncio_atexit.unregister(self._atexit_cleanup)
++        asyncio_atexit.register(self._atexit_cleanup)
++        # the info of a previous run must not pass for a successful connection
++        self.info = None
+         # try to connect immediately, then retry at the configured interval
+         connected = await self.test_connection()
+         for _ in range(self.config.browser_connection_max_tries):
+@@ -877,6 +885,7 @@
+ 
+         for target in self.targets:
+             await target.aclose()
++        self.targets.clear()
+ 
+         if self.connection and not self.connection.closed:
+             try:
+@@ -915,6 +924,9 @@
+ 
+             self._process = None
+             self._process_pid = None
++            # start() chose the address of the browser it launched: a restart chooses a new one
++            self.config.host = None
++            self.config.port = None
+ 
+         await self._cleanup_temporary_profile()
+ 
