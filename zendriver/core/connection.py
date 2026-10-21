@@ -716,8 +716,11 @@ class Connection(metaclass=CantTouchThis):
         for ed in enabled_domains:
             # we started with a copy of self.enabled_domains and removed a domain from this
             # temp variable when we registered it or saw handlers for it.
-            # items still present at this point are unused and need removal
-            self.enabled_domains.remove(ed)
+            # items still present at this point are unused and need removal.
+            # the nested send of domain.enable() above runs _register_handlers
+            # again, which may already have removed it
+            if ed in self.enabled_domains:
+                self.enabled_domains.remove(ed)
 
     def _update_manual_domain(
         self, domain_name: str, action: Literal["enable", "disable"]
