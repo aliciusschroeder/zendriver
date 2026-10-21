@@ -5,3 +5,8 @@ DIAG after first timeout T3: session=S72 inbox=0 listener_running=True enabled=[
 DIAG last sent: [(996, 'Log.enable', 'S71'), (997, 'Runtime.enable', 'S71'), (999, 'Runtime.enable', 'S71'), (998, 'Page.bringToFront', 'S71'), (1000, 'Page.bringToFront', 'S69'), (1001, 'Runtime.enable', 'S71'), (1002, 'Page.bringToFront', 'S71'), (1003, 'Page.bringToFront', 'S70'), (1004, 'Target.attachToTarget', None), (1005, 'Page.enable', 'S72'), (1006, 'Log.enable', 'S72'), (1007, 'Network.enable', 'S72')]
 DIAG pending frames: 0
 run 1: seed=23 events=554 sent=1030 problems=0
+run 1: seed=24 events=545 sent=1016 problems=0
+run 1: seed=25 events=456 sent=895 problems=0
+run 1: seed=26 events=352 sent=1014 problems=0
+run 1: seed=27 events=324 sent=1023 problems=0
+run 1: seed=28 events=474 sent=1005 problems=0

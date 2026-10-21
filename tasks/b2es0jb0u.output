@@ -18,3 +18,16 @@ DIAG pending frames: 1
 run 6: seed=2 events=378 sent=1027 problems=0
 run 7: seed=2 events=382 sent=1005 problems=0
 run 8: seed=2 events=378 sent=1027 problems=0
+run 9: seed=2 events=415 sent=1016 problems=1
+DIAG after first timeout T0: session=S72 inbox=0 listener_running=True enabled=['log', 'page'] manual=[] handlers=['EntryAdded', 'ConsoleAPICalled', 'RequestWillBeSent', 'FrameStoppedLoading'] mapper={1000: Log.enable/Transaction/PENDING} bc_listener=False bc_mapper=[] bc_sessions=[SessionID('S65'), SessionID('S72')] fake_attached={'S13': 'T3', 'S23': 'T3', 'S32': 'T3', 'S38': 'T0', 'S50': 'T0', 'S62': 'T0', 'S64': 'T2', 'S65': 'T2', 'S70': 'T3', 'S72': 'T0'}
+DIAG last sent: [(989, 'Page.bringToFront', 'S65'), (990, 'Page.bringToFront', 'S63'), (991, 'Page.bringToFront', 'S56'), (992, 'Target.attachToTarget', None), (993, 'Page.enable', 'S71'), (994, 'Network.enable', 'S71'), (995, 'Runtime.enable', 'S71'), (996, 'Log.enable', 'S71'), (997, 'Target.attachToTarget', None), (998, 'Page.enable', 'S72'), (999, 'Network.enable', 'S72'), (1000, 'Log.enable', 'S72')]
+DIAG pending frames: 2
+DIAG after first timeout T3: session=S74 inbox=0 listener_running=True enabled=['runtime', 'page'] manual=[] handlers=['RequestWillBeSent', 'ConsoleAPICalled', 'EntryAdded', 'FrameStoppedLoading'] mapper={1014: Runtime.enable/Transaction/PENDING} bc_listener=False bc_mapper=[] bc_sessions=[SessionID('S65'), SessionID('S72'), SessionID('S73'), SessionID('S74')] fake_attached={'S13': 'T3', 'S23': 'T3', 'S32': 'T3', 'S38': 'T0', 'S50': 'T0', 'S62': 'T0', 'S64': 'T2', 'S65': 'T2', 'S70': 'T3', 'S72': 'T0', 'S73': 'T1', 'S74': 'T3'}
+DIAG last sent: [(1003, 'Page.bringToFront', 'S72'), (1004, 'Target.attachToTarget', None), (1005, 'Page.enable', 'S73'), (1006, 'Network.enable', 'S73'), (1007, 'Runtime.enable', 'S73'), (1008, 'Log.enable', 'S73'), (1009, 'Page.bringToFront', 'S73'), (1010, 'Page.bringToFront', 'S65'), (1011, 'Target.attachToTarget', None), (1012, 'Page.enable', 'S74'), (1013, 'Log.enable', 'S74'), (1014, 'Runtime.enable', 'S74')]
+DIAG pending frames: 2
+DIAG after second failure T3: session=S74 inbox=0 listener_running=True enabled=['runtime', 'page', 'network'] manual=[] handlers=['RequestWillBeSent', 'ConsoleAPICalled', 'EntryAdded', 'FrameStoppedLoading'] mapper={1016: Network.enable/Transaction/PENDING} bc_listener=False bc_mapper=[] bc_sessions=[SessionID('S65'), SessionID('S72'), SessionID('S73'), SessionID('S74')] fake_attached={'S13': 'T3', 'S23': 'T3', 'S32': 'T3', 'S38': 'T0', 'S50': 'T0', 'S62': 'T0', 'S64': 'T2', 'S65': 'T2', 'S70': 'T3', 'S72': 'T0', 'S73': 'T1', 'S74': 'T3'}
+DIAG last sent: [(1005, 'Page.enable', 'S73'), (1006, 'Network.enable', 'S73'), (1007, 'Runtime.enable', 'S73'), (1008, 'Log.enable', 'S73'), (1009, 'Page.bringToFront', 'S73'), (1010, 'Page.bringToFront', 'S65'), (1011, 'Target.attachToTarget', None), (1012, 'Page.enable', 'S74'), (1013, 'Log.enable', 'S74'), (1014, 'Runtime.enable', 'S74'), (1015, 'Log.enable', 'S74'), (1016, 'Network.enable', 'S74')]
+DIAG pending frames: 2
+  PROBLEM final send on T3 failed twice: TimeoutError()
+
+[killed]
