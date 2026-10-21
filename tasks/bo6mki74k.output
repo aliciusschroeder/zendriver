@@ -1,0 +1,12 @@
+cmp-base310-1.txt: FAILED tests/core/test_tab.py::test_is_scrolled_to_bottom[headless0] 1 failed, 107 passed, 1 skipped in 18.36s 
+cmp-base310-2.txt: 108 passed, 1 skipped in 18.34s 
+cmp-base310-3.txt: 108 passed, 1 skipped in 18.12s 
+cmp-base310-4.txt: ERROR    asyncio:base_events.py:1758 Task exception was never retrieved FAILED tests/core/test_tab.py::test_shadow_children_includes_closed_shadow_root[headless0] FAILED tests/core/test_tab.py::test_element_get_returns_empty_attribute_value[headless0] 2 failed, 106 passed, 1 skipped in 18.78s 
+cmp-base310-5.txt: FAILED tests/core/test_tab.py::test_shadow_children_includes_closed_shadow_root[headless0] 1 failed, 107 passed, 1 skipped in 18.09s 
+cmp-tip310-1.txt: 185 passed, 3 skipped in 23.85s 
+cmp-tip310-2.txt: 185 passed, 3 skipped in 23.35s 
+cmp-tip310-3.txt: 185 passed, 3 skipped in 23.72s 
+cmp-tip310-4.txt: 185 passed, 3 skipped in 23.31s 
+cmp-tip310-5.txt: 185 passed, 3 skipped in 23.31s 
+
+[exited with code 0]

@@ -2,4 +2,12 @@
 bringing up nodes...
 bringing up nodes...
 
-s.
+s.............................................s........s................ [ 38%]
+........................................................................ [ 76%]
+............................................                             [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/core/test_browser.py:376: ExceptionGroup needs Python 3.11+
+SKIPPED [1] tests/core/test_connection.py:470: ExceptionGroup needs Python 3.11+
+SKIPPED [1] tests/core/test_drm.py:23: Chromium does not include Widevine
+185 passed, 3 skipped in 23.72s
+exit=0

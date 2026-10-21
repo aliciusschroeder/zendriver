@@ -1,0 +1,143 @@
+/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/zendriver/__init__.py
+bringing up nodes...
+bringing up nodes...
+
+...........s............................................................ [ 66%]
+..............................F.F....                                    [100%]
+=================================== FAILURES ===================================
+_________ test_shadow_children_includes_closed_shadow_root[headless0] __________
+[gw2] linux -- Python 3.10.20 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/flaky-check/.venv/bin/python
+
+browser = <zendriver.core.browser.Browser object at 0x7fde4a87c100>
+
+    async def test_shadow_children_includes_closed_shadow_root(
+        browser: zd.Browser,
+    ) -> None:
+        tab = await browser.get(sample_file("groceries.html"))
+>       await tab.evaluate(
+            """
+            const root = document.querySelector("h1").attachShadow({ mode: "closed" });
+            root.innerHTML = "<button id='shadow-button'>Shadow</button>";
+            """
+        )
+
+tests/core/test_tab.py:744: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Tab [E80A5D0EE178009B697B7EA643B1A20D] [page] [url: file:///tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/tests/sample_data/groceries.html]>
+expression = '\n        const root = document.querySelector("h1").attachShadow({ mode: "closed" });\n        root.innerHTML = "<button id=\'shadow-button\'>Shadow</button>";\n        '
+await_promise = False, return_by_value = True
+
+    async def evaluate(
+        self, expression: str, await_promise: bool = False, return_by_value: bool = True
+    ) -> Any:
+        ser: cdp.runtime.SerializationOptions | None = None
+        if not return_by_value:
+            ser = cdp.runtime.SerializationOptions(
+                serialization="deep",
+                max_depth=10,
+                additional_parameters={"maxNodeDepth": 10, "includeShadowTree": "all"},
+            )
+    
+        remote_object, errors = await self.send(
+            cdp.runtime.evaluate(
+                expression=expression,
+                user_gesture=True,
+                await_promise=await_promise,
+                return_by_value=return_by_value,
+                allow_unsafe_eval_blocked_by_csp=True,
+                serialization_options=ser,
+            )
+        )
+        if errors:
+>           raise ProtocolException(errors)
+E           zendriver.core.connection.ProtocolException: 
+E           exceptionId: 1
+E           text: Uncaught
+E           lineNumber: 1
+E           columnNumber: 49
+E           scriptId: 5
+E           exception: 
+E           	type: object
+E           	subtype: error
+E           	className: TypeError
+E           	description: TypeError: Cannot read properties of null (reading 'attachShadow')
+E               at <anonymous>:2:50
+E           	objectId: -8221030653283747425.2.2
+
+zendriver/core/tab.py:870: ProtocolException
+__________ test_element_get_returns_empty_attribute_value[headless0] ___________
+[gw2] linux -- Python 3.10.20 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/flaky-check/.venv/bin/python
+
+browser = <zendriver.core.browser.Browser object at 0x7fde4a87c100>
+
+    async def test_element_get_returns_empty_attribute_value(browser: zd.Browser) -> None:
+        tab = await browser.get(sample_file("groceries.html"))
+>       await tab.evaluate("document.querySelector('#download_file').disabled = true")
+
+tests/core/test_tab.py:780: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Tab [51519443D713832748CC82BBC7B76F7B] [page] [url: file:///tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/tests/sample_data/groceries.html]>
+expression = "document.querySelector('#download_file').disabled = true"
+await_promise = False, return_by_value = True
+
+    async def evaluate(
+        self, expression: str, await_promise: bool = False, return_by_value: bool = True
+    ) -> Any:
+        ser: cdp.runtime.SerializationOptions | None = None
+        if not return_by_value:
+            ser = cdp.runtime.SerializationOptions(
+                serialization="deep",
+                max_depth=10,
+                additional_parameters={"maxNodeDepth": 10, "includeShadowTree": "all"},
+            )
+    
+        remote_object, errors = await self.send(
+            cdp.runtime.evaluate(
+                expression=expression,
+                user_gesture=True,
+                await_promise=await_promise,
+                return_by_value=return_by_value,
+                allow_unsafe_eval_blocked_by_csp=True,
+                serialization_options=ser,
+            )
+        )
+        if errors:
+>           raise ProtocolException(errors)
+E           zendriver.core.connection.ProtocolException: 
+E           exceptionId: 1
+E           text: Uncaught
+E           lineNumber: 0
+E           columnNumber: 50
+E           scriptId: 5
+E           exception: 
+E           	type: object
+E           	subtype: error
+E           	className: TypeError
+E           	description: TypeError: Cannot set properties of null (setting 'disabled')
+E               at <anonymous>:1:51
+E           	objectId: 2949225915515077732.2.2
+
+zendriver/core/tab.py:870: ProtocolException
+---------------------------- Captured log teardown -----------------------------
+ERROR    asyncio:base_events.py:1758 Task exception was never retrieved
+future: <Task finished name='Task-904' coro=<HttpProxy.handle() done, defined at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/tests/core/test_proxy.py:29> exception=OSError(107, 'Transport endpoint is not connected')>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/tests/core/test_proxy.py", line 60, in handle
+    await pipe(reader, writer, upstream_reader, upstream_writer)
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/zendriver/core/proxy.py", line 298, in pipe
+    await asyncio.gather(*tasks)
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/base/zendriver/core/proxy.py", line 313, in copy_stream
+    writer.write_eof()
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/streams.py", line 331, in write_eof
+    return self._transport.write_eof()
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/selector_events.py", line 978, in write_eof
+    self._sock.shutdown(socket.SHUT_WR)
+OSError: [Errno 107] Transport endpoint is not connected
+=========================== short test summary info ============================
+FAILED tests/core/test_tab.py::test_shadow_children_includes_closed_shadow_root[headless0]
+FAILED tests/core/test_tab.py::test_element_get_returns_empty_attribute_value[headless0]
+SKIPPED [1] tests/core/test_drm.py:23: Chromium does not include Widevine
+2 failed, 106 passed, 1 skipped in 18.78s
+exit=1
