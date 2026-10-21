@@ -171,13 +171,17 @@ def flatten_frame_tree(
 
 
 def filter_recurse(
-    doc: cdp.dom.Node, predicate: Callable[[cdp.dom.Node], bool]
+    doc: cdp.dom.Node,
+    predicate: Callable[[cdp.dom.Node], bool],
+    *,
+    include_frames: bool = True,
 ) -> cdp.dom.Node | None:
     """
     test each child using predicate(child), and return the first child of which predicate(child) == True
 
     :param doc: the cdp.dom.Node object or :py:class:`zendriver.Element`
     :param predicate: a function which takes a node as first parameter and returns a boolean, where True means include
+    :param include_frames: also search the documents of same-origin iframes (their content_document)
 
     """
     if not hasattr(doc, "children"):
@@ -189,10 +193,24 @@ def filter_recurse(
                 # if predicate is True
                 return child
             if child.shadow_roots:
-                shadow_root_result = filter_recurse(child.shadow_roots[0], predicate)
+                shadow_root_result = filter_recurse(
+                    child.shadow_roots[0], predicate, include_frames=include_frames
+                )
                 if shadow_root_result:
                     return shadow_root_result
-            result = filter_recurse(child, predicate)
+            if (
+                include_frames
+                and isinstance(child, cdp.dom.Node)
+                and child.content_document
+            ):
+                # same-origin iframes keep their document under content_document
+                # (Element.children already returns it for iframe elements)
+                content_document_result = filter_recurse(
+                    child.content_document, predicate, include_frames=include_frames
+                )
+                if content_document_result:
+                    return content_document_result
+            result = filter_recurse(child, predicate, include_frames=include_frames)
             if result:
                 return result
 

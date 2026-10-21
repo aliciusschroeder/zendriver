@@ -27,6 +27,7 @@ from typing import (
 from .intercept import BaseFetchInterception
 from .. import cdp
 from . import element, util
+from ._domlock import dom_locked
 from .config import PathLike
 from .connection import Connection, ProtocolException
 from .expect import DownloadExpectation, RequestExpectation, ResponseExpectation
@@ -513,6 +514,7 @@ class Tab(Connection):
             await self.wait()
             return self
 
+    @dom_locked
     async def query_selector_all(
         self,
         selector: str,
@@ -535,42 +537,38 @@ class Tab(Connection):
         if not _node:
             # Returns all document node ids here
             doc = await self.send(cdp.dom.get_document(-1, True))
-            if _include_frames:
-                # Collect all iframe content_document nodes
-                stack = [doc]
-                while stack:
-                    # pop off items to grab the nodes
-                    node = stack.pop()
-                    if node.content_document:
-                        # save the nodes
-                        content_doc_nodes.append(node.content_document)
-                        stack.append(node.content_document)
-                    if node.children:
-                        #  add back child nodes to pop later on
-                        stack.extend(node.children)
-
         else:
             doc = _node
             if _node.node_name == "IFRAME":
                 doc = _node.content_document
                 if doc is None:
                     return []  # cross-origin iframes block access to content_document, skip gracefully
+        if _include_frames:
+            # Collect all iframe content_document nodes
+            stack = [doc]
+            while stack:
+                # pop off items to grab the nodes
+                node = stack.pop()
+                if node.content_document:
+                    # save the nodes
+                    content_doc_nodes.append(node.content_document)
+                    stack.append(node.content_document)
+                if node.children:
+                    #  add back child nodes to pop later on
+                    stack.extend(node.children)
         node_ids = []
 
         try:
             node_ids = await self.send(
                 cdp.dom.query_selector_all(doc.node_id, selector)
             )
-            if _include_frames:
-                for cd_node in content_doc_nodes:
-                    try:
-                        node_ids.extend(
-                            await self.send(
-                                cdp.dom.query_selector_all(cd_node.node_id, selector)
-                            )
-                        )
-                    except Exception as e:
-                        print(f"Exception in new content doc ids loop {e}")
+            for cd_node in content_doc_nodes:
+                # a stale iframe document is retried below like the main document
+                node_ids.extend(
+                    await self.send(
+                        cdp.dom.query_selector_all(cd_node.node_id, selector)
+                    )
+                )
 
         except ProtocolException as e:
             if _node is not None:
@@ -584,9 +582,12 @@ class Tab(Connection):
                         await _node.update()
                     # make sure this isn't turned into infinite loop
                     setattr(_node, "__last", True)
-                    return await self.query_selector_all(
-                        selector, _node, _include_frames=_include_frames
-                    )
+                    try:
+                        return await self.query_selector_all(
+                            selector, _node, _include_frames=_include_frames
+                        )
+                    finally:
+                        vars(_node).pop("__last", None)
             else:
                 if e.message is not None and "could not find node" in e.message.lower():
                     # The document node is stale; refetch and retry once
@@ -597,11 +598,15 @@ class Tab(Connection):
                         selector, doc, _include_frames=_include_frames
                     )
 
-                await self.disable_dom_agent()
-                raise
+            await self.disable_dom_agent()
+            raise
         if not node_ids:
             return []
         items = []
+        # results of an element-scoped query belong to that element's document
+        tree = doc
+        if isinstance(_node, element.Element) and doc is _node and _node.tree:
+            tree = _node.tree
 
         for nid in node_ids:
             node = util.filter_recurse(doc, lambda n: n.node_id == nid)
@@ -614,11 +619,14 @@ class Tab(Connection):
             # to improve performance
             if not node:
                 continue
-            elem = element.create(node, self, doc)
+            if isinstance(node, element.Element):
+                node = node.node
+            elem = element.create(node, self, tree)
             items.append(elem)
 
         return items
 
+    @dom_locked
     async def query_selector(
         self,
         selector: str,
@@ -640,6 +648,8 @@ class Tab(Connection):
             doc = _node
             if _node.node_name == "IFRAME":
                 doc = _node.content_document
+                if doc is None:
+                    return None  # cross-origin iframes block access to content_document
         node_id = None
 
         try:
@@ -657,7 +667,10 @@ class Tab(Connection):
                         await _node.update()
                     # make sure this isn't turned into infinite loop
                     setattr(_node, "__last", True)
-                    return await self.query_selector(selector, _node)
+                    try:
+                        return await self.query_selector(selector, _node)
+                    finally:
+                        vars(_node).pop("__last", None)
             elif (
                 e.message is not None
                 and "could not find node" in e.message.lower()
@@ -668,20 +681,27 @@ class Tab(Connection):
                 # Prevent double-retry by marking this node as 'last attempt'
                 setattr(doc, "__last", True)
                 return await self.query_selector(selector, doc)
-            else:
-                await self.disable_dom_agent()
-                raise
+            await self.disable_dom_agent()
+            raise
         if not node_id:
             return None
         node = util.filter_recurse(doc, lambda n: n.node_id == node_id)
         if not node:
             return None
-        return element.create(node, self, doc)
+        if isinstance(node, element.Element):
+            node = node.node
+        # results of an element-scoped query belong to that element's document
+        tree = doc
+        if isinstance(_node, element.Element) and doc is _node and _node.tree:
+            tree = _node.tree
+        return element.create(node, self, tree)
 
+    @dom_locked
     async def find_elements_by_text(
         self,
         text: str,
         tag_hint: Optional[str] = None,
+        return_enclosing_element: bool = True,
     ) -> list[Element]:
         """
         returns element which match the given text.
@@ -690,6 +710,7 @@ class Tab(Connection):
 
         :param text:
         :param tag_hint: when provided, narrows down search to only elements which match given tag eg: a, div, script, span
+        :param return_enclosing_element: when True (default), text nodes are replaced by the element containing them
         :return:
         :rtype:
         """
@@ -726,7 +747,7 @@ class Tab(Connection):
                 elem = element.create(node, self, doc)
             except Exception:
                 continue
-            if elem.node_type == 3:
+            if elem.node_type == 3 and return_enclosing_element:
                 # if found element is a text node (which is plain text, and useless for our purpose),
                 # we return the parent element of the node (which is often a tag which can have text between their
                 # opening and closing tags (that is most tags, except for example "img" and "video", "br")
@@ -762,16 +783,32 @@ class Tab(Connection):
                     )
                     if iframe_text_nodes:
                         iframe_text_elems = [
-                            element.create(text_node.node, self, iframe_elem.tree)
+                            element.create(
+                                text_node.node
+                                if isinstance(text_node, element.Element)
+                                else text_node,
+                                self,
+                                iframe_elem.tree,
+                            )
                             for text_node in iframe_text_nodes
                         ]
+                        if not return_enclosing_element:
+                            items.extend(iframe_text_elems)
+                            continue
                         items.extend(
                             text_node.parent
                             for text_node in iframe_text_elems
                             if text_node.parent
                         )
         await self.disable_dom_agent()
-        return items or []
+        # an element can match more than once (attribute and text, several text nodes)
+        unique: dict[cdp.dom.BackendNodeId, Element] = {}
+        for item in items:
+            unique.setdefault(item.backend_node_id, item)
+        items = list(unique.values())
+        if tag_hint:
+            items = [item for item in items if item.tag == tag_hint.strip().lower()]
+        return items
 
     async def find_element_by_text(
         self,
@@ -792,7 +829,9 @@ class Tab(Connection):
         :return:
         :rtype:
         """
-        items = await self.find_elements_by_text(text)
+        items = await self.find_elements_by_text(
+            text, return_enclosing_element=bool(return_enclosing_element)
+        )
         try:
             if not items:
                 return None

@@ -12,6 +12,7 @@ from deprecated import deprecated
 
 from .. import cdp
 from . import util
+from ._domlock import dom_locked
 from ._contradict import ContraDict
 from .config import PathLike
 from .keys import KeyEvents, KeyPressEvent, SpecialKeys
@@ -276,6 +277,7 @@ class Element:
         await self._tab.send(cdp.dom.set_outer_html(self.node_id, outer_html=str(self)))
         await self.update()
 
+    @dom_locked
     async def remove_from_dom(self) -> None:
         """removes the element from dom"""
         await self.update()  # ensure we have latest node_id
@@ -290,6 +292,7 @@ class Element:
             await self.tab.send(cdp.dom.remove_node(node.node_id))
         # self._tree = util.remove_from_tree(self.tree, self.node)
 
+    @dom_locked
     async def update(self, _node: cdp.dom.Node | None = None) -> Element:
         """
         updates element to retrieve more properties. for example this enables
@@ -802,7 +805,9 @@ class Element:
         :return:
         :rtype:
         """
-        text_node = util.filter_recurse(self.node, lambda n: n.node_type == 3)
+        text_node = util.filter_recurse(
+            self.node, lambda n: n.node_type == 3, include_frames=False
+        )
         if text_node:
             return text_node.node_value
         return ""
@@ -818,6 +823,7 @@ class Element:
         text_nodes = util.filter_recurse_all(self.node, lambda n: n.node_type == 3)
         return " ".join([n.node_value for n in text_nodes])
 
+    @dom_locked
     async def query_selector_all(self, selector: str) -> list[Element]:
         """
         like js querySelectorAll()
@@ -825,6 +831,7 @@ class Element:
         await self.update()
         return await self.tab.query_selector_all(selector, _node=self)
 
+    @dom_locked
     async def query_selector(self, selector: str) -> Element | None:
         """
         like js querySelector()

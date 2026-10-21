@@ -27,6 +27,7 @@ from typing import (
 from .intercept import BaseFetchInterception
 from .. import cdp
 from . import element, util
+from ._domlock import dom_locked
 from .config import PathLike
 from .connection import Connection, ProtocolException
 from .expect import DownloadExpectation, RequestExpectation, ResponseExpectation
@@ -513,6 +514,7 @@ class Tab(Connection):
             await self.wait()
             return self
 
+    @dom_locked
     async def query_selector_all(
         self,
         selector: str,
@@ -584,9 +586,12 @@ class Tab(Connection):
                         await _node.update()
                     # make sure this isn't turned into infinite loop
                     setattr(_node, "__last", True)
-                    return await self.query_selector_all(
-                        selector, _node, _include_frames=_include_frames
-                    )
+                    try:
+                        return await self.query_selector_all(
+                            selector, _node, _include_frames=_include_frames
+                        )
+                    finally:
+                        vars(_node).pop("__last", None)
             else:
                 if e.message is not None and "could not find node" in e.message.lower():
                     # The document node is stale; refetch and retry once
@@ -619,6 +624,7 @@ class Tab(Connection):
 
         return items
 
+    @dom_locked
     async def query_selector(
         self,
         selector: str,
@@ -657,7 +663,10 @@ class Tab(Connection):
                         await _node.update()
                     # make sure this isn't turned into infinite loop
                     setattr(_node, "__last", True)
-                    return await self.query_selector(selector, _node)
+                    try:
+                        return await self.query_selector(selector, _node)
+                    finally:
+                        vars(_node).pop("__last", None)
             elif (
                 e.message is not None
                 and "could not find node" in e.message.lower()
@@ -678,6 +687,7 @@ class Tab(Connection):
             return None
         return element.create(node, self, doc)
 
+    @dom_locked
     async def find_elements_by_text(
         self,
         text: str,
