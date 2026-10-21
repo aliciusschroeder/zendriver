@@ -81,10 +81,21 @@ Note: the machine has 4 CPUs, so each workflow runs at most 2 agents at a time.
 * Sync fix: fixers detach their branch when done, so the sync now pushes every local `fix/*` ref each round
   (before, five branches had not reached origin). All 12 verified on origin.
 
-## Stage 5 — integrate (pending)
-Planned: merge fix branches one by one (same-file groups sequentially), lint + unit tests
-after each, CHANGELOG lines, full headless suite vs baseline, 5x loop of new tests, final
-review workflow (2–3 reviewers), push, final report, `scratch/PR.md`.
+## Stage 5 — integrate (in progress since 06:12)
+* Merged into `ccr-9a8a26e1-b0l7bh` one at a time with `git merge --no-ff` (tools/integrate_one.sh: merge, then
+  lint + full headless suite): Q8 c852ec8, Q6 522a256, Q5 f092fe8, Q11 9fb97eb, Q10 7fa5cf9, Q2 b5f083e,
+  Q7 d22627e, Q12 56c4bb9, Q1 4495b70, Q9 ff60a2a, Q4 4767cf3, Q3 e4846f7. Only test files conflicted (tests
+  appended at the same spot / import lines); every resolution keeps both sides. No source conflicts.
+* CHANGELOG: 8ae752b (12 lines under [Unreleased] → Fixed). Pushed.
+* Pre-existing flakiness found: tests that `evaluate()` right after `browser.get()` race the page load (get returns
+  when navigation starts). Base 064148f failed 2 of 4 full runs (test_get_position_abs_includes_scroll_offset,
+  test_handler_raising_type_error_is_called_once); intermediate merges showed the same family
+  (test_element_get_returns_empty_attribute_value, test_shadow_children_includes_closed_shadow_root,
+  test_is_scrolled_to_bottom, test_infinite_scrolling_tutorial_1). Not caused by any fix (A/B checked).
+* Final tip 8ae752b: lint clean; full headless suite 4/4 runs 197 passed, 1 skipped (Py 3.13); 2/2 runs 195 passed,
+  3 skipped on Py 3.10.20 (2 ExceptionGroup cases skip < 3.11). Baseline was 118 passed, 1 skipped.
+* 79 new tests (ids in scratch/integration/ids-new.txt) run 5x serially: 79 passed every time.
+* Next: final adversarial review workflow (3 reviewers, cross-fix interactions).
 
 ## Persistence (set up 22:30, during Stage 3)
 * State worktree `/home/user/bughunt-state` on branch `ccr-9a8a26e1-b0l7bh-state`, synced and pushed every 5 min by
