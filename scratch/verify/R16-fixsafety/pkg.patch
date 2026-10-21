@@ -1,0 +1,50 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zendriver/core/connection.py
+--- a/zendriver/core/connection.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/connection.py	2026-10-21 00:12:41.695796751 +0000
+@@ -524,7 +524,11 @@
+                     logger.debug("could not detach session %s", session_id)
+             logger.debug("\n❌ detached from target %s", self.target_id)
+             return
+-        if self.websocket is not None:
++        # wait for an aopen that is still connecting, so its websocket is closed
++        # here instead of being opened after this "close"
++        async with self._open_lock:
++            if self.websocket is None:
++                return
+             for session in list(self._sessions.values()):
+                 session._detach_session()
+             if self.listener and self.listener.running:
+@@ -664,6 +668,10 @@
+             e.message = e.message or ""
+             e.message += f"\ncommand:{tx.method}\nparams:{tx.params}"
+             raise e
++        finally:
++            # the listener pops answered transactions; one whose caller was
++            # cancelled (e.g. by asyncio.wait_for) must not stay behind
++            self.mapper.pop(tx.id, None)
+ 
+     #
+     async def _register_handlers(self) -> None:
+@@ -898,6 +906,10 @@
+ 
+     def run(self) -> None:
+         self.task = asyncio.create_task(self.listener_loop())
++        # a stopped listener receives nothing anymore, so it is idle. without this,
++        # Connection.wait() would wait forever on a listener that was cancelled
++        # (session detached) or whose websocket closed while it was busy
++        self.task.add_done_callback(lambda _: self.idle.set())
+ 
+     @property
+     def time_before_considered_idle(self) -> float:
+@@ -943,6 +955,11 @@
+                 )
+                 for session in list(self.connection._sessions.values()):
+                     session._detach_session()
++                # forget the dead websocket, so that `closed` is true and the
++                # next aopen() reconnects instead of reusing it
++                self.connection.websocket = None
++                self.connection.enabled_domains.clear()
++                self.connection.manually_enabled_domains.clear()
+                 self.connection._fail_pending_transactions(e)
+                 break
+ 
