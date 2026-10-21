@@ -573,7 +573,7 @@ class Element:
         )
         try:
             await self.flash()
-        except:  # noqa
+        except Exception:
             pass
 
     async def mouse_move(self) -> None:

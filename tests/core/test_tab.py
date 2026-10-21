@@ -1,6 +1,7 @@
 import asyncio
+import gc
 import pathlib
-from collections.abc import Generator
+from collections.abc import Awaitable, Callable, Coroutine, Generator
 from typing import Any
 
 import pytest
@@ -91,6 +92,47 @@ async def test_select(browser: zd.Browser) -> None:
     assert result is not None
     assert result.tag == "li"
     assert result.text == "Apples"
+
+
+def make_search_recording_tab(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[zd.Tab, list[tuple[str, str]], object]:
+    # both searches match anything, so `calls` shows which one wait_for used
+    calls: list[tuple[str, str]] = []
+    match = object()
+
+    async def query_selector(selector: str, *args: Any, **kwargs: Any) -> object:
+        calls.append(("query_selector", selector))
+        return match
+
+    async def find_element_by_text(text: str, *args: Any, **kwargs: Any) -> object:
+        calls.append(("find_element_by_text", text))
+        return match
+
+    tab = zd.Tab.__new__(zd.Tab)
+    monkeypatch.setattr(tab, "query_selector", query_selector)
+    monkeypatch.setattr(tab, "find_element_by_text", find_element_by_text)
+    return tab, calls, match
+
+
+async def test_call_with_text_searches_by_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    tab, calls, match = make_search_recording_tab(monkeypatch)
+
+    by_keyword = await tab(text="Apples", timeout=1)
+    by_position = await tab("Apples", timeout=1)
+
+    assert calls == [("find_element_by_text", "Apples")] * 2
+    assert by_keyword is match
+    assert by_position is match
+
+
+async def test_call_with_selector_queries_css(monkeypatch: pytest.MonkeyPatch) -> None:
+    tab, calls, match = make_search_recording_tab(monkeypatch)
+
+    result = await tab(selector="li", timeout=1)
+
+    assert calls == [("query_selector", "li")]
+    assert result is match
 
 
 async def test_query_selector_all_include_frames_queries_nested_iframe_documents(
@@ -412,6 +454,291 @@ async def test_wait_for_ready_state_times_out_when_evaluate_hangs(
     # TimeoutError has no message, so `match` tells the two apart
     with pytest.raises(asyncio.TimeoutError, match="until complete"):
         await asyncio.wait_for(tab.wait_for_ready_state("complete", timeout=1), 5)
+
+
+def make_ready_state_tab(
+    monkeypatch: pytest.MonkeyPatch, *states: str
+) -> tuple[zd.Tab, list[str]]:
+    """Tab whose evaluate() returns the given readyStates, repeating the last."""
+    seen: list[str] = []
+
+    async def evaluate(expression: str, *args: Any, **kwargs: Any) -> str:
+        assert expression == "document.readyState"
+        state = states[min(len(seen), len(states) - 1)]
+        seen.append(state)
+        return state
+
+    tab = zd.Tab.__new__(zd.Tab)
+    monkeypatch.setattr(tab, "evaluate", evaluate)
+    return tab, seen
+
+
+@pytest.mark.parametrize(
+    "until, current",
+    [
+        ("interactive", "complete"),
+        ("loading", "interactive"),
+        ("loading", "complete"),
+    ],
+)
+async def test_wait_for_ready_state_accepts_later_state(
+    monkeypatch: pytest.MonkeyPatch, until: Any, current: str
+) -> None:
+    tab, seen = make_ready_state_tab(monkeypatch, current)
+
+    # the outer wait_for is only a safety net; the inner timeout would raise
+    # a TimeoutError with a message
+    assert await asyncio.wait_for(tab.wait_for_ready_state(until, timeout=2), 5) is True
+    assert seen == [current]
+
+
+async def test_wait_for_ready_state_default_on_complete_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tab, seen = make_ready_state_tab(monkeypatch, "complete")
+
+    assert await asyncio.wait_for(tab.wait_for_ready_state(timeout=2), 5) is True
+    assert seen == ["complete"]
+
+
+async def test_wait_for_ready_state_waits_for_earlier_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tab, seen = make_ready_state_tab(monkeypatch, "loading", "loading", "interactive")
+    assert await asyncio.wait_for(tab.wait_for_ready_state(timeout=2), 5) is True
+    assert seen == ["loading", "loading", "interactive"]
+
+    tab, _ = make_ready_state_tab(monkeypatch, "loading", "interactive")
+    with pytest.raises(asyncio.TimeoutError, match="until complete"):
+        await asyncio.wait_for(tab.wait_for_ready_state("complete", timeout=1), 5)
+
+
+async def _never_answered(*args: Any, **kwargs: Any) -> None:
+    # a CDP response that never arrives, e.g. while the page shows an alert()
+    await asyncio.Event().wait()
+
+
+async def _no_op(*args: Any, **kwargs: Any) -> None:
+    return None
+
+
+@pytest.mark.parametrize(
+    "call, match",
+    [
+        (lambda tab: tab.select("#x", timeout=1), "selector: '#x'"),
+        (
+            lambda tab: tab.select("#x", timeout=1, include_frames=True),
+            "selector: '#x'",
+        ),
+        (lambda tab: tab.find("x", timeout=1), "text: 'x'"),
+        (lambda tab: tab.find_all("x", timeout=1), "any element with text: 'x'"),
+        (lambda tab: tab.select_all("#x", timeout=1), "any element with selector"),
+        (lambda tab: tab.wait_for(selector="#x", timeout=1), "time ran out"),
+        (lambda tab: tab.wait_for(text="x", timeout=1), "time ran out"),
+        (lambda tab: tab(selector="#x", timeout=1), "time ran out"),
+    ],
+    ids=[
+        "select",
+        "select_include_frames",
+        "find",
+        "find_all",
+        "select_all",
+        "wait_for_selector",
+        "wait_for_text",
+        "call",
+    ],
+)
+async def test_polling_methods_time_out_when_cdp_reply_never_arrives(
+    monkeypatch: pytest.MonkeyPatch,
+    call: Callable[[zd.Tab], Awaitable[Any]],
+    match: str,
+) -> None:
+    tab = zd.Tab.__new__(zd.Tab)
+    monkeypatch.setattr(tab, "send", _never_answered)
+    loop = asyncio.get_running_loop()
+    start_time = loop.time()
+
+    # the outer wait_for is only a safety net so the test can't hang; its
+    # TimeoutError has no message, so `match` tells the two apart
+    with pytest.raises(asyncio.TimeoutError, match=match):
+        await asyncio.wait_for(call(tab), 5)
+
+    # about the timeout of 1s, with a wide margin
+    assert loop.time() - start_time < 2.5
+
+
+@pytest.mark.parametrize("timeout", [1, 0, -1])
+async def test_xpath_returns_empty_list_when_cdp_reply_never_arrives(
+    monkeypatch: pytest.MonkeyPatch, timeout: float
+) -> None:
+    tab = zd.Tab.__new__(zd.Tab)
+    monkeypatch.setattr(tab, "send", _never_answered)
+    loop = asyncio.get_running_loop()
+    start_time = loop.time()
+
+    # the outer wait_for is only a safety net so the test can't hang
+    assert await asyncio.wait_for(tab.xpath("//x", timeout=timeout), 5) == []
+
+    # about the timeout, with a wide margin
+    assert loop.time() - start_time < max(timeout, 0) + 1.5
+
+
+async def test_xpath_with_zero_timeout_makes_one_attempt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tab = zd.Tab.__new__(zd.Tab)
+    found = [object()]
+    attempts = 0
+
+    async def find_all(*args: Any, **kwargs: Any) -> list[object]:
+        nonlocal attempts
+        attempts += 1
+        return found
+
+    monkeypatch.setattr(tab, "send", _no_op)
+    monkeypatch.setattr(tab, "find_all", find_all)
+
+    assert await tab.xpath("//x", timeout=0) == found
+    assert attempts == 1
+
+
+async def test_xpath_sleeps_between_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
+    tab = zd.Tab.__new__(zd.Tab)
+    attempts = 0
+
+    async def find_all(*args: Any, **kwargs: Any) -> list[object]:
+        nonlocal attempts
+        attempts += 1
+        raise asyncio.TimeoutError()  # nothing found
+
+    monkeypatch.setattr(tab, "send", _no_op)
+    monkeypatch.setattr(tab, "find_all", find_all)
+
+    assert await asyncio.wait_for(tab.xpath("//x", timeout=1), 5) == []
+    # an attempt every half second, instead of spinning
+    assert attempts <= 5
+
+
+@pytest.mark.parametrize("method", ["select", "find", "wait_for"])
+async def test_polling_methods_with_zero_timeout_make_one_attempt(
+    monkeypatch: pytest.MonkeyPatch, method: str
+) -> None:
+    tab = zd.Tab.__new__(zd.Tab)
+    element = object()
+
+    async def lookup(*args: Any, **kwargs: Any) -> object:
+        await asyncio.sleep(0.01)  # a CDP round trip
+        return element
+
+    monkeypatch.setattr(tab, "query_selector", lookup)
+    monkeypatch.setattr(tab, "find_element_by_text", lookup)
+
+    assert await getattr(tab, method)("x", timeout=0) is element
+
+
+@pytest.mark.parametrize("method", ["select", "find", "wait_for"])
+async def test_polling_methods_make_their_last_attempt_at_the_deadline(
+    monkeypatch: pytest.MonkeyPatch, method: str
+) -> None:
+    tab = zd.Tab.__new__(zd.Tab)
+    monkeypatch.setattr(tab, "update_target", _no_op)
+    loop = asyncio.get_running_loop()
+    start_time = loop.time()
+    element = object()
+
+    async def lookup(*args: Any, **kwargs: Any) -> object | None:
+        await asyncio.sleep(0.01)  # a CDP round trip
+        # appears after the attempt at 0.5s, before the one at the deadline
+        return element if loop.time() - start_time > 0.7 else None
+
+    monkeypatch.setattr(tab, "query_selector", lookup)
+    monkeypatch.setattr(tab, "find_element_by_text", lookup)
+
+    assert await asyncio.wait_for(getattr(tab, method)("x", timeout=1), 5) is element
+
+
+@pytest.mark.parametrize(
+    "call, lookup",
+    [
+        (lambda tab: tab.select("#x", timeout=5), "query_selector"),
+        (lambda tab: tab.select_all("#x", timeout=5), "query_selector_all"),
+        (lambda tab: tab.find("x", timeout=5), "find_element_by_text"),
+        (lambda tab: tab.find_all("x", timeout=5), "find_elements_by_text"),
+        (lambda tab: tab.wait_for(selector="#x", timeout=5), "query_selector"),
+        (lambda tab: tab.wait_for(text="x", timeout=5), "find_element_by_text"),
+        (lambda tab: tab.xpath("//x", timeout=5), "find_all"),
+    ],
+    ids=[
+        "select",
+        "select_all",
+        "find",
+        "find_all",
+        "wait_for_selector",
+        "wait_for_text",
+        "xpath",
+    ],
+)
+@pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+async def test_polling_methods_keep_a_cancel_that_arrives_with_the_answer(
+    monkeypatch: pytest.MonkeyPatch,
+    call: Callable[[zd.Tab], Coroutine[Any, Any, object]],
+    lookup: str,
+    fails: bool,
+) -> None:
+    tab = zd.Tab.__new__(zd.Tab)
+    monkeypatch.setattr(tab, "send", _no_op)
+    monkeypatch.setattr(tab, "disable_dom_agent", _no_op)
+    attempt_started = asyncio.Event()
+    answer: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
+
+    async def wait_for_answer(*args: Any, **kwargs: Any) -> Any:
+        attempt_started.set()
+        return await answer
+
+    monkeypatch.setattr(tab, lookup, wait_for_answer)
+    task = asyncio.create_task(call(tab))
+    await asyncio.wait_for(attempt_started.wait(), 5)
+
+    # the CDP answer arrives in the loop iteration in which the caller is
+    # cancelled. before python 3.12, asyncio.wait_for then returned the
+    # answer (or raised its exception) instead, and a cancelled scraping
+    # loop went on
+    if fails:
+        answer.set_exception(ProtocolException("the attempt failed"))
+    else:
+        answer.set_result([object()])
+    task.cancel()
+    await asyncio.wait({task}, timeout=5)
+
+    assert task.cancelled(), task.exception() or task.result()
+
+
+async def test_polling_methods_retrieve_the_error_of_a_cancelled_attempt(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    tab = zd.Tab.__new__(zd.Tab)
+    attempt_started = asyncio.Event()
+
+    async def fail_when_cancelled(*args: Any, **kwargs: Any) -> None:
+        attempt_started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            raise ProtocolException("the cancelled attempt failed") from None
+
+    monkeypatch.setattr(tab, "query_selector", fail_when_cancelled)
+    task = asyncio.create_task(tab.select("#x", timeout=5))
+    await asyncio.wait_for(attempt_started.wait(), 5)
+    task.cancel()
+    await asyncio.wait({task}, timeout=5)
+
+    assert task.cancelled()
+    # nobody awaits the cancelled attempt, so the bound has to retrieve its
+    # error, or asyncio logs "Task exception was never retrieved" with it
+    # when the attempt is garbage collected
+    del task
+    gc.collect()
+    assert "the cancelled attempt failed" not in caplog.text
 
 
 async def test_expect_request(browser: zd.Browser) -> None:

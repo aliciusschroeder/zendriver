@@ -50,7 +50,8 @@ class ContraDict(dict[str, Any]):
         super().__setitem__(key, _wrap(self.__class__, value))
 
     def __getattribute__(self, attribute: str) -> Any:
-        if attribute in self:
+        # keys must not shadow real attributes of the class (eg. the dict methods)
+        if attribute in self and not hasattr(type(self), attribute):
             return self[attribute]
         if not _check_key(attribute, self, True, silent=True):
             return getattr(super(), attribute)

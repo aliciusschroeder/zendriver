@@ -1,7 +1,11 @@
+import asyncio
 from typing import Any
+
+import pytest
 
 import zendriver as zd
 from tests.sample_data import sample_file
+from zendriver.core.element import Position
 
 
 async def open_mouse_events_page(browser: zd.Browser) -> zd.Tab:
@@ -98,3 +102,27 @@ async def test_element_mouse_drag_holds_button(browser: zd.Browser) -> None:
     assert events[-1]["type"] == "mouseup"
     assert (events[-1]["x"], events[-1]["y"]) == (325, 75)
     assert events[-1]["buttons"] == 0
+
+
+async def test_element_mouse_click_does_not_swallow_cancellation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def get_position(self: zd.Element, abs: bool = False) -> Position:
+        return Position([0, 0, 10, 0, 10, 10, 0, 10])
+
+    async def mouse_click(*args: Any, **kwargs: Any) -> None:
+        pass
+
+    async def flash(self: zd.Element, duration: float = 0.5) -> None:
+        # simulate a page too busy to answer the flash script
+        await asyncio.Event().wait()
+
+    tab = zd.Tab.__new__(zd.Tab)
+    monkeypatch.setattr(tab, "mouse_click", mouse_click)
+    monkeypatch.setattr(zd.Element, "get_position", get_position)
+    monkeypatch.setattr(zd.Element, "flash", flash)
+    element = zd.Element.__new__(zd.Element)
+    element._tab = tab
+
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(element.mouse_click(), timeout=0.5)

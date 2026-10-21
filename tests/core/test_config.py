@@ -57,6 +57,25 @@ def test_disable_features_is_passed_once() -> None:
     ]
 
 
+def test_disable_features_merges_browser_args_and_add_argument() -> None:
+    config = zd.Config(
+        browser_executable_path=FAKE_BROWSER_PATH,
+        browser_args=["--disable-features=FromBrowserArgs"],
+    )
+    config.add_argument("--disable-features=FromAddArgument,IsolateOrigins")
+
+    assert get_disable_features_args(config()) == [
+        "--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process,FromBrowserArgs,FromAddArgument"
+    ]
+
+
+def test_default_args_contain_no_duplicates() -> None:
+    args = zd.Config(browser_executable_path=FAKE_BROWSER_PATH)()
+
+    assert len(args) == len(set(args))
+    assert args.count("--disable-session-crashed-bubble") == 1
+
+
 def test_extensions_enable_unsafe_extension_debugging(
     tmp_path: pathlib.Path,
 ) -> None:
