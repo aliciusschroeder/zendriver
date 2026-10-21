@@ -1,0 +1,55 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
+--- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/browser.py	2026-10-21 01:44:04.633956579 +0000
+@@ -355,8 +355,11 @@
+                     filter(
+                         lambda item: item.target_id == target_info.target_id,
+                         self.targets,
+-                    )
++                    ),
++                    None,
+                 )
++                if current_tab is None:
++                    return
+                 current_target = current_tab.target
+ 
+                 if logger.getEffectiveLevel() <= 10:
+@@ -384,8 +387,14 @@
+ 
+             elif isinstance(event, cdp.target.TargetDestroyed):
+                 current_tab = next(
+-                    filter(lambda item: item.target_id == event.target_id, self.targets)
++                    filter(
++                        lambda item: item.target_id == event.target_id, self.targets
++                    ),
++                    None,
+                 )
++                # update_targets may have removed the target already
++                if current_tab is None:
++                    return
+                 logger.debug(
+                     "target removed. id # %d => %s"
+                     % (self.targets.index(current_tab), current_tab)
+@@ -634,7 +643,9 @@
+             self.connection.handlers[cdp.target.TargetCrashed] = [
+                 self._handle_target_update
+             ]
+-            await self.connection.send(cdp.target.set_discover_targets(discover=True))
++        # chrome only sends the target events which get() and Tab.close() wait for
++        # while target discovery is on, so it is on even without autodiscover_targets
++        await self.connection.send(cdp.target.set_discover_targets(discover=True))
+         await self.update_targets()
+         if not connect_existing:
+             await self._wait_for_initial_tab()
+@@ -821,6 +832,11 @@
+     async def update_targets(self) -> None:
+         targets: List[cdp.target.TargetInfo]
+         targets = await self._get_targets()
++        target_ids = {t.target_id for t in targets}
++        # targets chrome no longer lists were closed. the TargetDestroyed handler
++        # removes them as well, but only when autodiscover_targets is on
++        for existing_tab in [t for t in self.targets if t.target_id not in target_ids]:
++            self.targets.remove(existing_tab)
+         for t in targets:
+             for existing_tab in self.targets:
+                 if existing_tab.target_id == t.target_id:

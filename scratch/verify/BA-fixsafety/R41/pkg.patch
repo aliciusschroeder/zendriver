@@ -1,0 +1,159 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
+--- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/browser.py	2026-10-21 01:42:43.286958084 +0000
+@@ -19,7 +19,7 @@
+ import urllib.request
+ import warnings
+ from collections import defaultdict
+-from typing import Any, List, Literal, Tuple, Union, overload
++from typing import Any, Iterator, List, Literal, Tuple, Union, overload
+ 
+ import asyncio_atexit
+ 
+@@ -27,7 +27,7 @@
+ from . import tab, util
+ from ._contradict import ContraDict
+ from .config import BrowserType, Config, PathLike, is_posix
+-from .connection import Connection
++from .connection import Connection, ProtocolException
+ from .proxy import ProxyForwarder, UpstreamProxy
+ 
+ logger = logging.getLogger(__name__)
+@@ -716,7 +716,22 @@
+ 
+         permissions = list(cdp.browser.PermissionType)
+         permissions.remove(cdp.browser.PermissionType.CAPTURED_SURFACE_CONTROL)
+-        await self.connection.send(cdp.browser.grant_permissions(permissions))
++        # chrome rejects the whole call when it does not know one of the types, or
++        # can not grant it without an origin. so each type is tried on its own first,
++        # then the accepted ones are granted together, since every call denies all
++        # the types it does not grant
++        grantable = []
++        for permission in permissions:
++            try:
++                await self.connection.send(cdp.browser.grant_permissions([permission]))
++            except ProtocolException as e:
++                if e.code is None:
++                    # not an error answer of chrome, e.g. the connection was closed
++                    raise
++                logger.debug("could not grant permission %s: %s", permission, e)
++            else:
++                grantable.append(permission)
++        await self.connection.send(cdp.browser.grant_permissions(grantable))
+ 
+     async def tile_windows(
+         self, windows: List[tab.Tab] | None = None, max_columns: int = 0
+@@ -725,12 +740,12 @@
+ 
+         import mss
+ 
+-        m = mss.mss()
+         screen, screen_width, screen_height = 3 * (None,)
+-        if m.monitors and len(m.monitors) >= 1:
+-            screen = m.monitors[0]
+-            screen_width = screen["width"]
+-            screen_height = screen["height"]
++        with mss.mss() as m:
++            if m.monitors and len(m.monitors) >= 1:
++                screen = m.monitors[0]
++                screen_width = screen["width"]
++                screen_height = screen["height"]
+         if not screen or not screen_width or not screen_height:
+             warnings.warn("no monitors detected")
+             return []
+@@ -746,7 +761,9 @@
+             distinct_windows[window_id].append(tab_)
+ 
+         num_windows = len(distinct_windows)
+-        req_cols = max_columns or int(num_windows * (19 / 6))
++        if not num_windows:
++            return []
++        req_cols = max_columns or math.ceil(math.sqrt(num_windows))
+         req_rows = int(num_windows / req_cols)
+ 
+         while req_cols * req_rows < num_windows:
+@@ -840,31 +857,11 @@
+         if exc_type and exc_val:
+             raise exc_type(exc_val)
+ 
+-    def __iter__(self) -> Browser:
+-        main_tab = self.main_tab
+-        if not main_tab:
+-            return self
+-        self._i = self.tabs.index(main_tab)
+-        return self
+-
+-    def __reversed__(self) -> List[tab.Tab]:
+-        return list(reversed(list(self.tabs)))
++    def __iter__(self) -> Iterator[tab.Tab]:
++        return iter(self.tabs)
+ 
+-    def __next__(self) -> tab.Tab:
+-        try:
+-            return self.tabs[self._i]
+-        except IndexError:
+-            del self._i
+-            raise StopIteration
+-        except AttributeError:
+-            del self._i
+-            raise StopIteration
+-        finally:
+-            if hasattr(self, "_i"):
+-                if self._i != len(self.tabs):
+-                    self._i += 1
+-                else:
+-                    del self._i
++    def __reversed__(self) -> Iterator[tab.Tab]:
++        return reversed(self.tabs)
+ 
+     async def stop(self) -> None:
+         asyncio_atexit.unregister(self._atexit_cleanup)
+@@ -1033,7 +1030,7 @@
+         cookies = await self.get_all(requests_cookie_format=False)
+         included_cookies = []
+         for cookie in cookies:
+-            for match in compiled_pattern.finditer(str(cookie.__dict__)):
++            if _cookie_matches(compiled_pattern, cookie):
+                 logger.debug(
+                     "saved cookie for matching pattern '%s' => (%s: %s)",
+                     compiled_pattern.pattern,
+@@ -1041,7 +1038,6 @@
+                     cookie.value,
+                 )
+                 included_cookies.append(cookie)
+-                break
+         with save_path.open("w+b") as save_file:
+             pickle.dump(included_cookies, save_file)
+ 
+@@ -1069,7 +1065,7 @@
+             cookies = pickle.load(save_file)
+         included_cookies = []
+         for cookie in cookies:
+-            for match in compiled_pattern.finditer(str(cookie.__dict__)):
++            if _cookie_matches(compiled_pattern, cookie):
+                 included_cookies.append(cookie)
+                 logger.debug(
+                     "loaded cookie for matching pattern '%s' => (%s: %s)",
+@@ -1077,7 +1073,6 @@
+                     cookie.name,
+                     cookie.value,
+                 )
+-                break
+         await self.set_all(included_cookies)
+ 
+     async def clear(self) -> None:
+@@ -1136,6 +1131,14 @@
+         return json.loads(response.read())
+ 
+ 
++def _cookie_matches(pattern: re.Pattern[str], cookie: cdp.network.Cookie) -> bool:
++    """whether the domain, name or value of the cookie matches the pattern"""
++    return any(
++        pattern.search(field) is not None
++        for field in (cookie.domain, cookie.name, cookie.value)
++    )
++
++
+ def _to_cookiejar_cookie(cookie: cdp.network.Cookie) -> http.cookiejar.Cookie:
+     return http.cookiejar.Cookie(
+         version=0,
