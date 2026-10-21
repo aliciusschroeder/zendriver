@@ -1,0 +1,227 @@
+/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/zendriver/__init__.py
+bringing up nodes...
+bringing up nodes...
+
+.............................................s.....s.................... [ 36%]
+..............................................F....................s.... [ 72%]
+............................F.F.....F.................                   [100%]
+=================================== FAILURES ===================================
+__________ test_handler_raising_type_error_is_called_once[headless0] ___________
+[gw0] linux -- Python 3.10.20 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/flaky-check/.venv/bin/python
+
+browser = <zendriver.core.browser.Browser object at 0x7fe1c70cb970>
+
+    async def test_handler_raising_type_error_is_called_once(
+        browser: zd.Browser,
+    ) -> None:
+        tab = await browser.get(sample_file("groceries.html"))
+        calls: list[tuple[Any, ...]] = []
+        called = asyncio.Event()
+    
+        async def handler(*args: Any) -> None:
+            calls.append(args)
+            called.set()
+            raise TypeError("raised by the handler itself")
+    
+        tab.add_handler(zd.cdp.page.LoadEventFired, handler)
+        await tab.reload()
+        await asyncio.wait_for(called.wait(), 5)
+        await tab.wait(0.5)
+    
+>       assert len(calls) == 1
+E       assert 2 == 1
+E        +  where 2 = len([(LoadEventFired(timestamp=MonotonicTime(39831.994352)), <Tab [7EB0484DC6AB56EAE5EA221C8424DC87] [page] [url: file:///...ndriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/sample_data/groceries.html]>)])
+
+tests/core/test_tab.py:353: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    asyncio:base_events.py:1758 Task exception was never retrieved
+future: <Task finished name='Task-1330' coro=<test_handler_raising_type_error_is_called_once.<locals>.handler() done, defined at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/core/test_tab.py:343> exception=TypeError('raised by the handler itself')>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/core/test_tab.py", line 346, in handler
+    raise TypeError("raised by the handler itself")
+TypeError: raised by the handler itself
+ERROR    asyncio:base_events.py:1758 Task exception was never retrieved
+future: <Task finished name='Task-1349' coro=<test_handler_raising_type_error_is_called_once.<locals>.handler() done, defined at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/core/test_tab.py:343> exception=TypeError('raised by the handler itself')>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/core/test_tab.py", line 346, in handler
+    raise TypeError("raised by the handler itself")
+TypeError: raised by the handler itself
+____________________ test_is_scrolled_to_bottom[headless0] _____________________
+[gw1] linux -- Python 3.10.20 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/flaky-check/.venv/bin/python
+
+browser = <zendriver.core.browser.Browser object at 0x7f4711392020>
+
+    async def test_is_scrolled_to_bottom(browser: zd.Browser) -> None:
+        tab = await browser.get(sample_file("groceries.html"))
+>       await tab.evaluate("document.body.style.height = '5000px'")
+
+tests/core/test_tab.py:973: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Tab [94BDFB712ECB76BD1B7A950F32FE45D5] [page] [url: file:///tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/sample_data/groceries.html]>
+expression = "document.body.style.height = '5000px'", await_promise = False
+return_by_value = True
+
+    async def evaluate(
+        self, expression: str, await_promise: bool = False, return_by_value: bool = True
+    ) -> Any:
+        ser: cdp.runtime.SerializationOptions | None = None
+        if not return_by_value:
+            ser = cdp.runtime.SerializationOptions(
+                serialization="deep",
+                max_depth=10,
+                additional_parameters={"maxNodeDepth": 10, "includeShadowTree": "all"},
+            )
+    
+        remote_object, errors = await self.send(
+            cdp.runtime.evaluate(
+                expression=expression,
+                user_gesture=True,
+                await_promise=await_promise,
+                return_by_value=return_by_value,
+                allow_unsafe_eval_blocked_by_csp=True,
+                serialization_options=ser,
+            )
+        )
+        if errors:
+>           raise ProtocolException(errors)
+E           zendriver.core.connection.ProtocolException: 
+E           exceptionId: 1
+E           text: Uncaught
+E           lineNumber: 0
+E           columnNumber: 14
+E           scriptId: 5
+E           exception: 
+E           	type: object
+E           	subtype: error
+E           	className: TypeError
+E           	description: TypeError: Cannot read properties of null (reading 'style')
+E               at <anonymous>:1:15
+E           	objectId: -4759579677937114797.2.2
+
+zendriver/core/tab.py:928: ProtocolException
+_________ test_shadow_children_includes_closed_shadow_root[headless0] __________
+[gw1] linux -- Python 3.10.20 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/flaky-check/.venv/bin/python
+
+browser = <zendriver.core.browser.Browser object at 0x7f4711392020>
+
+    async def test_shadow_children_includes_closed_shadow_root(
+        browser: zd.Browser,
+    ) -> None:
+        tab = await browser.get(sample_file("groceries.html"))
+>       await tab.evaluate(
+            """
+            const root = document.querySelector("h1").attachShadow({ mode: "closed" });
+            root.innerHTML = "<button id='shadow-button'>Shadow</button>";
+            """
+        )
+
+tests/core/test_tab.py:986: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Tab [1C1E06A5C92545D607F5D6ED8E79B272] [page] [url: file:///tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/sample_data/groceries.html]>
+expression = '\n        const root = document.querySelector("h1").attachShadow({ mode: "closed" });\n        root.innerHTML = "<button id=\'shadow-button\'>Shadow</button>";\n        '
+await_promise = False, return_by_value = True
+
+    async def evaluate(
+        self, expression: str, await_promise: bool = False, return_by_value: bool = True
+    ) -> Any:
+        ser: cdp.runtime.SerializationOptions | None = None
+        if not return_by_value:
+            ser = cdp.runtime.SerializationOptions(
+                serialization="deep",
+                max_depth=10,
+                additional_parameters={"maxNodeDepth": 10, "includeShadowTree": "all"},
+            )
+    
+        remote_object, errors = await self.send(
+            cdp.runtime.evaluate(
+                expression=expression,
+                user_gesture=True,
+                await_promise=await_promise,
+                return_by_value=return_by_value,
+                allow_unsafe_eval_blocked_by_csp=True,
+                serialization_options=ser,
+            )
+        )
+        if errors:
+>           raise ProtocolException(errors)
+E           zendriver.core.connection.ProtocolException: 
+E           exceptionId: 1
+E           text: Uncaught
+E           lineNumber: 1
+E           columnNumber: 49
+E           scriptId: 5
+E           exception: 
+E           	type: object
+E           	subtype: error
+E           	className: TypeError
+E           	description: TypeError: Cannot read properties of null (reading 'attachShadow')
+E               at <anonymous>:2:50
+E           	objectId: 3837970690642761147.2.2
+
+zendriver/core/tab.py:928: ProtocolException
+__________ test_element_get_returns_empty_attribute_value[headless0] ___________
+[gw1] linux -- Python 3.10.20 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/flaky-check/.venv/bin/python
+
+browser = <zendriver.core.browser.Browser object at 0x7f4711392020>
+
+    async def test_element_get_returns_empty_attribute_value(browser: zd.Browser) -> None:
+        tab = await browser.get(sample_file("groceries.html"))
+>       await tab.evaluate("document.querySelector('#download_file').disabled = true")
+
+tests/core/test_tab.py:1022: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Tab [91733CEB38F31C3F53EF28C04A507173] [page] [url: file:///tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/run/tests/sample_data/groceries.html]>
+expression = "document.querySelector('#download_file').disabled = true"
+await_promise = False, return_by_value = True
+
+    async def evaluate(
+        self, expression: str, await_promise: bool = False, return_by_value: bool = True
+    ) -> Any:
+        ser: cdp.runtime.SerializationOptions | None = None
+        if not return_by_value:
+            ser = cdp.runtime.SerializationOptions(
+                serialization="deep",
+                max_depth=10,
+                additional_parameters={"maxNodeDepth": 10, "includeShadowTree": "all"},
+            )
+    
+        remote_object, errors = await self.send(
+            cdp.runtime.evaluate(
+                expression=expression,
+                user_gesture=True,
+                await_promise=await_promise,
+                return_by_value=return_by_value,
+                allow_unsafe_eval_blocked_by_csp=True,
+                serialization_options=ser,
+            )
+        )
+        if errors:
+>           raise ProtocolException(errors)
+E           zendriver.core.connection.ProtocolException: 
+E           exceptionId: 1
+E           text: Uncaught
+E           lineNumber: 0
+E           columnNumber: 50
+E           scriptId: 5
+E           exception: 
+E           	type: object
+E           	subtype: error
+E           	className: TypeError
+E           	description: TypeError: Cannot set properties of null (setting 'disabled')
+E               at <anonymous>:1:51
+E           	objectId: -4715697953358544491.2.2
+
+zendriver/core/tab.py:928: ProtocolException
+=========================== short test summary info ============================
+FAILED tests/core/test_tab.py::test_handler_raising_type_error_is_called_once[headless0]
+FAILED tests/core/test_tab.py::test_is_scrolled_to_bottom[headless0] - zendri...
+FAILED tests/core/test_tab.py::test_shadow_children_includes_closed_shadow_root[headless0]
+FAILED tests/core/test_tab.py::test_element_get_returns_empty_attribute_value[headless0]
+SKIPPED [1] tests/core/test_connection.py:470: ExceptionGroup needs Python 3.11+
+SKIPPED [1] tests/core/test_drm.py:23: Chromium does not include Widevine
+SKIPPED [1] tests/core/test_browser.py:376: ExceptionGroup needs Python 3.11+
+4 failed, 191 passed, 3 skipped in 33.71s
+exit=1
