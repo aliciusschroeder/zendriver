@@ -595,8 +595,6 @@ class Connection(metaclass=CantTouchThis):
     ) -> None:
         """:meta private:"""
         await self.aclose()
-        if exc_type and exc_val:
-            raise exc_type(exc_val)
 
     def __await__(self) -> Any:
         """

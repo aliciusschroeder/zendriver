@@ -1,13 +1,17 @@
 import asyncio
 import gc
 import http.cookiejar
+import json
 import pathlib
 import pickle
 import subprocess
+import sys
 import weakref
+from typing import Callable
 
 import psutil
 import pytest
+import websockets
 from psutil import Process
 from pytest_mock import MockerFixture
 
@@ -356,3 +360,44 @@ async def test_get_tab_matches_url_and_title(browser: zd.Browser) -> None:
     assert await browser.get_tab("groceries.html") is tab
     assert await browser.get_tab("grocery list") is tab
     assert await browser.get_tab("does-not-exist") is None
+
+
+def _exception_group() -> BaseException:
+    if sys.version_info >= (3, 11):
+        return ExceptionGroup("group", [ValueError("inner")])  # noqa: F821
+    pytest.skip("ExceptionGroup needs Python 3.11+")
+
+
+@pytest.mark.parametrize(
+    "make_exception",
+    [
+        pytest.param(
+            lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+        ),
+        pytest.param(
+            lambda: websockets.exceptions.ConnectionClosedError(None, None),
+            id="connection-closed",
+        ),
+        pytest.param(
+            lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+            id="protocol",
+        ),
+        pytest.param(lambda: SystemExit(3), id="system-exit"),
+        pytest.param(_exception_group, id="exception-group"),
+    ],
+)
+async def test_aexit_propagates_the_original_exception(
+    make_exception: Callable[[], BaseException], tmp_path: pathlib.Path
+) -> None:
+    # never started: the fake path skips the browser lookup and tmp_path keeps
+    # Config from creating a temporary profile directory
+    browser = zd.Browser(
+        zd.Config(browser_executable_path="/path/to/browser", user_data_dir=tmp_path)
+    )
+
+    exception = make_exception()
+    with pytest.raises(type(exception)) as exc_info:
+        async with browser:
+            raise exception
+
+    assert exc_info.value is exception
