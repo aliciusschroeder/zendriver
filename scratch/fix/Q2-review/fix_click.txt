@@ -1,0 +1,106 @@
+    await challenge_iframe.scroll_into_view()
+
+    # To get the element's dimensions, its numeric 'node_id' is needed.
+    # This ID is obtained from the underlying node object.
+    logger.debug(
+        f"Getting box model for challenge iframe (node_id: {challenge_iframe.node.node_id})"
+    )
+    box_model_result = await tab.send(
+        cdp.dom.get_box_model(node_id=challenge_iframe.node.node_id)
+    )
+    # 'content_quad' is a list of 8 numbers representing the (x, y) coordinates
+    # of the four corners of the element's "content-box": [x1, y1, x2, y2, x3, y3, x4, y4].
+    content_quad = box_model_result.content
+
+    # Extract only the x coordinates of the 4 corners
+    x_coords = content_quad[0::2]
+    # Extract only the y coordinates of the 4 corners
+    y_coords = content_quad[1::2]
+
+    min_x = min(x_coords)
+    max_x = max(x_coords)
+    min_y = min(y_coords)
+    max_y = max(y_coords)
+
+    click_x = min_x + (max_x - min_x) * 0.15
+    click_y = min_y + (max_y - min_y) / 2
+
+    logger.debug(
+        f"Checkbox dimensions (content box): width={max_x - min_x}, height={max_y - min_y}"
+    )
+
+    if flash_corners:
+        logger.debug("Showing flash_point at the 4 corners.")
+        corners = list(zip(x_coords, y_coords))
+        for x_corner, y_corner in corners:
+            await tab.flash_point(x=x_corner, y=y_corner, duration=10)
+
+    if not host_element:
+        return
+
+    input_element = None
+    current_selector = None
+
+    # selector priority
+    # 1. challenge_selector
+    # 2. input[name=cf-turnstile-response]
+    # 3. input[name=cf_challenge_response]
+
+    # sometimes turnstile challenge have inputs 2 and 3.
+    # input 2 is default for turnstile challenge.
+
+    current_selector = (
+        challenge_selector
+        if challenge_selector
+        else "input[name=cf-turnstile-response]"
+    )
+
+    input_element = await tab.query_selector(current_selector)
+
+    if not input_element and not challenge_selector:
+        current_selector = "input[name=cf_challenge_response]"
+        input_element = await tab.query_selector(current_selector)
+
+    if not input_element:
+        return
+
+    checkbox_clicked = False
+
+    async def check_input(
+        input_el: Element, current_sltr: str, ckbx_clckd: bool
+    ) -> bool:
+        """Checks if the input element is still present and without a value."""
+        if not input_el:
+            return False
+        try:
+            await input_el
+            fresh_input = await tab.query_selector(current_sltr)
+        except Exception as e:
+            raise Exception(f"Error checking input element: {e}.")
+        if (input_el.attrs.get("value") or not fresh_input) and ckbx_clckd:
+            # If the input disappears or gets a value, assume it's successfully completed.
+            logger.debug("Input element check successful (disappeared or has value).")
+            return False
+        return True
+
+    while await check_input(
+        input_el=input_element,
+        current_sltr=current_selector,
+        ckbx_clckd=checkbox_clicked,
+    ):
+        if loop.time() - start_time >= timeout:
+            raise TimeoutError(
+                f"Could not solve the checkbox in {timeout} seconds (timeout during clicks)."
+            )
+        try:
+            await tab.mouse_click(click_x, click_y)
+            await asyncio.sleep(min(click_delay, start_time + timeout - loop.time()))
+            checkbox_clicked = True
+        except Exception as e:
+            if "could not find position" in str(e) and checkbox_clicked:
+                logger.debug("Checkbox disappeared after click. Assuming success.")
+                break
+            raise Exception(f"Error clicking checkbox: {e}.")
+
+    logger.debug("Checkbox challenge completed. ✔")
+    return
