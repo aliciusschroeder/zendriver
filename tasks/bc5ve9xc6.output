@@ -1,0 +1,6 @@
+/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BB-fixsafety/base/pkg/zendriver/cdp/background_service.py:190: error: Call to untyped function "event_class" in typed context  [no-untyped-call]
+/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BB-fixsafety/base/pkg/zendriver/cdp/background_service.py:208: error: Call to untyped function "event_class" in typed context  [no-untyped-call]
+Found 332 errors in 47 files (checked 15 source files)
+333 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BB-fixsafety/mypy_base_norm.txt
+
+[exited with code 0]
