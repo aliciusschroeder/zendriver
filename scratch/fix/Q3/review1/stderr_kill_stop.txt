@@ -1,0 +1,7 @@
+Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
+sys:1: ResourceWarning: unclosed file <_io.BufferedWriter name=8>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=9>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=11>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback

@@ -1,0 +1,9 @@
+/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/events.py:80: ResourceWarning: unclosed file <_io.BufferedWriter name=8>
+  self._context.run(self._callback, *self._args)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/events.py:80: ResourceWarning: unclosed file <_io.BufferedReader name=9>
+  self._context.run(self._callback, *self._args)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/events.py:80: ResourceWarning: unclosed file <_io.BufferedReader name=11>
+  self._context.run(self._callback, *self._args)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
