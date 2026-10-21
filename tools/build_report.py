@@ -48,4 +48,36 @@ for g in GROUPS:
                  f"- evidence: {where(first)}; members {', '.join(g['members'])}\n"
                  f"- finding: {g['title']}\n")
     out.append(line)
-print("\n".join(out))
+if "--table" not in sys.argv:
+    print("\n".join(out))
+
+
+def table():
+    fu = {r["unit"]: r for r in json.load(open(SCR + "/followup.json"))["results"]}
+    rows = ["| group | status | evidence (file:function:line) | patch / commit | tests |", "|---|---|---|---|---|"]
+    for g in GROUPS:
+        gid = g["id"]
+        first = next((m for m in g["members"] if m in F), None)
+        ev = where(first) if first else "seeded: " + g["files"].split(" (")[0]
+        ev = ev.replace("zendriver/core/", "")
+        if g["queue"] == "fix":
+            r = s4[gid]
+            subject = subprocess.run(["git", "-C", REPO, "log", "-1", "--format=%s", r["commit"]], capture_output=True, text=True).stdout.strip()
+            merge = next((m.split()[0] for m in merges if f"fix/{g['slug']}:" in m), "?")
+            n = len(r["rounds"][-1]["fix"]["tests_added"])
+            st = "fixed" if r["status"] == "APPROVED" else "BLOCKED"
+            rows.append(f"| {gid} {g['slug']} | {st} | {ev} | {subject} — {r['commit'][:7]} (merge {merge}) | {n} |")
+        else:
+            st = "report-only (design)" if g["queue"] == "design" else "report-only"
+            rows.append(f"| {gid} {g['slug']} | {st} | {ev} | — | — |")
+    names = {"U1": "final-review follow-up: connection (send/rollback/session failure)", "U2": "final-review follow-up: cancellation-safe timeout bounds", "U3": "final-review follow-up: concurrent stop with proxies + test sync"}
+    for uid, r in fu.items():
+        subject = subprocess.run(["git", "-C", REPO, "log", "-1", "--format=%s", r["commit"]], capture_output=True, text=True).stdout.strip()
+        merge = next((m.split()[0] for m in merges if f"fix/{r['slug']}:" in m), "?")
+        n = len(r["rounds"][-1]["fix"]["tests_added"])
+        rows.append(f"| {uid} {r['slug']} | fixed | {names[uid]} | {subject} — {r['commit'][:7]} (merge {merge}) | {n} |")
+    return "\n".join(rows)
+
+
+if __name__ == "__main__" and "--table" in sys.argv:
+    print(table())
