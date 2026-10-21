@@ -4,10 +4,11 @@ import http.cookiejar
 import json
 import pathlib
 import pickle
+import shutil
 import subprocess
 import sys
 import weakref
-from typing import Callable
+from typing import Any, AsyncGenerator, Callable
 
 import psutil
 import pytest
@@ -19,6 +20,8 @@ import zendriver as zd
 from tests.conftest import CreateBrowser
 from tests.sample_data import sample_file
 from zendriver import cdp
+from zendriver.core import util
+from zendriver.core._contradict import ContraDict
 from zendriver.core.connection import ProtocolException
 
 # these tests exercise the browser lifecycle (e.g. stopping it)
@@ -401,3 +404,148 @@ async def test_aexit_propagates_the_original_exception(
             raise exception
 
     assert exc_info.value is exception
+
+
+class FailingWebSocket:
+    """Fails every command, and records the methods it was sent."""
+
+    def __init__(self) -> None:
+        self.closed = False
+        self.methods: list[str] = []
+        self._replies: asyncio.Queue[str] = asyncio.Queue()
+
+    async def send(self, message: str) -> None:
+        command = json.loads(message)
+        self.methods.append(command["method"])
+        error = {"code": -32000, "message": "simulated failure"}
+        self._replies.put_nowait(json.dumps({"id": command["id"], "error": error}))
+
+    async def recv(self) -> str:
+        return await self._replies.get()
+
+    async def close(self) -> None:
+        # yield like a real close handshake, so the cancelled listener stops first
+        await asyncio.sleep(0)
+        self.closed = True
+
+
+class FakeBrowser:
+    """Stands in for the browser that Browser.start launches or attaches to."""
+
+    def __init__(self) -> None:
+        self.answers = True
+        self.browser: zd.Browser | None = None
+        self.processes: list[subprocess.Popen[bytes]] = []
+        self.websocket = FailingWebSocket()
+
+    def start_process(self, *args: Any, **kwargs: Any) -> subprocess.Popen[bytes]:
+        # a process that runs until it is stopped, in place of the browser
+        process = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(60)"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        self.processes.append(process)
+        return process
+
+    async def test_connection(self, browser: zd.Browser) -> bool:
+        self.browser = browser
+        if self.answers:
+            browser.info = ContraDict(
+                {"webSocketDebuggerUrl": "ws://127.0.0.1:1/devtools/browser/fake"},
+                silent=True,
+            )
+        return self.answers
+
+    async def start(self, timeout: float, **kwargs: Any) -> BaseException | None:
+        """returns what zd.start() raised, with a safety net that does not rely on it"""
+        task = asyncio.ensure_future(
+            asyncio.wait_for(
+                zd.start(browser_executable_path=sys.executable, **kwargs), timeout
+            )
+        )
+        done, _ = await asyncio.wait({task}, timeout=timeout + 20)
+        if not done:
+            task.cancel()
+            pytest.fail("start() did not return")
+        return task.exception()
+
+    @property
+    def profile(self) -> pathlib.Path:
+        assert self.browser is not None
+        return pathlib.Path(self.browser.config.user_data_dir)
+
+
+@pytest.fixture
+async def fake_browser(
+    monkeypatch: pytest.MonkeyPatch,
+) -> AsyncGenerator[FakeBrowser, None]:
+    fake = FakeBrowser()
+    registered = set(util.get_registered_instances())
+
+    async def connect(*args: Any, **kwargs: Any) -> FailingWebSocket:
+        return fake.websocket
+
+    async def test_connection(browser: zd.Browser) -> bool:
+        return await fake.test_connection(browser)
+
+    monkeypatch.setattr(util, "_start_process", fake.start_process)
+    monkeypatch.setattr(zd.Browser, "test_connection", test_connection)
+    monkeypatch.setattr(websockets, "connect", connect)
+    yield fake
+
+    # never leave anything behind, whatever start() did
+    for browser in util.get_registered_instances() - registered:
+        util.get_registered_instances().discard(browser)
+        if browser.connection:
+            await browser.connection.aclose()
+    for process in fake.processes:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+    if fake.browser is not None:
+        shutil.rmtree(fake.profile, ignore_errors=True)
+
+
+async def test_cancelled_start_stops_the_launched_browser(
+    fake_browser: FakeBrowser,
+) -> None:
+    # the browser never answers, so start() is still retrying when it is cancelled
+    fake_browser.answers = False
+    error = await fake_browser.start(
+        0.5, browser_connection_timeout=0.05, browser_connection_max_tries=1000
+    )
+
+    assert isinstance(error, asyncio.TimeoutError)
+    assert len(fake_browser.processes) == 1
+    assert fake_browser.processes[0].poll() is not None, "browser is still running"
+    assert not fake_browser.profile.exists(), "temporary profile was left behind"
+    assert fake_browser.browser not in util.get_registered_instances()
+
+
+async def test_failed_start_stops_the_launched_browser(
+    fake_browser: FakeBrowser,
+) -> None:
+    error = await fake_browser.start(10)
+
+    assert isinstance(error, ProtocolException)
+    assert len(fake_browser.processes) == 1
+    assert fake_browser.processes[0].poll() is not None, "browser is still running"
+    assert not fake_browser.profile.exists(), "temporary profile was left behind"
+    assert fake_browser.browser not in util.get_registered_instances()
+    assert fake_browser.websocket.closed
+
+
+async def test_failed_start_does_not_close_an_attached_browser(
+    fake_browser: FakeBrowser,
+) -> None:
+    # host and port given: start() attaches to a running browser instead of launching one
+    error = await fake_browser.start(10, host="127.0.0.1", port=9222)
+
+    assert isinstance(error, ProtocolException)
+    assert fake_browser.processes == []
+    assert "Browser.close" not in fake_browser.websocket.methods
+    assert fake_browser.websocket.closed
+    assert not fake_browser.profile.exists(), "temporary profile was left behind"
+    assert fake_browser.browser not in util.get_registered_instances()

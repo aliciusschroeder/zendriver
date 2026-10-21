@@ -576,6 +576,24 @@ class Browser:
 
         self._http = HTTPApi((self.config.host, self.config.port))
         util.get_registered_instances().add(self)
+        try:
+            await self._connect(connect_existing)
+        except BaseException:
+            # the caller never gets this instance when start() fails or is
+            # cancelled, so stop what was started here before re-raising
+            try:
+                if self.connection:
+                    # closing the connection first keeps stop() from sending
+                    # Browser.close, which would shut down a browser we only
+                    # attached to, and which a hung browser may never answer
+                    await self.connection.aclose()
+                await self.stop()
+            except Exception:
+                logger.warning("could not clean up after a failed start", exc_info=True)
+            raise
+        return self
+
+    async def _connect(self, connect_existing: bool) -> None:
         # try to connect immediately, then retry at the configured interval
         connected = await self.test_connection()
         for _ in range(self.config.browser_connection_max_tries):
@@ -640,7 +658,6 @@ class Browser:
             await self._wait_for_initial_tab()
         if self.config.headless:
             await self._read_headless_user_agent()
-        return self
 
     async def _wait_for_initial_tab(self) -> None:
         for _ in range(self.config.browser_connection_max_tries):
