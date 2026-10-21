@@ -1,6 +1,7 @@
 import asyncio
+import gc
 import pathlib
-from collections.abc import Awaitable, Callable, Generator
+from collections.abc import Awaitable, Callable, Coroutine, Generator
 from typing import Any
 
 import pytest
@@ -654,6 +655,90 @@ async def test_polling_methods_make_their_last_attempt_at_the_deadline(
     monkeypatch.setattr(tab, "find_element_by_text", lookup)
 
     assert await asyncio.wait_for(getattr(tab, method)("x", timeout=1), 5) is element
+
+
+@pytest.mark.parametrize(
+    "call, lookup",
+    [
+        (lambda tab: tab.select("#x", timeout=5), "query_selector"),
+        (lambda tab: tab.select_all("#x", timeout=5), "query_selector_all"),
+        (lambda tab: tab.find("x", timeout=5), "find_element_by_text"),
+        (lambda tab: tab.find_all("x", timeout=5), "find_elements_by_text"),
+        (lambda tab: tab.wait_for(selector="#x", timeout=5), "query_selector"),
+        (lambda tab: tab.wait_for(text="x", timeout=5), "find_element_by_text"),
+        (lambda tab: tab.xpath("//x", timeout=5), "find_all"),
+    ],
+    ids=[
+        "select",
+        "select_all",
+        "find",
+        "find_all",
+        "wait_for_selector",
+        "wait_for_text",
+        "xpath",
+    ],
+)
+@pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+async def test_polling_methods_keep_a_cancel_that_arrives_with_the_answer(
+    monkeypatch: pytest.MonkeyPatch,
+    call: Callable[[zd.Tab], Coroutine[Any, Any, object]],
+    lookup: str,
+    fails: bool,
+) -> None:
+    tab = zd.Tab.__new__(zd.Tab)
+    monkeypatch.setattr(tab, "send", _no_op)
+    monkeypatch.setattr(tab, "disable_dom_agent", _no_op)
+    attempt_started = asyncio.Event()
+    answer: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
+
+    async def wait_for_answer(*args: Any, **kwargs: Any) -> Any:
+        attempt_started.set()
+        return await answer
+
+    monkeypatch.setattr(tab, lookup, wait_for_answer)
+    task = asyncio.create_task(call(tab))
+    await asyncio.wait_for(attempt_started.wait(), 5)
+
+    # the CDP answer arrives in the loop iteration in which the caller is
+    # cancelled. before python 3.12, asyncio.wait_for then returned the
+    # answer (or raised its exception) instead, and a cancelled scraping
+    # loop went on
+    if fails:
+        answer.set_exception(ProtocolException("the attempt failed"))
+    else:
+        answer.set_result([object()])
+    task.cancel()
+    await asyncio.wait({task}, timeout=5)
+
+    assert task.cancelled(), task.exception() or task.result()
+
+
+async def test_polling_methods_retrieve_the_error_of_a_cancelled_attempt(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    tab = zd.Tab.__new__(zd.Tab)
+    attempt_started = asyncio.Event()
+
+    async def fail_when_cancelled(*args: Any, **kwargs: Any) -> None:
+        attempt_started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            raise ProtocolException("the cancelled attempt failed") from None
+
+    monkeypatch.setattr(tab, "query_selector", fail_when_cancelled)
+    task = asyncio.create_task(tab.select("#x", timeout=5))
+    await asyncio.wait_for(attempt_started.wait(), 5)
+    task.cancel()
+    await asyncio.wait({task}, timeout=5)
+
+    assert task.cancelled()
+    # nobody awaits the cancelled attempt, so the bound has to retrieve its
+    # error, or asyncio logs "Task exception was never retrieved" with it
+    # when the attempt is garbage collected
+    del task
+    gc.collect()
+    assert "the cancelled attempt failed" not in caplog.text
 
 
 async def test_expect_request(browser: zd.Browser) -> None:

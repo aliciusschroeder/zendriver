@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 
 from zendriver import cdp, util
 from zendriver.core.element import Element
-from zendriver.core.tab import _POLL_GRACE
+from zendriver.core.tab import _POLL_GRACE, _wait_for
 
 if TYPE_CHECKING:
     from zendriver.core.tab import Tab
@@ -105,7 +105,7 @@ async def cf_wait_for_interactive_challenge(
     # that never arrives (e.g. page blocked by a dialog) hangs here forever.
     # a scan started before the deadline gets _POLL_GRACE seconds to finish
     try:
-        found = await asyncio.wait_for(_poll(), max(timeout, 0) + _POLL_GRACE)
+        found = await _wait_for(_poll(), max(timeout, 0) + _POLL_GRACE)
     except asyncio.TimeoutError:
         found = None, None, None
     if found[2] is not None:
@@ -178,7 +178,7 @@ async def verify_cf(
     # click_delay sleeps are bounded by it too. the check after the last
     # click, made at the deadline, gets _POLL_GRACE seconds to finish
     try:
-        await asyncio.wait_for(
+        await _wait_for(
             _cf_click_challenge(
                 tab,
                 host_element,

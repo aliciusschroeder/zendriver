@@ -58,6 +58,35 @@ T = TypeVar("T")
 _POLL_GRACE = 0.5
 
 
+async def _wait_for(aw: Awaitable[T], timeout: float) -> T:
+    """
+    asyncio.wait_for, minus its lost cancellations before python 3.12: there,
+    a cancellation of the caller that arrives in the loop iteration in which
+    aw finishes is dropped, and wait_for returns aw's result (or raises its
+    exception) instead, so a cancelled polling loop keeps running.
+    see https://github.com/python/cpython/issues/86296
+
+    like wait_for, aw is cancelled, and gets to finish, when the timeout runs
+    out (raising asyncio.TimeoutError) or the caller is cancelled.
+    """
+    task = asyncio.ensure_future(aw)
+    # aw's outcome is dropped on timeout or cancellation; retrieve it so that
+    # asyncio does not log "exception was never retrieved"
+    task.add_done_callback(lambda t: t.cancelled() or t.exception())
+    try:
+        done, _ = await asyncio.wait({task}, timeout=timeout)
+    except asyncio.CancelledError:
+        task.cancel()
+        await asyncio.wait({task})
+        raise
+    if not done:
+        task.cancel()
+        await asyncio.wait({task})
+        if task.cancelled() or task.exception() is None:
+            raise asyncio.TimeoutError
+    return task.result()
+
+
 async def _poll_with_timeout(
     poll: Awaitable[T], timeout: Union[int, float], message: str
 ) -> T:
@@ -75,7 +104,7 @@ async def _poll_with_timeout(
     if timeout <= 0:
         return await poll
     try:
-        return await asyncio.wait_for(poll, timeout + _POLL_GRACE)
+        return await _wait_for(poll, timeout + _POLL_GRACE)
     except asyncio.TimeoutError:
         raise asyncio.TimeoutError(message) from None
 
@@ -533,7 +562,7 @@ class Tab(Connection):
         # xpath never raises, so unlike find and select it bounds its attempt
         # even with timeout <= 0, and returns [] when the bound runs out
         try:
-            return await asyncio.wait_for(_poll(), max(timeout, 0) + _POLL_GRACE)
+            return await _wait_for(_poll(), max(timeout, 0) + _POLL_GRACE)
         except asyncio.TimeoutError:
             return []
 
