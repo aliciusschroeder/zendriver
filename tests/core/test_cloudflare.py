@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Coroutine
 from typing import Any
 
 import pytest
@@ -213,3 +214,45 @@ async def test_verify_cf_click_delay_does_not_overrun_timeout(
 
     # about the timeout of 1s, with a wide margin
     assert loop.time() - start_time < 2.5
+
+
+@pytest.mark.parametrize("phase", ["find", "click"])
+@pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+async def test_cf_bounds_keep_a_cancel_that_arrives_with_the_answer(
+    monkeypatch: pytest.MonkeyPatch, phase: str, fails: bool
+) -> None:
+    attempt_started = asyncio.Event()
+    answer: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
+
+    async def wait_for_answer(*args: Any, **kwargs: Any) -> Any:
+        attempt_started.set()
+        return await answer
+
+    call: Coroutine[Any, Any, object]
+    found: Any
+    if phase == "find":
+        tab = zd.Tab.__new__(zd.Tab)
+        monkeypatch.setattr(
+            cloudflare_module, "cf_find_interactive_challenge", wait_for_answer
+        )
+        call = cloudflare_module.cf_is_interactive_challenge_present(tab, timeout=5)
+        found = (object(), object(), _FakeInputElement())
+    else:
+        tab = _tab_with_unsolved_challenge(monkeypatch)
+        monkeypatch.setattr(cloudflare_module, "_cf_click_challenge", wait_for_answer)
+        call = cloudflare_module.verify_cf(tab, timeout=5)
+        found = None
+    task = asyncio.create_task(call)
+    await asyncio.wait_for(attempt_started.wait(), 5)
+
+    # the CDP answer arrives in the loop iteration in which the caller is
+    # cancelled. before python 3.12, asyncio.wait_for then returned the
+    # answer (or raised its exception) instead
+    if fails:
+        answer.set_exception(RuntimeError("the attempt failed"))
+    else:
+        answer.set_result(found)
+    task.cancel()
+    await asyncio.wait({task}, timeout=5)
+
+    assert task.cancelled(), task.exception() or task.result()
