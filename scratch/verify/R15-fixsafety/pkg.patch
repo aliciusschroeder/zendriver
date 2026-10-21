@@ -1,0 +1,91 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
+--- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/browser.py	2026-10-20 23:59:11.471207792 +0000
+@@ -555,12 +555,6 @@
+                     )
+                 )
+ 
+-        if getattr(self.config, "_extensions", None):  # noqa
+-            self.config.add_argument(
+-                "--load-extension=%s"
+-                % ",".join(str(_) for _ in self.config._extensions)
+-            )  # noqa
+-
+         exe = self.config.browser_executable_path
+         params = self.config()
+         params.append("about:blank")
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/config.py b/zendriver/core/config.py
+--- a/zendriver/core/config.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/config.py	2026-10-21 00:01:43.637774557 +0000
+@@ -89,7 +89,7 @@
+         if not browser_executable_path:
+             browser_executable_path = find_executable(browser)
+ 
+-        self._browser_args = browser_args
++        self._browser_args = list(browser_args)
+         self.browser_executable_path = browser_executable_path
+         self.headless = headless
+         self.user_agent = user_agent
+@@ -134,7 +134,11 @@
+ 
+     @property
+     def browser_args(self) -> List[str]:
+-        return sorted(self._default_browser_args + self._browser_args)
++        return sorted(
++            merge_disable_features_args(
++                remove_duplicate_args(self._default_browser_args + self._browser_args)
++            )
++        )
+ 
+     @property
+     def user_data_dir(self) -> str:
+@@ -222,22 +226,18 @@
+         if self.disable_webgl:
+             args += ["--disable-webgl", "--disable-webgl2"]
+         if self._extensions:
++            args.append(
++                "--load-extension=%s" % ",".join(str(_) for _ in self._extensions)
++            )
+             args.append("--enable-unsafe-extension-debugging")
+ 
+-        return merge_disable_features_args(args)
++        return merge_disable_features_args(remove_duplicate_args(args))
+ 
+     def add_argument(self, arg: str) -> None:
+-        if any(
+-            x in arg.lower()
+-            for x in [
+-                "headless",
+-                "data-dir",
+-                "data_dir",
+-                "no-sandbox",
+-                "no_sandbox",
+-                "lang",
+-            ]
+-        ):
++        # only look at the switch name, so values like
++        # --disable-features=LanguageDetectionAPI or extension paths are allowed
++        name = arg.split("=", 1)[0].lstrip("-/").lower().replace("_", "-")
++        if name in ("headless", "user-data-dir", "no-sandbox", "lang"):
+             raise ValueError(
+                 '"%s" not allowed. please use one of the attributes of the Config object to set it'
+                 % arg
+@@ -281,6 +281,18 @@
+     return other_args
+ 
+ 
++def remove_duplicate_args(args: list[str]) -> list[str]:
++    """Drop repeated identical args, keeping the last copy because Chrome uses the last value of a switch."""
++    result: list[str] = []
++    seen: set[str] = set()
++    for arg in reversed(args):
++        if arg not in seen:
++            seen.add(arg)
++            result.append(arg)
++    result.reverse()
++    return result
++
++
+ def is_root() -> bool:
+     """
+     helper function to determine if user trying to launch chrome

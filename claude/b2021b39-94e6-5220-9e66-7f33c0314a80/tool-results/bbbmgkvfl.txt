@@ -1,0 +1,1029 @@
+064148f Add changelog entries for the duplicate argument and websocket race fixes
+31c92f1 Open the websocket only once when Connection.aopen races
+bf882f5 Do not pass --disable-session-crashed-bubble twice
+5fa91ac Merge pull request #1 from aliciusschroeder/feat/get-timeout
+f29522d Merge pull request #2 from aliciusschroeder/fix/headless-client-hints
+1023 zendriver/core/connection.py
+     1	from __future__ import annotations
+     2	
+     3	import asyncio
+     4	import collections
+     5	import inspect
+     6	import itertools
+     7	import json
+     8	import logging
+     9	import sys
+    10	import types
+    11	from typing import (
+    12	    TYPE_CHECKING,
+    13	    Any,
+    14	    Callable,
+    15	    Generic,
+    16	    Generator,
+    17	    List,
+    18	    Literal,
+    19	    Optional,
+    20	    TypeVar,
+    21	    Union,
+    22	)
+    23	
+    24	import websockets
+    25	import websockets.asyncio.client
+    26	
+    27	from .. import cdp
+    28	from . import util
+    29	
+    30	if TYPE_CHECKING:
+    31	    from zendriver.core.browser import Browser
+    32	
+    33	
+    34	T = TypeVar("T")
+    35	
+    36	GLOBAL_DELAY = 0.005
+    37	MAX_SIZE: int = 2**28
+    38	PING_TIMEOUT: int = 900  # 15 minutes
+    39	
+    40	TargetType = Union[cdp.target.TargetInfo, cdp.target.TargetID]
+    41	
+    42	logger = logging.getLogger("uc.connection")
+    43	
+    44	
+    45	class ProtocolException(Exception):
+    46	    def __init__(self, *args: Any):
+    47	        self.message = None
+    48	        self.code = None
+    49	        self.args = args
+    50	        if isinstance(args[0], dict):
+    51	            self.message = args[0].get("message", None)  # noqa
+    52	            self.code = args[0].get("code", None)
+    53	
+    54	        elif hasattr(args[0], "to_json"):
+    55	
+    56	            def serialize(obj: Any, _d: int = 0) -> str:
+    57	                res = "\n"
+    58	                for k, v in obj.items():
+    59	                    space = "\t" * _d
+    60	                    if isinstance(v, dict):
+    61	                        res += f"{space}{k}: {serialize(v, _d + 1)}\n"
+    62	                    else:
+    63	                        res += f"{space}{k}: {v}\n"
+    64	
+    65	                return res
+    66	
+    67	            self.message = serialize(args[0].to_json())
+    68	
+    69	        else:
+    70	            self.message = "| ".join(str(x) for x in args)
+    71	
+    72	    def __str__(self) -> str:
+    73	        return f"{self.message} [code: {self.code}]" if self.code else f"{self.message}"
+    74	
+    75	
+    76	class SettingClassVarNotAllowedException(PermissionError):
+    77	    pass
+    78	
+    79	
+    80	class Transaction(asyncio.Future[T], Generic[T]):
+    81	    def __init__(self, cdp_obj: Generator[dict[str, Any], dict[str, Any], T]):
+    82	        """
+    83	        :param cdp_obj:
+    84	        """
+    85	        super().__init__()
+    86	        self.__cdp_obj__ = cdp_obj
+    87	        self.connection: Connection | None = None
+    88	        self.id: int | None = None
+    89	        self.session_id: str | None = None
+    90	
+    91	        self.method, *params = next(self.__cdp_obj__).values()
+    92	        if params:
+    93	            params = params.pop()
+    94	        self.params = params
+    95	
+    96	    @property
+    97	    def message(self) -> str:
+    98	        message = {"method": self.method, "params": self.params, "id": self.id}
+    99	        if self.session_id is not None:
+   100	            message["sessionId"] = self.session_id
+   101	        return json.dumps(message)
+   102	
+   103	    @property
+   104	    def has_exception(self) -> bool:
+   105	        try:
+   106	            if self.exception():
+   107	                return True
+   108	        except:  # noqa
+   109	            return True
+   110	        return False
+   111	
+   112	    def __call__(self, **response: dict[str, Any]) -> None:
+   113	        """
+   114	        parsed the response message and marks the future
+   115	        complete
+   116	
+   117	        :param response:
+   118	        :return:
+   119	        """
+   120	
+   121	        if "error" in response:
+   122	            # set exception and bail out
+   123	            return self.set_exception(ProtocolException(response["error"]))
+   124	        try:
+   125	            # try to parse the result according to the py cdp docs.
+   126	            self.__cdp_obj__.send(response["result"])
+   127	        except StopIteration as e:
+   128	            # exception value holds the parsed response
+   129	            return self.set_result(e.value)
+   130	        raise ProtocolException("could not parse the cdp response:\n%s" % response)
+   131	
+   132	    def __repr__(self) -> str:
+   133	        success = False if (self.done() and self.has_exception) else True
+   134	        if self.done():
+   135	            status = "finished"
+   136	        else:
+   137	            status = "pending"
+   138	        fmt = (
+   139	            f"<{self.__class__.__name__}\n\t"
+   140	            f"method: {self.method}\n\t"
+   141	            f"status: {status}\n\t"
+   142	            f"success: {success}>"
+   143	        )
+   144	        return fmt
+   145	
+   146	
+   147	class EventTransaction(Transaction[Any]):
+   148	    event = None
+   149	    value = None
+   150	
+   151	    def __init__(self, event_object: Any):
+   152	        asyncio.Future.__init__(self)
+   153	        self.set_result(event_object)
+   154	        self.event = self.value = self.result()
+   155	
+   156	    def __repr__(self) -> str:
+   157	        status = "finished"
+   158	        success = False if self.exception() else True
+   159	        event_object = self.result()
+   160	        fmt = (
+   161	            f"{self.__class__.__name__}\n\t"
+   162	            f"event: {event_object.__class__.__module__}.{event_object.__class__.__name__}\n\t"
+   163	            f"status: {status}\n\t"
+   164	            f"success: {success}>"
+   165	        )
+   166	        return fmt
+   167	
+   168	
+   169	class CantTouchThis(type):
+   170	    def __setattr__(cls, attr: str, value: Any) -> None:
+   171	        """
+   172	        :meta private:
+   173	        """
+   174	        if attr == "__annotations__":
+   175	            # fix autodoc
+   176	            return super().__setattr__(attr, value)
+   177	        raise SettingClassVarNotAllowedException(
+   178	            "\n".join(
+   179	                (
+   180	                    "don't set '%s' on the %s class directly, as those are shared with other objects.",
+   181	                    "use `my_object.%s = %s`  instead",
+   182	                )
+   183	            )
+   184	            % (attr, cls.__name__, attr, value)
+   185	        )
+   186	
+   187	
+   188	class Connection(metaclass=CantTouchThis):
+   189	    websocket: websockets.asyncio.client.ClientConnection | None = None
+   190	    _target: cdp.target.TargetInfo | None
+   191	    _download_behavior: List[str] | None = None
+   192	
+   193	    def __init__(
+   194	        self,
+   195	        websocket_url: str,
+   196	        target: cdp.target.TargetInfo | None = None,
+   197	        _owner: Browser | None = None,
+   198	        **kwargs: Any,
+   199	    ):
+   200	        super().__init__()
+   201	        self._target = target
+   202	        self._message_ids = itertools.count(1)
+   203	        self._owner = _owner
+   204	        self.websocket_url: str = websocket_url
+   205	        self.websocket = None
+   206	        self.mapper: dict[int, Transaction[Any]] = {}
+   207	        self.handlers: dict[Any, list[Callable[..., Any]]] = collections.defaultdict(
+   208	            list
+   209	        )
+   210	        self.recv_task = None
+   211	        self.enabled_domains: list[Any] = []
+   212	        self.manually_enabled_domains: list[Any] = []
+   213	        self._last_result: list[Any] = []
+   214	        self.listener: Listener | None = None
+   215	        self.session_id: str | None = None
+   216	        self._session_parent: Connection | None = None
+   217	        self._sessions: dict[str, Connection] = {}
+   218	        self._inbox: asyncio.Queue[dict[str, Any]] | None = None
+   219	        self._attach_lock = asyncio.Lock()
+   220	        self._open_lock = asyncio.Lock()
+   221	        self.__dict__.update(**kwargs)
+   222	
+   223	    @property
+   224	    def target(self) -> cdp.target.TargetInfo | None:
+   225	        return self._target
+   226	
+   227	    @target.setter
+   228	    def target(self, target: cdp.target.TargetInfo) -> None:
+   229	        if not isinstance(target, cdp.target.TargetInfo):
+   230	            raise TypeError(
+   231	                "target must be set to a '%s' but got '%s"
+   232	                % (cdp.target.TargetInfo.__name__, type(target).__name__)
+   233	            )
+   234	        self._target = target
+   235	
+   236	    @property
+   237	    def target_id(self) -> cdp.target.TargetID | None:
+   238	        """
+   239	        returns the target id of the current target.
+   240	        if no target is set, it will return None.
+   241	        """
+   242	        if self.target:
+   243	            return self.target.target_id
+   244	        return None
+   245	
+   246	    @property
+   247	    def type_(self) -> str | None:
+   248	        """
+   249	        returns the type of the current target.
+   250	        if no target is set, it will return None.
+   251	        """
+   252	        if self.target:
+   253	            return self.target.type_
+   254	        return None
+   255	
+   256	    @property
+   257	    def title(self) -> str | None:
+   258	        """
+   259	        returns the title of the current target.
+   260	        if no target is set, it will return None.
+   261	        """
+   262	        if self.target:
+   263	            return self.target.title
+   264	        return None
+   265	
+   266	    @property
+   267	    def url(self) -> str | None:
+   268	        """
+   269	        returns the url of the current target.
+   270	        if no target is set, it will return None.
+   271	        """
+   272	        if self.target:
+   273	            return self.target.url
+   274	        return None
+   275	
+   276	    @property
+   277	    def attached(self) -> bool | None:
+   278	        """
+   279	        returns True if the current target is attached, False otherwise.
+   280	        if no target is set, it will return None.
+   281	        """
+   282	        if self.target:
+   283	            return self.target.attached
+   284	        return None
+   285	
+   286	    @property
+   287	    def can_access_opener(self) -> bool | None:
+   288	        """
+   289	        returns True if the current target can access its opener, False otherwise.
+   290	        if no target is set, it will return None.
+   291	        """
+   292	        if self.target:
+   293	            return self.target.can_access_opener
+   294	        return None
+   295	
+   296	    @property
+   297	    def opener_id(self) -> cdp.target.TargetID | None:
+   298	        """
+   299	        returns the opener id of the current target.
+   300	        if no target is set, it will return None.
+   301	        """
+   302	        if self.target:
+   303	            return self.target.opener_id
+   304	        return None
+   305	
+   306	    @property
+   307	    def opener_frame_id(self) -> cdp.page.FrameId | None:
+   308	        """
+   309	        returns the opener frame id of the current target.
+   310	        if no target is set, it will return None.
+   311	        """
+   312	        if self.target:
+   313	            return self.target.opener_frame_id
+   314	        return None
+   315	
+   316	    @property
+   317	    def browser_context_id(self) -> cdp.browser.BrowserContextID | None:
+   318	        """
+   319	        returns the browser context id of the current target.
+   320	        if no target is set, it will return None.
+   321	        """
+   322	        if self.target:
+   323	            return self.target.browser_context_id
+   324	        return None
+   325	
+   326	    @property
+   327	    def subtype(self) -> str | None:
+   328	        """
+   329	        returns the subtype of the current target.
+   330	        if no target is set, it will return None.
+   331	        """
+   332	        if self.target:
+   333	            return self.target.subtype
+   334	        return None
+   335	
+   336	    @property
+   337	    def closed(self) -> bool:
+   338	        return self.websocket is None
+   339	
+   340	    @property
+   341	    def _browser_connection(self) -> Connection | None:
+   342	        """
+   343	        the browser level connection which carries this target's flat session,
+   344	        or None if this connection owns its websocket
+   345	        """
+   346	        if self._owner is None or self.target is None:
+   347	            return None
+   348	        browser_connection = self._owner.connection
+   349	        if browser_connection is None or browser_connection is self:
+   350	            return None
+   351	        return browser_connection
+   352	
+   353	    def add_handler(
+   354	        self,
+   355	        event_type_or_domain: Union[type, types.ModuleType],
+   356	        handler: Callable[..., Any],
+   357	    ) -> None:
+   358	        """
+   359	        add a handler for given event
+   360	
+   361	        if event_type_or_domain is a module instead of a type, it will find all available events and add
+   362	        the handler.
+   363	
+   364	        if you want to receive event updates (network traffic are also 'events') you can add handlers for those events.
+   365	        handlers can be regular callback functions or async coroutine functions (and also just lamba's).
+   366	        handlers are called with the event, and with the connection as a second argument if they accept one.
+   367	        for example, you want to check the network traffic:
+   368	
+   369	        .. code-block::
+   370	
+   371	            page.add_handler(cdp.network.RequestWillBeSent, lambda event: print('network event => %s' % event.request))
+   372	
+   373	        the next time you make network traffic you will see your console print like crazy.
+   374	
+   375	        :param event_type_or_domain:
+   376	        :param handler:
+   377	
+   378	        :return:
+   379	        :rtype:
+   380	        """
+   381	        if isinstance(event_type_or_domain, types.ModuleType):
+   382	            for event_type in cdp.util.get_event_classes(event_type_or_domain):
+   383	                self.handlers[event_type].append(handler)
+   384	
+   385	        else:
+   386	            self.handlers[event_type_or_domain].append(handler)
+   387	
+   388	    def remove_handlers(
+   389	        self,
+   390	        event_type: Optional[type] = None,
+   391	        handler: Optional[Callable[..., Any]] = None,
+   392	    ) -> None:
+   393	        """
+   394	        remove handlers for given event
+   395	
+   396	        if no event is provided, all handlers will be removed.
+   397	        if no handler is provided, all handlers for the event will be removed.
+   398	
+   399	        .. code-block::
+   400	
+   401	                # remove all handlers for all events
+   402	                page.remove_handlers()
+   403	
+   404	                # remove all handlers for a specific event
+   405	                page.remove_handlers(cdp.network.RequestWillBeSent)
+   406	
+   407	                # remove a specific handler for a specific event
+   408	                page.remove_handlers(cdp.network.RequestWillBeSent, handler)
+   409	        """
+   410	
+   411	        if handler and not event_type:
+   412	            raise ValueError(
+   413	                "if handler is provided, event_type should be provided as well"
+   414	            )
+   415	
+   416	        if not event_type:
+   417	            self.handlers.clear()
+   418	            return
+   419	
+   420	        if not handler:
+   421	            self.handlers.pop(event_type, None)
+   422	            return
+   423	
+   424	        if handler in self.handlers[event_type]:
+   425	            self.handlers[event_type].remove(handler)
+   426	
+   427	    async def aopen(self) -> None:
+   428	        """
+   429	        opens the websocket connection. should not be called manually by users
+   430	        :return:
+   431	        """
+   432	        browser_connection = self._browser_connection
+   433	        if browser_connection is not None:
+   434	            await self._attach_session(browser_connection)
+   435	        elif self.websocket is None:
+   436	            # concurrent callers must not each open (and leak) their own websocket
+   437	            async with self._open_lock:
+   438	                if self.websocket is None:
+   439	                    try:
+   440	                        self.websocket = await websockets.connect(
+   441	                            self.websocket_url,
+   442	                            ping_timeout=PING_TIMEOUT,
+   443	                            max_size=MAX_SIZE,
+   444	                        )
+   445	                        self.listener = Listener(self)
+   446	                    except (Exception,) as e:
+   447	                        logger.debug("exception during opening of websocket : %s", e)
+   448	                        if self.listener:
+   449	                            self.listener.cancel()
+   450	                        raise
+   451	        if not self.listener or not self.listener.running:
+   452	            self.listener = Listener(self)
+   453	            logger.debug("\n✅  opened websocket connection to %s", self.websocket_url)
+   454	
+   455	        # when a websocket connection is closed (either by error or on purpose)
+   456	        # and reconnected, the registered event listeners (if any), should be
+   457	        # registered again, so the browser sends those events
+   458	        await self._register_handlers()
+   459	
+   460	    async def _attach_session(self, browser_connection: Connection) -> None:
+   461	        async with self._attach_lock:
+   462	            if self.session_id is not None:
+   463	                return
+   464	            if self.target_id is None:
+   465	                raise RuntimeError("cannot attach a session without a target")
+   466	            await browser_connection.aopen()
+   467	            session_id = await browser_connection.send(
+   468	                cdp.target.attach_to_target(self.target_id, flatten=True),
+   469	                _is_update=True,
+   470	            )
+   471	            self.session_id = session_id
+   472	            self._session_parent = browser_connection
+   473	            self._inbox = asyncio.Queue()
+   474	            browser_connection._sessions[session_id] = self
+   475	            self.websocket = browser_connection.websocket
+   476	            self.listener = Listener(self)
+   477	            logger.debug(
+   478	                "attached to target %s (session %s)", self.target_id, session_id
+   479	            )
+   480	
+   481	    def _detach_session(self) -> None:
+   482	        """
+   483	        forgets the flat session locally. the browser side session is not touched.
+   484	        """
+   485	        if self._session_parent is not None and self.session_id is not None:
+   486	            self._session_parent._sessions.pop(self.session_id, None)
+   487	        self.session_id = None
+   488	        self._session_parent = None
+   489	        self._inbox = None
+   490	        self.websocket = None
+   491	        if self.listener:
+   492	            self.listener.cancel()
+   493	        self.enabled_domains.clear()
+   494	        self.manually_enabled_domains.clear()
+   495	        self.__dict__.pop("_prep_headless_done", None)
+   496	        self.__dict__.pop("_prep_expert_done", None)
+   497	        self._fail_pending_transactions(
+   498	            ProtocolException("target session was detached")
+   499	        )
+   500	
+   501	    def _fail_pending_transactions(self, exception: BaseException) -> None:
+   502	        for tx in self.mapper.values():
+   503	            if not tx.done():
+   504	                tx.set_exception(exception)
+   505	        self.mapper.clear()
+   506	
+   507	    async def aclose(self) -> None:
+   508	        """
+   509	        closes the websocket connection. should not be called manually by users.
+   510	        """
+   511	        if self._session_parent is not None:
+   512	            browser_connection = self._session_parent
+   513	            session_id = self.session_id
+   514	            self._detach_session()
+   515	            if session_id is not None and not browser_connection.closed:
+   516	                try:
+   517	                    await browser_connection.send(
+   518	                        cdp.target.detach_from_target(
+   519	                            session_id=cdp.target.SessionID(session_id)
+   520	                        ),
+   521	                        _is_update=True,
+   522	                    )
+   523	                except ProtocolException:
+   524	                    logger.debug("could not detach session %s", session_id)
+   525	            logger.debug("\n❌ detached from target %s", self.target_id)
+   526	            return
+   527	        if self.websocket is not None:
+   528	            for session in list(self._sessions.values()):
+   529	                session._detach_session()
+   530	            if self.listener and self.listener.running:
+   531	                self.listener.cancel()
+   532	                self.enabled_domains.clear()
+   533	                self.manually_enabled_domains.clear()
+   534	            await self.websocket.close()
+   535	            self.websocket = None
+   536	            self._fail_pending_transactions(ProtocolException("connection was closed"))
+   537	            logger.debug("\n❌ closed websocket connection to %s", self.websocket_url)
+   538	
+   539	    async def sleep(self, t: Union[int, float] = 0.25) -> None:
+   540	        await self.update_target()
+   541	        await asyncio.sleep(t)
+   542	
+   543	    def feed_cdp(self, cdp_obj: Generator[dict[str, Any], dict[str, Any], T]) -> None:
+   544	        """
+   545	        used in specific cases, mostly during cdp.fetch.RequestPaused events,
+   546	        in which the browser literally blocks. using feed_cdp you can issue
+   547	        a response without a blocking "await".
+   548	
+   549	        note: this method won't cause a response.
+   550	        note: this is not an async method, just a regular method!
+   551	
+   552	        :param cdp_obj:
+   553	        :return:
+   554	        :rtype:
+   555	        """
+   556	        asyncio.ensure_future(self.send(cdp_obj))
+   557	
+   558	    async def wait(self, t: int | float | None = None) -> None:
+   559	        """
+   560	        waits until the event listener reports idle (no new events received in certain timespan).
+   561	        when `t` is provided, ensures waiting for `t` seconds, no matter what.
+   562	
+   563	        :param t:
+   564	        :return:
+   565	        :rtype:
+   566	        """
+   567	        await self.update_target()
+   568	        if not self.listener:
+   569	            raise ValueError("No listener created yet")
+   570	
+   571	        loop = asyncio.get_running_loop()
+   572	        start_time = loop.time()
+   573	        try:
+   574	            if isinstance(t, (int, float)):
+   575	                await asyncio.wait_for(self.listener.idle.wait(), timeout=t)
+   576	                while (loop.time() - start_time) < t:
+   577	                    await asyncio.sleep(0.1)
+   578	            else:
+   579	                await self.listener.idle.wait()
+   580	        except asyncio.TimeoutError:
+   581	            if isinstance(t, (int, float)):
+   582	                # explicit time is given, which is now passed
+   583	                # so bail out early
+   584	                return
+   585	        except AttributeError:
+   586	            # no listener created yet
+   587	            pass
+   588	
+   589	    async def __aenter__(self) -> "Connection":
+   590	        """:meta private:"""
+   591	        return self
+   592	
+   593	    async def __aexit__(
+   594	        self, exc_type: type[BaseException], exc_val: Any, exc_tb: Any
+   595	    ) -> None:
+   596	        """:meta private:"""
+   597	        await self.aclose()
+   598	        if exc_type and exc_val:
+   599	            raise exc_type(exc_val)
+   600	
+   601	    def __await__(self) -> Any:
+   602	        """
+   603	        updates targets and wait for event listener to report idle.
+   604	        idle is reported when no new events are received for the duration of 1 second
+   605	        :return:
+   606	        :rtype:
+   607	        """
+   608	        return self.wait().__await__()
+   609	
+   610	    async def update_target(self) -> None:
+   611	        target_info: cdp.target.TargetInfo = await self.send(
+   612	            cdp.target.get_target_info(self.target_id), _is_update=True
+   613	        )
+   614	        self.target = target_info
+   615	
+   616	    async def send(
+   617	        self,
+   618	        cdp_obj: Generator[dict[str, Any], dict[str, Any], T],
+   619	        _is_update: bool = False,
+   620	    ) -> T:
+   621	        """
+   622	        send a protocol command. the commands are made using any of the cdp.<domain>.<method>()'s
+   623	        and is used to send custom cdp commands as well.
+   624	
+   625	        :param cdp_obj: the generator object created by a cdp method
+   626	
+   627	        :param _is_update: internal flag
+   628	            prevents infinite loop by skipping the registeration of handlers
+   629	            when multiple calls to connection.send() are made
+   630	        :return:
+   631	        """
+   632	        await self.aopen()
+   633	        if self.websocket is None:
+   634	            raise ProtocolException("connection was closed")
+   635	        if self._owner:
+   636	            browser = self._owner
+   637	            if browser.config:
+   638	                if browser.config.expert:
+   639	                    await self._prepare_expert()
+   640	                if browser.config.headless:
+   641	                    await self._prepare_headless()
+   642	        if not self.listener or not self.listener.running:
+   643	            self.listener = Listener(self)
+   644	
+   645	        tx = Transaction(cdp_obj)
+   646	        tx.connection = self
+   647	        tx.id = self._next_message_id()
+   648	        self.mapper.update({tx.id: tx})
+   649	
+   650	        if not _is_update:
+   651	            domain_name, _, action = tx.method.partition(".")
+   652	            if action == "enable":
+   653	                self._update_manual_domain(domain_name, action)
+   654	            await self._register_handlers()
+   655	            if action == "disable":
+   656	                self._update_manual_domain(domain_name, action)
+   657	        if self.websocket is None:
+   658	            raise ProtocolException("target session was detached")
+   659	        tx.session_id = self.session_id
+   660	        await self._send_transaction(tx)
+   661	        try:
+   662	            return await tx
+   663	        except ProtocolException as e:
+   664	            e.message = e.message or ""
+   665	            e.message += f"\ncommand:{tx.method}\nparams:{tx.params}"
+   666	            raise e
+   667	
+   668	    #
+   669	    async def _register_handlers(self) -> None:
+   670	        """
+   671	        ensure that for current (event) handlers, the corresponding
+   672	        domain is enabled in the protocol.
+   673	
+   674	        """
+   675	        # save a copy of current enabled domains in a variable
+   676	        # domains will be removed from this variable
+   677	        # if it is still needed according to the set handlers
+   678	        # so at the end this variable will hold the domains that
+   679	        # are not represented by handlers, and can be removed
+   680	        enabled_domains = self.enabled_domains.copy()
+   681	        for event_type in self.handlers.copy():
+   682	            if len(self.handlers[event_type]) == 0:
+   683	                self.handlers.pop(event_type)
+   684	                continue
+   685	            if not isinstance(event_type, type):
+   686	                continue
+   687	            domain_mod = util.cdp_get_module(event_type.__module__)
+   688	            if domain_mod in self.enabled_domains:
+   689	                # at this point, the domain is being used by a handler
+   690	                # so remove that domain from temp variable 'enabled_domains' if present
+   691	                if domain_mod in enabled_domains:
+   692	                    enabled_domains.remove(domain_mod)
+   693	                continue
+   694	            elif (
+   695	                domain_mod not in self.enabled_domains
+   696	                and domain_mod not in self.manually_enabled_domains
+   697	            ):
+   698	                if domain_mod in (cdp.target, cdp.storage):
+   699	                    # by default enabled
+   700	                    continue
+   701	                try:
+   702	                    # we add this before sending the request, because it will
+   703	                    # loop indefinite
+   704	                    logger.debug("registered %s", domain_mod)
+   705	                    self.enabled_domains.append(domain_mod)
+   706	
+   707	                    await self.send(domain_mod.enable(), _is_update=True)
+   708	
+   709	                except:  # noqa - as broad as possible, we don't want an error before the "actual" request is sent
+   710	                    logger.debug("", exc_info=True)
+   711	                    try:
+   712	                        self.enabled_domains.remove(domain_mod)
+   713	                    except:  # noqa
+   714	                        logger.debug("NOT GOOD", exc_info=True)
+   715	                        continue
+   716	        for ed in enabled_domains:
+   717	            # we started with a copy of self.enabled_domains and removed a domain from this
+   718	            # temp variable when we registered it or saw handlers for it.
+   719	            # items still present at this point are unused and need removal
+   720	            self.enabled_domains.remove(ed)
+   721	
+   722	    def _update_manual_domain(
+   723	        self, domain_name: str, action: Literal["enable", "disable"]
+   724	    ) -> None:
+   725	        """
+   726	        Updates the enabled domain lists for the given domain name
+   727	
+   728	        :param domain_name:
+   729	        :param action:
+   730	        :return:
+   731	        :rtype:
+   732	        """
+   733	        if action not in ("enable", "disable"):
+   734	            return
+   735	        try:
+   736	            domain_mod = util.cdp_get_module(domain_name.lower())
+   737	        except ModuleNotFoundError:
+   738	            logger.debug(
+   739	                "Could not find module for domain %s",
+   740	                domain_name,
+   741	            )
+   742	            return
+   743	
+   744	        # manual enables/disables always overwrite auto enabled domains
+   745	        if domain_mod in self.enabled_domains:
+   746	            self.enabled_domains.remove(domain_mod)
+   747	        if action == "disable" and domain_mod in self.manually_enabled_domains:
+   748	            self.manually_enabled_domains.remove(domain_mod)
+   749	        elif action == "enable" and domain_mod not in self.manually_enabled_domains:
+   750	            self.manually_enabled_domains.append(domain_mod)
+   751	
+   752	    async def _prepare_headless(self) -> None:
+   753	        """
+   754	        remove the "HeadlessChrome" token from the user agent of this target, with the
+   755	        client hint metadata the browser built at startup (see
+   756	        :py:meth:`Browser._read_headless_user_agent`): an override without it makes
+   757	        the target drop its client hints, which no real chrome does
+   758	        """
+   759	        if getattr(self, "_prep_headless_done", None):
+   760	            return
+   761	        headless_user_agent = self._owner._headless_user_agent if self._owner else None
+   762	        if headless_user_agent is not None:
+   763	            user_agent, metadata = headless_user_agent
+   764	            await self._send_oneshot(
+   765	                cdp.network.set_user_agent_override(
+   766	                    user_agent=user_agent,
+   767	                    user_agent_metadata=metadata,
+   768	                )
+   769	            )
+   770	        else:
+   771	            response = await self._send_oneshot(
+   772	                cdp.runtime.evaluate(
+   773	                    expression="navigator.userAgent",
+   774	                    user_gesture=True,
+   775	                    await_promise=True,
+   776	                    return_by_value=True,
+   777	                    allow_unsafe_eval_blocked_by_csp=True,
+   778	                )
+   779	            )
+   780	            if response and response[0].value:
+   781	                ua = response[0].value
+   782	                await self._send_oneshot(
+   783	                    cdp.network.set_user_agent_override(
+   784	                        user_agent=ua.replace("Headless", ""),
+   785	                    )
+   786	                )
+   787	        setattr(self, "_prep_headless_done", True)
+   788	
+   789	    async def _prepare_expert(self) -> None:
+   790	        if getattr(self, "_prep_expert_done", None):
+   791	            return
+   792	        if self._owner:
+   793	            await self._send_oneshot(
+   794	                cdp.page.add_script_to_evaluate_on_new_document(
+   795	                    """
+   796	                    Element.prototype._attachShadow = Element.prototype.attachShadow;
+   797	                    Element.prototype.attachShadow = function () {
+   798	                        return this._attachShadow( { mode: "open" } );
+   799	                    };
+   800	                """
+   801	                )
+   802	            )
+   803	
+   804	            await self._send_oneshot(cdp.page.enable())
+   805	        setattr(self, "_prep_expert_done", True)
+   806	
+   807	    def _next_message_id(self) -> int:
+   808	        """
+   809	        message ids are shared by all sessions on a websocket, so that a response
+   810	        chrome sends without a session id can never be matched to the wrong command
+   811	        """
+   812	        if self._session_parent is not None:
+   813	            return self._session_parent._next_message_id()
+   814	        return next(self._message_ids)
+   815	
+   816	    async def _send_transaction(self, tx: Transaction[Any]) -> None:
+   817	        if self.websocket is None:
+   818	            raise ProtocolException("connection was closed")
+   819	        try:
+   820	            await self.websocket.send(tx.message)
+   821	        except BaseException:
+   822	            if tx.id is not None:
+   823	                self.mapper.pop(tx.id, None)
+   824	            raise
+   825	
+   826	    async def _receive_message(self) -> dict[str, Any] | None:
+   827	        """
+   828	        returns the next message addressed to this connection, or None when
+   829	        the received message was routed to one of the flat sessions instead
+   830	        """
+   831	        if self._inbox is not None:
+   832	            return await self._inbox.get()
+   833	        if self.websocket is None:
+   834	            raise ValueError("no websocket connection")
+   835	
+   836	        message: dict[str, Any] = json.loads(await self.websocket.recv())
+   837	        session_id = message.get("sessionId")
+   838	        if session_id is not None:
+   839	            session = self._sessions.get(session_id)
+   840	            if session is not None and session._inbox is not None:
+   841	                session._inbox.put_nowait(message)
+   842	            return None
+   843	
+   844	        if message.get("method") == "Target.detachedFromTarget":
+   845	            session = self._sessions.get(message["params"]["sessionId"])
+   846	            if session is not None:
+   847	                session._detach_session()
+   848	        return message
+   849	
+   850	    async def _send_oneshot(self, cdp_obj: Any) -> Any:
+   851	        if self.websocket is None:
+   852	            raise ValueError("no websocket connection")
+   853	
+   854	        tx = Transaction(cdp_obj)
+   855	        tx.connection = self
+   856	        tx.id = self._next_message_id()
+   857	        tx.session_id = self.session_id
+   858	        self.mapper.update({tx.id: tx})
+   859	        await self._send_transaction(tx)
+   860	        try:
+   861	            # in try except since if browser connection sends this it reises an exception
+   862	            return await tx
+   863	        except ProtocolException:
+   864	            pass
+   865	
+   866	
+   867	def _accepts_connection_argument(handler: Callable[..., Any]) -> bool:
+   868	    try:
+   869	        inspect.signature(handler).bind(None, None)
+   870	    except (TypeError, ValueError):
+   871	        return False
+   872	    return True
+   873	
+   874	
+   875	class Listener:
+   876	    def __init__(self, connection: Connection):
+   877	        self.connection = connection
+   878	        self.history: collections.deque[Any] = collections.deque()
+   879	        self.max_history = 1000
+   880	        self.task: asyncio.Future[None] | None = None
+   881	
+   882	        # when in interactive mode, the loop is paused after each return
+   883	        # and when the next call is made, it might still have to process some events
+   884	        # from the previous call as well.
+   885	
+   886	        # while in "production" the loop keeps running constantly
+   887	        # (and so events are continuous processed)
+   888	
+   889	        # therefore we should give it some breathing room in interactive mode
+   890	        # and we can tighten that room when in production.
+   891	
+   892	        # /example/demo.py runs ~ 5 seconds faster, which is quite a lot.
+   893	
+   894	        is_interactive = getattr(sys, "ps1", sys.flags.interactive)
+   895	        self._time_before_considered_idle = 0.10 if not is_interactive else 0.75
+   896	        self.idle = asyncio.Event()
+   897	        self.run()
+   898	
+   899	    def run(self) -> None:
+   900	        self.task = asyncio.create_task(self.listener_loop())
+   901	
+   902	    @property
+   903	    def time_before_considered_idle(self) -> float:
+   904	        return self._time_before_considered_idle
+   905	
+   906	    @time_before_considered_idle.setter
+   907	    def time_before_considered_idle(self, seconds: Union[int, float]) -> None:
+   908	        self._time_before_considered_idle = seconds
+   909	
+   910	    def cancel(self) -> None:
+   911	        if self.task and not self.task.cancelled():
+   912	            self.task.cancel()
+   913	
+   914	    @property
+   915	    def running(self) -> bool:
+   916	        if not self.task:
+   917	            return False
+   918	        if self.task.done():
+   919	            return False
+   920	        return True
+   921	
+   922	    async def listener_loop(self) -> None:
+   923	        while True:
+   924	            try:
+   925	                message = await asyncio.wait_for(
+   926	                    self.connection._receive_message(),
+   927	                    self.time_before_considered_idle,
+   928	                )
+   929	            except asyncio.TimeoutError:
+   930	                self.idle.set()
+   931	                # breathe
+   932	                # await asyncio.sleep(self.time_before_considered_idle / 10)
+   933	                continue
+   934	            except asyncio.CancelledError:
+   935	                logger.debug(
+   936	                    "task was cancelled while reading websocket, breaking loop"
+   937	                )
+   938	                break
+   939	            except websockets.exceptions.ConnectionClosed as e:
+   940	                # break on connection closed
+   941	                logger.debug(
+   942	                    "connection listener exception while reading websocket:\n%s", e
+   943	                )
+   944	                for session in list(self.connection._sessions.values()):
+   945	                    session._detach_session()
+   946	                self.connection._fail_pending_transactions(e)
+   947	                break
+   948	
+   949	            if not self.running:
+   950	                # if we have been cancelled or otherwise stopped running
+   951	                # break this loop
+   952	                break
+   953	
+   954	            if message is None:
+   955	                continue
+   956	
+   957	            # since we are at this point, we are not "idle" anymore.
+   958	            self.idle.clear()
+   959	
+   960	            if "id" in message:
+   961	                # response to our command
+   962	                if message["id"] in self.connection.mapper:
+   963	                    # get the corresponding Transaction
+   964	
+   965	                    # thanks to zxsleebu for discovering the memory leak
+   966	                    # pop to prevent memory leaks
+   967	                    tx = self.connection.mapper.pop(message["id"])
+   968	                    logger.debug("got answer for %s (message_id:%d)", tx, message["id"])
+   969	
+   970	                    # complete the transaction, which is a Future object
+   971	                    # and thus will return to anyone awaiting it.
+   972	                    if not tx.done():
+   973	                        tx(**message)
+   974	            else:
+   975	                # probably an event
+   976	                try:
+   977	                    event = cdp.util.parse_json_event(message)
+   978	                except Exception as e:
+   979	                    logger.info(
+   980	                        "%s: %s  during parsing of json from event : %s"
+   981	                        % (type(e).__name__, e.args, message),
+   982	                        exc_info=True,
+   983	                    )
+   984	                    continue
+   985	                try:
+   986	                    if type(event) in self.connection.handlers:
+   987	                        callbacks = self.connection.handlers[type(event)]
+   988	                    else:
+   989	                        continue
+   990	                    if not len(callbacks):
+   991	                        continue
+   992	                    for callback in callbacks:
+   993	                        try:
+   994	                            args = (
+   995	                                (event, self.connection)
+   996	                                if _accepts_connection_argument(callback)
+   997	                                else (event,)
+   998	                            )
+   999	                            if inspect.iscoroutinefunction(callback):
+  1000	                                asyncio.create_task(callback(*args))
+  1001	                            else:
+  1002	                                asyncio.create_task(asyncio.to_thread(callback, *args))
+  1003	                        except Exception as e:
+  1004	                            logger.warning(
+  1005	                                "exception in callback %s for event %s => %s",
+  1006	                                callback,
+  1007	                                event.__class__.__name__,
+  1008	                                e,
+  1009	                                exc_info=True,
+  1010	                            )
+  1011	                            raise
+  1012	                except asyncio.CancelledError:
+  1013	                    break
+  1014	                except Exception:
+  1015	                    raise
+  1016	                continue
+  1017	
+  1018	    def __repr__(self) -> str:
+  1019	        s_idle = "[idle]" if self.idle.is_set() else "[busy]"
+  1020	        s_cache_length = f"[cache size: {len(self.history)}]"
+  1021	        s_running = f"[running: {self.running}]"
+  1022	        s = f"{self.__class__.__name__} {s_running} {s_idle} {s_cache_length}>"
+  1023	        return s
