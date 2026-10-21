@@ -1,0 +1,16 @@
++ python_files=(zendriver scripts examples tests)
++ echo 'Running ruff check...'
+Running ruff check...
++ uv run ruff check zendriver scripts examples tests
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+All checks passed!
++ echo 'Running ruff format check...'
+Running ruff format check...
++ uv run ruff format zendriver scripts examples tests --check
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+55 files already formatted
++ echo 'Running mypy...'
+Running mypy...
++ uv run mypy zendriver scripts examples tests
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Success: no issues found in 47 source files
