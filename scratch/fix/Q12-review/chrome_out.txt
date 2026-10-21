@@ -1,0 +1,11 @@
+3.10.20 /home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-24/zendriver/__init__.py
+CONTROL: no handler
+[wait_for(evaluate, 2)] finished after 2.00s: TimeoutError()
+[wait_for_ready_state(timeout=2)] finished after 2.00s: TimeoutError('time ran out while waiting for load page until complete')
+Log in enabled_domains: False
+dismissing dialog
+[handle_java_script_dialog] finished after 0.00s: ProtocolException({'code': -32602, 'message': 'No dialog is showing'})
+[evaluate after dismiss] STILL RUNNING after 8.00s (HANG)
+after dismiss, Log in enabled_domains: False
+stopping
+stopped

@@ -15,12 +15,12 @@ async def timed(label: str, coro: object, limit: float) -> None:
     done, _ = await asyncio.wait({task}, timeout=limit)
     elapsed = time.monotonic() - start
     if not done:
-        print(f"[{label}] STILL RUNNING after {elapsed:.2f}s (HANG)")
+        print(flush=True, *[f"[{label}] STILL RUNNING after {elapsed:.2f}s (HANG)"])
         task.cancel()
         await asyncio.wait({task}, timeout=2)
         return
     exc = task.exception() if not task.cancelled() else "cancelled"
-    print(f"[{label}] finished after {elapsed:.2f}s: {exc!r}")
+    print(flush=True, *[f"[{label}] finished after {elapsed:.2f}s: {exc!r}"])
 
 
 async def main() -> None:
@@ -29,7 +29,10 @@ async def main() -> None:
         tab = await browser.get("about:blank")
         await tab.evaluate("setTimeout(() => alert('blocked'), 50)")
         await asyncio.sleep(0.5)
-        tab.add_handler(zd.cdp.log.EntryAdded, lambda e: None)
+        if sys.argv[1:] != ["control"]:
+            tab.add_handler(zd.cdp.log.EntryAdded, lambda e: None)
+        else:
+            print("CONTROL: no handler", flush=True)
         await timed(
             "wait_for(evaluate, 2)",
             asyncio.wait_for(tab.evaluate("1"), 2),
@@ -42,11 +45,18 @@ async def main() -> None:
         )
         print("Log in enabled_domains:", zd.cdp.log in tab.enabled_domains)
         # close the dialog; the next send must enable Log again
-        await tab.send(zd.cdp.page.handle_java_script_dialog(accept=True))
-        await asyncio.wait_for(tab.evaluate("1"), 5)
+        print("dismissing dialog", flush=True)
+        await timed(
+            "handle_java_script_dialog",
+            tab.send(zd.cdp.page.handle_java_script_dialog(accept=True)),
+            8,
+        )
+        await timed("evaluate after dismiss", tab.evaluate("1"), 8)
         print("after dismiss, Log in enabled_domains:", zd.cdp.log in tab.enabled_domains)
     finally:
-        await browser.stop()
+        print("stopping", flush=True)
+        await asyncio.wait_for(browser.stop(), 20)
+        print("stopped", flush=True)
 
 
 asyncio.run(main())
