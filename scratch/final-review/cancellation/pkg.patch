@@ -1,0 +1,900 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/_contradict.py b/zendriver/core/_contradict.py
+--- a/zendriver/core/_contradict.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/_contradict.py	2026-10-21 06:38:54.655441744 +0000
+@@ -50,7 +50,8 @@
+         super().__setitem__(key, _wrap(self.__class__, value))
+ 
+     def __getattribute__(self, attribute: str) -> Any:
+-        if attribute in self:
++        # keys must not shadow real attributes of the class (eg. the dict methods)
++        if attribute in self and not hasattr(type(self), attribute):
+             return self[attribute]
+         if not _check_key(attribute, self, True, silent=True):
+             return getattr(super(), attribute)
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
+--- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/browser.py	2026-10-21 06:38:54.655467667 +0000
+@@ -32,6 +32,9 @@
+ 
+ logger = logging.getLogger(__name__)
+ 
++# seconds stop() waits for each of its steps which a hung browser can block
++STOP_COMMAND_TIMEOUT: float = 5
++
+ 
+ def _user_agent_platform(user_agent: str) -> str | None:
+     """
+@@ -576,6 +579,24 @@
+ 
+         self._http = HTTPApi((self.config.host, self.config.port))
+         util.get_registered_instances().add(self)
++        try:
++            await self._connect(connect_existing)
++        except BaseException:
++            # the caller never gets this instance when start() fails or is
++            # cancelled, so stop what was started here before re-raising
++            try:
++                if self.connection:
++                    # closing the connection first keeps stop() from sending
++                    # Browser.close, which would shut down a browser we only
++                    # attached to, and which a hung browser may never answer
++                    await self.connection.aclose()
++                await self.stop()
++            except Exception:
++                logger.warning("could not clean up after a failed start", exc_info=True)
++            raise
++        return self
++
++    async def _connect(self, connect_existing: bool) -> None:
+         # try to connect immediately, then retry at the configured interval
+         connected = await self.test_connection()
+         for _ in range(self.config.browser_connection_max_tries):
+@@ -640,7 +661,6 @@
+             await self._wait_for_initial_tab()
+         if self.config.headless:
+             await self._read_headless_user_agent()
+-        return self
+ 
+     async def _wait_for_initial_tab(self) -> None:
+         for _ in range(self.config.browser_connection_max_tries):
+@@ -837,8 +857,8 @@
+     async def __aexit__(
+         self, exc_type: type[BaseException] | None, exc_val: Any, exc_tb: Any
+     ) -> None:
+-        if exc_type and exc_val:
+-            raise exc_type(exc_val)
++        # returning None lets an exception raised in the block propagate unchanged
++        return None
+ 
+     def __iter__(self) -> Browser:
+         main_tab = self.main_tab
+@@ -867,20 +887,44 @@
+                     del self._i
+ 
+     async def stop(self) -> None:
++        await self._stop()
++        # only once stopped, so that a stop() which failed or was cancelled
++        # leaves the atexit cleanup in place
+         asyncio_atexit.unregister(self._atexit_cleanup)
+         util.get_registered_instances().discard(self)
+-        await self._stop()
+ 
+     async def _stop(self) -> None:
+         if not self.connection and not self._process:
+             return
+ 
+-        for target in self.targets:
+-            await target.aclose()
++        async def detach_from_targets() -> list[BaseException | None]:
++            # wait_for() is given this coroutine rather than the gather, so that
++            # it runs it in a task, which retrieves the gather's outcome when
++            # stop() is cancelled. python < 3.12 otherwise logs that the
++            # gather's exception was never retrieved
++            return await asyncio.gather(
++                *(target.aclose() for target in self.targets),
++                return_exceptions=True,
++            )
++
++        # the cdp steps are bounded and may fail, so that a browser which is
++        # gone or stopped responding still gets its process terminated below
++        try:
++            results = await asyncio.wait_for(
++                detach_from_targets(), STOP_COMMAND_TIMEOUT
++            )
++        except asyncio.TimeoutError:
++            logger.debug("timed out detaching from the targets")
++        else:
++            for result in results:
++                if isinstance(result, Exception):
++                    logger.debug("could not detach from a target: %r", result)
+ 
+         if self.connection and not self.connection.closed:
+             try:
+-                await self.connection.send(cdp.browser.close())
++                await asyncio.wait_for(
++                    self.connection.send(cdp.browser.close()), STOP_COMMAND_TIMEOUT
++                )
+             except Exception:
+                 logger.warning(
+                     "Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection."
+@@ -888,33 +932,46 @@
+             await self.connection.aclose()
+             logger.debug("closed the connection")
+ 
+-        for forwarder in self._proxy_forwarders:
+-            await forwarder.close()
+-        self._proxy_forwarders.clear()
+-
+-        if self._process:
++        # a concurrent stop() may set self._process to None while this one waits
++        process = self._process
++        if process:
+             try:
+-                self._process.terminate()
++                process.terminate()
+                 logger.debug("gracefully stopping browser process")
+                 # wait 3 seconds for the browser to stop
+                 for _ in range(12):
+-                    if self._process.poll() is not None:
++                    if process.poll() is not None:
+                         break
+                     await asyncio.sleep(0.25)
+                 else:
+                     logger.debug("browser process did not stop. killing it")
+-                    self._process.kill()
++                    process.kill()
+                     logger.debug("killed browser process")
+-
+-                await asyncio.to_thread(self._process.wait)
++                    # polled rather than waited for in a thread, because
++                    # asyncio.run shuts the default executor down before the
++                    # atexit cleanup runs
++                    while process.poll() is None:
++                        await asyncio.sleep(0.05)
+ 
+             except ProcessLookupError:
+                 # ignore this well known race condition because it only means that
+                 # the process was not found while trying to terminate or kill it
+                 pass
+ 
+-            self._process = None
+-            self._process_pid = None
++            # unless a start() has replaced it in the meantime
++            if self._process is process:
++                self._process = None
++                self._process_pid = None
++
++        # only once the browser is gone, and bounded, because on python >= 3.12.1
++        # closing a forwarder waits until the browser's connections to it are
++        # closed, which a browser which stopped reading from them holds open
++        for forwarder in self._proxy_forwarders:
++            try:
++                await asyncio.wait_for(forwarder.close(), STOP_COMMAND_TIMEOUT)
++            except asyncio.TimeoutError:
++                logger.debug("timed out closing a proxy forwarder")
++        self._proxy_forwarders.clear()
+ 
+         await self._cleanup_temporary_profile()
+ 
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/cloudflare.py b/zendriver/core/cloudflare.py
+--- a/zendriver/core/cloudflare.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/cloudflare.py	2026-10-21 06:38:54.655520931 +0000
+@@ -6,6 +6,7 @@
+ 
+ from zendriver import cdp, util
+ from zendriver.core.element import Element
++from zendriver.core.tab import _POLL_GRACE
+ 
+ if TYPE_CHECKING:
+     from zendriver.core.tab import Tab
+@@ -84,19 +85,31 @@
+     loop = asyncio.get_running_loop()
+     start_time = loop.time()
+ 
+-    while loop.time() - start_time < timeout:
+-        logger.debug("Waiting for challenge elements to appear...")
+-        (
+-            host_element,
+-            shadow_root_element,
+-            challenge_iframe,
+-        ) = await cf_find_interactive_challenge(tab)
+-        if challenge_iframe and "display: none" not in challenge_iframe.attrs.get(
+-            "style", ""
+-        ):
+-            logger.debug("Cloudflare challenge elements found and visible.")
+-            return host_element, shadow_root_element, challenge_iframe
+-        await asyncio.sleep(0.5)
++    async def _poll() -> tuple[Element | None, Element | None, Element | None]:
++        while loop.time() - start_time < timeout:
++            logger.debug("Waiting for challenge elements to appear...")
++            (
++                host_element,
++                shadow_root_element,
++                challenge_iframe,
++            ) = await cf_find_interactive_challenge(tab)
++            if challenge_iframe and "display: none" not in challenge_iframe.attrs.get(
++                "style", ""
++            ):
++                logger.debug("Cloudflare challenge elements found and visible.")
++                return host_element, shadow_root_element, challenge_iframe
++            await asyncio.sleep(min(0.5, start_time + timeout - loop.time()))
++        return None, None, None
++
++    # the timeout has to cover the CDP calls too, otherwise a CDP response
++    # that never arrives (e.g. page blocked by a dialog) hangs here forever.
++    # a scan started before the deadline gets _POLL_GRACE seconds to finish
++    try:
++        found = await asyncio.wait_for(_poll(), max(timeout, 0) + _POLL_GRACE)
++    except asyncio.TimeoutError:
++        found = None, None, None
++    if found[2] is not None:
++        return found
+ 
+     logger.warning(
+         f"Timeout: Cloudflare challenge elements not found or not visible within {timeout} seconds."
+@@ -161,6 +174,41 @@
+ 
+     logger.debug("Cloudflare checkbox found, starting clicks.")
+ 
++    # the clicks get the time that is left, and their CDP calls and the
++    # click_delay sleeps are bounded by it too. the check after the last
++    # click, made at the deadline, gets _POLL_GRACE seconds to finish
++    try:
++        await asyncio.wait_for(
++            _cf_click_challenge(
++                tab,
++                host_element,
++                challenge_iframe,
++                click_delay,
++                timeout,
++                start_time,
++                challenge_selector,
++                flash_corners,
++            ),
++            max(start_time + timeout - loop.time(), 0) + _POLL_GRACE,
++        )
++    except asyncio.TimeoutError:
++        raise TimeoutError(
++            f"Could not solve the checkbox in {timeout} seconds (timeout during clicks)."
++        ) from None
++
++
++async def _cf_click_challenge(
++    tab: Tab,
++    host_element: Element | None,
++    challenge_iframe: Element,
++    click_delay: float,
++    timeout: float,
++    start_time: float,
++    challenge_selector: Optional[str],
++    flash_corners: bool,
++) -> None:
++    loop = asyncio.get_running_loop()
++
+     await challenge_iframe.scroll_into_view()
+ 
+     # To get the element's dimensions, its numeric 'node_id' is needed.
+@@ -257,7 +305,7 @@
+             )
+         try:
+             await tab.mouse_click(click_x, click_y)
+-            await asyncio.sleep(click_delay)
++            await asyncio.sleep(min(click_delay, start_time + timeout - loop.time()))
+             checkbox_clicked = True
+         except Exception as e:
+             if "could not find position" in str(e) and checkbox_clicked:
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zendriver/core/connection.py
+--- a/zendriver/core/connection.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/connection.py	2026-10-21 06:38:54.655569567 +0000
+@@ -121,13 +121,22 @@
+         if "error" in response:
+             # set exception and bail out
+             return self.set_exception(ProtocolException(response["error"]))
++        cause: Exception | None = None
+         try:
+             # try to parse the result according to the py cdp docs.
+             self.__cdp_obj__.send(response["result"])
+         except StopIteration as e:
+             # exception value holds the parsed response
+             return self.set_result(e.value)
+-        raise ProtocolException("could not parse the cdp response:\n%s" % response)
++        except Exception as e:
++            # e.g. a result from a newer chrome that the parser rejects. it must
++            # fail this command, not the listener that dispatches the response
++            cause = e
++        exception = ProtocolException(
++            "could not parse the cdp response:\n%s" % response
++        )
++        exception.__cause__ = cause
++        self.set_exception(exception)
+ 
+     def __repr__(self) -> str:
+         success = False if (self.done() and self.has_exception) else True
+@@ -432,6 +441,16 @@
+         browser_connection = self._browser_connection
+         if browser_connection is not None:
+             await self._attach_session(browser_connection)
++            # the parent's listener reads the websocket for this session as well.
++            # restart it if it stopped, without an await in between, so that
++            # concurrent sends cannot start two readers
++            parent = self._session_parent
++            if (
++                parent is not None
++                and parent.websocket is not None
++                and (not parent.listener or not parent.listener.running)
++            ):
++                parent.listener = Listener(parent)
+         elif self.websocket is None:
+             # concurrent callers must not each open (and leak) their own websocket
+             async with self._open_lock:
+@@ -595,8 +614,6 @@
+     ) -> None:
+         """:meta private:"""
+         await self.aclose()
+-        if exc_type and exc_val:
+-            raise exc_type(exc_val)
+ 
+     def __await__(self) -> Any:
+         """
+@@ -706,7 +723,13 @@
+ 
+                     await self.send(domain_mod.enable(), _is_update=True)
+ 
+-                except:  # noqa - as broad as possible, we don't want an error before the "actual" request is sent
++                except asyncio.CancelledError:
++                    # the enable may not have reached the browser, so don't keep
++                    # the domain marked as enabled, and let the cancellation through
++                    if domain_mod in self.enabled_domains:
++                        self.enabled_domains.remove(domain_mod)
++                    raise
++                except Exception:  # as broad as possible, we don't want an error before the "actual" request is sent
+                     logger.debug("", exc_info=True)
+                     try:
+                         self.enabled_domains.remove(domain_mod)
+@@ -716,8 +739,11 @@
+         for ed in enabled_domains:
+             # we started with a copy of self.enabled_domains and removed a domain from this
+             # temp variable when we registered it or saw handlers for it.
+-            # items still present at this point are unused and need removal
+-            self.enabled_domains.remove(ed)
++            # items still present at this point are unused and need removal.
++            # the nested send of domain.enable() above runs _register_handlers
++            # again, which may already have removed it
++            if ed in self.enabled_domains:
++                self.enabled_domains.remove(ed)
+ 
+     def _update_manual_domain(
+         self, domain_name: str, action: Literal["enable", "disable"]
+@@ -945,6 +971,24 @@
+                     session._detach_session()
+                 self.connection._fail_pending_transactions(e)
+                 break
++            except Exception as e:
++                if self.connection.closed:
++                    # closed or detached meanwhile, so nothing is left to read
++                    # (before python 3.12, asyncio.wait_for can raise this
++                    # instead of the cancellation that came with the close)
++                    break
++                # fail the commands waiting for a response instead of leaving
++                # them hanging. stop rather than retry, since the error may
++                # persist; the next send() starts a new listener
++                logger.warning(
++                    "unexpected exception while reading websocket: %s",
++                    e,
++                    exc_info=True,
++                )
++                for session in list(self.connection._sessions.values()):
++                    session._fail_pending_transactions(e)
++                self.connection._fail_pending_transactions(e)
++                break
+ 
+             if not self.running:
+                 # if we have been cancelled or otherwise stopped running
+@@ -1008,7 +1052,6 @@
+                                 e,
+                                 exc_info=True,
+                             )
+-                            raise
+                 except asyncio.CancelledError:
+                     break
+                 except Exception:
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/element.py b/zendriver/core/element.py
+--- a/zendriver/core/element.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/element.py	2026-10-21 06:38:54.655599858 +0000
+@@ -573,7 +573,7 @@
+         )
+         try:
+             await self.flash()
+-        except:  # noqa
++        except Exception:
+             pass
+ 
+     async def mouse_move(self) -> None:
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/expect.py b/zendriver/core/expect.py
+--- a/zendriver/core/expect.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/expect.py	2026-10-21 06:38:54.655631269 +0000
+@@ -39,10 +39,15 @@
+         Internal handler for request events.
+         :param event: The request event.
+         """
++        if self.request_id is not None:
++            # events dispatched before the handler removed itself must not
++            # replace the request that is already tracked
++            return
+         if re.fullmatch(self.url_pattern, event.request.url):
+             self._remove_request_handler()
+             self.request_id = event.request_id
+-            self.request_future.set_result(event)
++            if not self.request_future.done():
++                self.request_future.set_result(event)
+ 
+     async def _response_handler(self, event: cdp.network.ResponseReceived) -> None:
+         """
+@@ -51,7 +56,8 @@
+         """
+         if event.request_id == self.request_id:
+             self._remove_response_handler()
+-            self.response_future.set_result(event)
++            if not self.response_future.done():
++                self.response_future.set_result(event)
+ 
+     async def _loading_finished_handler(
+         self, event: cdp.network.LoadingFinished
+@@ -62,7 +68,8 @@
+         """
+         if event.request_id == self.request_id:
+             self._remove_loading_finished_handler()
+-            self.loading_finished_future.set_result(event)
++            if not self.loading_finished_future.done():
++                self.loading_finished_future.set_result(event)
+ 
+     def _remove_request_handler(self) -> None:
+         """
+@@ -205,7 +212,8 @@
+ 
+     async def _handler(self, event: cdp.browser.DownloadWillBegin) -> None:
+         self._remove_handler()
+-        self.future.set_result(event)
++        if not self.future.done():
++            self.future.set_result(event)
+ 
+     def _remove_handler(self) -> None:
+         self.tab.remove_handlers(cdp.browser.DownloadWillBegin, self._handler)
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/core/tab.py
+--- a/zendriver/core/tab.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/tab.py	2026-10-21 06:38:54.655732202 +0000
+@@ -20,6 +20,7 @@
+     Literal,
+     Optional,
+     Tuple,
++    TypeVar,
+     Union,
+     cast,
+ )
+@@ -51,6 +52,33 @@
+ }
+ MOUSE_PRESSED_FORCE = 0.5
+ 
++T = TypeVar("T")
++
++# seconds a polling attempt started before the deadline gets to finish
++_POLL_GRACE = 0.5
++
++
++async def _poll_with_timeout(
++    poll: Awaitable[T], timeout: Union[int, float], message: str
++) -> T:
++    """
++    the timeout has to cover the CDP calls of a polling loop too, otherwise a
++    CDP response that never arrives (e.g. page blocked by a dialog) hangs the
++    loop forever. the loops make their last attempt at the deadline, which
++    gets _POLL_GRACE seconds to finish. any attempt that takes longer is cut
++    off too, e.g. a single DOM query on a page with tens of thousands of
++    nodes, which can take seconds.
++
++    with timeout <= 0 the single attempt is made without a bound, as
++    query_selector does.
++    """
++    if timeout <= 0:
++        return await poll
++    try:
++        return await asyncio.wait_for(poll, timeout + _POLL_GRACE)
++    except asyncio.TimeoutError:
++        raise asyncio.TimeoutError(message) from None
++
+ 
+ class Tab(Connection):
+     """
+@@ -304,24 +332,28 @@
+             )
+             return [item] if item else []
+ 
+-        while True:
+-            item = await self.find_element_by_text(
+-                text, best_match, return_enclosing_element
+-            )
+-            if item:
+-                return item
+-
+-            if include_frames:
+-                items = await self._search_frames(find_in_frame)
+-                if items:
+-                    return items[0]
++        message = f"Timeout ({timeout}s) waiting for element with text: '{text}'"
+ 
+-            if loop.time() - start_time > timeout:
+-                raise asyncio.TimeoutError(
+-                    f"Timeout ({timeout}s) waiting for element with text: '{text}'"
++        async def _poll() -> Element:
++            while True:
++                item = await self.find_element_by_text(
++                    text, best_match, return_enclosing_element
+                 )
++                if item:
++                    return item
+ 
+-            await self.sleep(0.5)
++                if include_frames:
++                    items = await self._search_frames(find_in_frame)
++                    if items:
++                        return items[0]
++
++                if loop.time() - start_time > timeout:
++                    raise asyncio.TimeoutError(message)
++
++                # the last attempt is made at the deadline
++                await self.sleep(min(0.5, start_time + timeout - loop.time()))
++
++        return await _poll_with_timeout(_poll(), timeout, message)
+ 
+     async def select(
+         self,
+@@ -341,23 +373,28 @@
+         start_time = loop.time()
+ 
+         selector = selector.strip()
++        message = (
++            f"Timeout ({timeout}s) waiting for element with selector: '{selector}'"
++        )
+ 
+-        while True:
+-            if include_frames:
+-                items = await self._query_selector_all_with_frames(selector)
+-                if items:
+-                    return items[0]
+-            else:
+-                item = await self.query_selector(selector)
+-                if item:
+-                    return item
++        async def _poll() -> Element:
++            while True:
++                if include_frames:
++                    items = await self._query_selector_all_with_frames(selector)
++                    if items:
++                        return items[0]
++                else:
++                    item = await self.query_selector(selector)
++                    if item:
++                        return item
+ 
+-            if loop.time() - start_time > timeout:
+-                raise asyncio.TimeoutError(
+-                    f"Timeout ({timeout}s) waiting for element with selector: '{selector}'"
+-                )
++                if loop.time() - start_time > timeout:
++                    raise asyncio.TimeoutError(message)
+ 
+-            await self.sleep(0.5)
++                # the last attempt is made at the deadline
++                await self.sleep(min(0.5, start_time + timeout - loop.time()))
++
++        return await _poll_with_timeout(_poll(), timeout, message)
+ 
+     async def find_all(
+         self,
+@@ -377,24 +414,27 @@
+         now = loop.time()
+ 
+         text = text.strip()
++        message = f"Timeout ({timeout}s) waiting for any element with text: '{text}'"
+ 
+-        while True:
+-            items = await self.find_elements_by_text(text)
+-            if include_frames:
+-                items.extend(
+-                    await self._search_frames(
+-                        lambda frame: frame.find_elements_by_text(text)
++        async def _poll() -> List[Element]:
++            while True:
++                items = await self.find_elements_by_text(text)
++                if include_frames:
++                    items.extend(
++                        await self._search_frames(
++                            lambda frame: frame.find_elements_by_text(text)
++                        )
+                     )
+-                )
+-            if items:
+-                return items
++                if items:
++                    return items
+ 
+-            if loop.time() - now > timeout:
+-                raise asyncio.TimeoutError(
+-                    f"Timeout ({timeout}s) waiting for any element with text: '{text}'"
+-                )
++                if loop.time() - now > timeout:
++                    raise asyncio.TimeoutError(message)
++
++                # the last attempt is made at the deadline
++                await self.sleep(min(0.5, now + timeout - loop.time()))
+ 
+-            await self.sleep(0.5)
++        return await _poll_with_timeout(_poll(), timeout, message)
+ 
+     async def select_all(
+         self,
+@@ -415,22 +455,27 @@
+         loop = asyncio.get_running_loop()
+         now = loop.time()
+         selector = selector.strip()
++        message = (
++            f"Timeout ({timeout}s) waiting for any element with selector: '{selector}'"
++        )
+ 
+-        while True:
+-            if include_frames:
+-                items = await self._query_selector_all_with_frames(selector)
+-            else:
+-                items = await self.query_selector_all(selector)
++        async def _poll() -> List[Element]:
++            while True:
++                if include_frames:
++                    items = await self._query_selector_all_with_frames(selector)
++                else:
++                    items = await self.query_selector_all(selector)
+ 
+-            if items:
+-                return items
++                if items:
++                    return items
+ 
+-            if loop.time() - now > timeout:
+-                raise asyncio.TimeoutError(
+-                    f"Timeout ({timeout}s) waiting for any element with selector: '{selector}'"
+-                )
++                if loop.time() - now > timeout:
++                    raise asyncio.TimeoutError(message)
+ 
+-            await self.sleep(0.5)
++                # the last attempt is made at the deadline
++                await self.sleep(min(0.5, now + timeout - loop.time()))
++
++        return await _poll_with_timeout(_poll(), timeout, message)
+ 
+     async def _query_selector_all_with_frames(self, selector: str) -> List[Element]:
+         items = await self.query_selector_all(selector, _include_frames=True)
+@@ -464,20 +509,33 @@
+         :return:List[Element] or []
+         :rtype:
+         """
+-        items: List[Element] = []
+         loop = asyncio.get_running_loop()
+         start_time = loop.time()
+ 
+-        while (loop.time() - start_time) < timeout and len(items) == 0:
+-            try:
+-                await self.send(cdp.dom.enable(), True)
+-                items = await self.find_all(xpath, timeout=0)
+-            except Exception:
+-                items = []  # find_elements_by_text may raise exception
++        async def _poll() -> List[Element]:
++            # at least one attempt is made, even with timeout <= 0
++            while True:
++                try:
++                    await self.send(cdp.dom.enable(), True)
++                    items = await self.find_all(xpath, timeout=0)
++                except Exception:
++                    items = []  # find_elements_by_text may raise exception
++
++                await self.disable_dom_agent()
++                if items or loop.time() - start_time >= timeout:
++                    return items
+ 
+-            await self.disable_dom_agent()
++                # the last attempt is made at the deadline
++                await asyncio.sleep(min(0.5, start_time + timeout - loop.time()))
+ 
+-        return items
++        # the timeout has to cover the CDP calls too, otherwise a CDP response
++        # that never arrives (e.g. page blocked by a dialog) hangs here forever.
++        # xpath never raises, so unlike find and select it bounds its attempt
++        # even with timeout <= 0, and returns [] when the bound runs out
++        try:
++            return await asyncio.wait_for(_poll(), max(timeout, 0) + _POLL_GRACE)
++        except asyncio.TimeoutError:
++            return []
+ 
+     async def get(
+         self,
+@@ -1304,24 +1362,31 @@
+         """
+         loop = asyncio.get_running_loop()
+         start_time = loop.time()
+-        if selector:
+-            item = await self.query_selector(selector)
+-            while not item and loop.time() - start_time < timeout:
++        message = "time ran out while waiting"
++
++        async def _poll() -> Element:
++            # the last attempt is made at the deadline, and there is no sleep
++            # after an attempt that found the element
++            if selector:
+                 item = await self.query_selector(selector)
+-                await self.sleep(0.5)
++                while not item and loop.time() - start_time < timeout:
++                    await self.sleep(min(0.5, start_time + timeout - loop.time()))
++                    item = await self.query_selector(selector)
+ 
+-            if item:
+-                return item
+-        if text:
+-            item = await self.find_element_by_text(text)
+-            while not item and loop.time() - start_time < timeout:
++                if item:
++                    return item
++            if text:
+                 item = await self.find_element_by_text(text)
+-                await self.sleep(0.5)
++                while not item and loop.time() - start_time < timeout:
++                    await self.sleep(min(0.5, start_time + timeout - loop.time()))
++                    item = await self.find_element_by_text(text)
++
++                if item:
++                    return item
+ 
+-            if item:
+-                return item
++            raise asyncio.TimeoutError(message)
+ 
+-        raise asyncio.TimeoutError("time ran out while waiting")
++        return await _poll_with_timeout(_poll(), timeout, message)
+ 
+     async def wait_for_ready_state(
+         self,
+@@ -1331,16 +1396,21 @@
+         """
+         Waits for the page to reach a certain ready state.
+         :param until: The ready state to wait for. Can be one of "loading", "interactive", or "complete".
++            A later state counts as reached, so this returns at once on a page that is already past it.
+         :param timeout: The maximum number of seconds to wait.
+         :raises asyncio.TimeoutError: If the timeout is reached before the ready state is reached.
+         :return: True if the ready state is reached.
+         :rtype: bool
+         """
++        # a document goes loading -> interactive -> complete, so a page that is
++        # in a later state has already reached the requested one
++        states = ("loading", "interactive", "complete")
++        reached = states[states.index(until) :]
+ 
+         async def _poll() -> bool:
+             while True:
+                 ready_state = await self.evaluate("document.readyState")
+-                if ready_state == until:
++                if ready_state in reached:
+                     return True
+                 await asyncio.sleep(0.1)
+ 
+@@ -1963,7 +2033,7 @@
+         :return:
+         :rtype:
+         """
+-        return await self.wait_for(text, selector, timeout)
++        return await self.wait_for(selector=selector, text=text, timeout=timeout)
+ 
+     def __eq__(self, other: Any) -> bool:
+         if not isinstance(other, Tab):
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/util.py b/zendriver/core/util.py
+--- a/zendriver/core/util.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/util.py	2026-10-21 06:38:54.655773832 +0000
+@@ -2,9 +2,12 @@
+ 
+ import asyncio
+ import logging
++import os
+ import subprocess
++import threading
+ import types
+ import typing
++import weakref
+ from asyncio import AbstractEventLoop
+ from pathlib import Path
+ from typing import Any, Callable, List, Optional, Set, Union
+@@ -345,22 +348,73 @@
+ 
+     :return: An instance of `subprocess.Popen`.
+     """
+-    return subprocess.Popen(
++    process = subprocess.Popen(
+         [str(exe)] + params,
+         stdin=subprocess.PIPE,
+-        stdout=subprocess.PIPE,
++        stdout=subprocess.DEVNULL,
+         stderr=subprocess.PIPE,
+         close_fds=is_posix,
+         env=None if env is None else dict(env),
+     )
++    if process.stderr is not None:
++        _stderr_tails[process] = _StderrTail(process.stderr)
++    return process
++
++
++class _StderrTail:
++    """
++    Keep reading the stderr of a browser process in a daemon thread.
++
++    A browser whose stderr pipe is full blocks on its next log write and stops
++    answering CDP, so the pipe is drained for as long as the browser runs. Only
++    the last ``size`` bytes are kept, to show them when the browser fails to start.
++    """
++
++    def __init__(self, stream: typing.IO[bytes], size: int = 2**16) -> None:
++        self._size = size
++        self._data = bytearray()
++        self._lock = threading.Lock()
++        self._thread = threading.Thread(
++            target=self._drain,
++            args=(stream,),
++            name="zendriver-browser-stderr",
++            daemon=True,
++        )
++        self._thread.start()
++
++    def _drain(self, stream: typing.IO[bytes]) -> None:
++        try:
++            # os.read returns what is available instead of waiting for a full chunk
++            while chunk := os.read(stream.fileno(), 2**16):
++                with self._lock:
++                    self._data += chunk
++                    del self._data[: -self._size]
++        except (OSError, ValueError):
++            pass
++        finally:
++            stream.close()
++
++    async def read(self, n: int, timeout: float) -> bytes:
++        # give the thread a moment to read what an exiting browser wrote last
++        await asyncio.to_thread(self._thread.join, timeout)
++        with self._lock:
++            return bytes(self._data[max(0, len(self._data) - n) :])
++
++
++_stderr_tails: weakref.WeakKeyDictionary[subprocess.Popen[bytes], _StderrTail] = (
++    weakref.WeakKeyDictionary()
++)
+ 
+ 
+ async def _read_process_stderr(process: subprocess.Popen[bytes], n: int = 2**16) -> str:
+     """
+-    Read the given number of bytes from the stderr of the given process.
++    Read up to the given number of bytes the given process last wrote to stderr.
+ 
+     Read bytes are automatically decoded to utf-8.
+     """
++    tail = _stderr_tails.get(process)
++    if tail is not None:
++        return (await tail.read(n, 0.25)).decode("utf-8", errors="replace")
+ 
+     async def read_stderr() -> bytes:
+         if process.stderr is None:
+@@ -368,7 +422,9 @@
+         return await asyncio.to_thread(process.stderr.read, n)
+ 
+     try:
+-        return (await asyncio.wait_for(read_stderr(), 0.25)).decode("utf-8")
++        return (await asyncio.wait_for(read_stderr(), 0.25)).decode(
++            "utf-8", errors="replace"
++        )
+     except asyncio.TimeoutError:
+         logger.debug("Timeout reading process stderr")
+         return ""
