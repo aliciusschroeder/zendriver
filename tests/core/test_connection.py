@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import json
 import logging
 import sys
@@ -17,17 +18,20 @@ Command = dict[str, Any]
 
 class FakeWebSocket:
     """Replies to every command with an empty result (``results[method]`` if
-    given), after the frames ``before_reply(command)`` returns: a dict frame is
-    sent as json, a str frame as is, and an exception is raised from recv()."""
+    given), after the frames ``before_reply(command)`` returns and before those
+    ``after_reply(command)`` returns: a dict frame is sent as json, a str frame
+    as is, and an exception is raised from recv()."""
 
     def __init__(
         self,
         results: dict[str, dict[str, Any]] | None = None,
         before_reply: Callable[[Command], list[Any]] | None = None,
+        after_reply: Callable[[Command], list[Any]] | None = None,
     ) -> None:
         self.closed = False
         self._results = results or {}
         self._before_reply = before_reply
+        self._after_reply = after_reply
         self._frames: asyncio.Queue[Any] = asyncio.Queue()
 
     async def send(self, message: str) -> None:
@@ -42,6 +46,9 @@ class FakeWebSocket:
         if "sessionId" in command:
             reply["sessionId"] = command["sessionId"]
         self._frames.put_nowait(reply)
+        if self._after_reply is not None:
+            for frame in self._after_reply(command):
+                self._frames.put_nowait(frame)
 
     async def recv(self) -> str:
         frame = await self._frames.get()
@@ -214,23 +221,36 @@ async def test_unparsable_response_fails_only_its_command(
 class StalledEnableWebSocket(FakeWebSocket):
     """
     never answers Network.enable, like a page whose renderer is busy or blocked
-    by an alert(). with ``hold_send`` the enable does not even leave the socket
+    by an alert(). with ``hold_send`` the enable does not even leave the socket.
+    the first ``rejected_enables`` are rejected instead, like chrome rejects
+    CSS.enable until DOM is enabled
     """
 
-    def __init__(self, hold_send: bool = False) -> None:
+    def __init__(self, hold_send: bool = False, rejected_enables: int = 0) -> None:
         super().__init__()
         self.hold_send = hold_send
+        self.rejected_enables = rejected_enables
         self.stall_enable = True
         self.enable_stalled = asyncio.Event()
         self.delivered: list[str] = []
+        self.stalled_ids: list[int] = []
 
     async def send(self, message: str) -> None:
-        method = json.loads(message)["method"]
+        command = json.loads(message)
+        method = command["method"]
+        if method == "Network.enable" and self.rejected_enables:
+            self.rejected_enables -= 1
+            self.delivered.append(method)
+            self._frames.put_nowait(
+                {"id": command["id"], "error": {"code": -32000, "message": "no"}}
+            )
+            return
         if method == "Network.enable" and self.stall_enable:
             self.enable_stalled.set()
             if self.hold_send:
                 await asyncio.Event().wait()
             self.delivered.append(method)
+            self.stalled_ids.append(command["id"])
             return
         self.delivered.append(method)
         await super().send(message)
@@ -310,6 +330,202 @@ async def test_cancelled_domain_enable_is_sent_again(
         assert zd.cdp.network in connection.enabled_domains
     finally:
         await close_and_finish(connection, task)
+
+
+async def test_timed_out_domain_enable_that_was_sent_is_not_sent_again(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    websocket = StalledEnableWebSocket()
+    connection = connection_with_network_handler(monkeypatch, websocket)
+    try:
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(
+                connection.send(zd.cdp.target.set_discover_targets(discover=True)),
+                timeout=0.5,
+            )
+        assert websocket.delivered == ["Network.enable"]
+
+        # the enable reached the browser and is still pending, e.g. while a
+        # dialog blocks the page. enabling the domain again before every
+        # command would make each one wait behind it, the one that handles
+        # the dialog too
+        await asyncio.wait_for(
+            connection.send(zd.cdp.target.set_discover_targets(discover=True)),
+            timeout=2,
+        )
+        assert websocket.delivered == ["Network.enable", "Target.setDiscoverTargets"]
+        assert zd.cdp.network in connection.enabled_domains
+    finally:
+        await connection.aclose()
+
+
+async def test_rejected_domain_enable_whose_send_timed_out_is_sent_again(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    websocket = StalledEnableWebSocket()
+    connection = connection_with_network_handler(monkeypatch, websocket)
+    try:
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(
+                connection.send(zd.cdp.target.set_discover_targets(discover=True)),
+                timeout=0.5,
+            )
+
+        # the browser answers the enable after its send was given up on
+        (enable_id,) = websocket.stalled_ids
+        websocket._frames.put_nowait(
+            {"id": enable_id, "error": {"code": -32000, "message": "rejected"}}
+        )
+        for _ in range(100):
+            if zd.cdp.network not in connection.enabled_domains:
+                break
+            await asyncio.sleep(0.01)
+        assert zd.cdp.network not in connection.enabled_domains
+
+        websocket.stall_enable = False
+        await asyncio.wait_for(
+            connection.send(zd.cdp.target.set_discover_targets(discover=True)),
+            timeout=2,
+        )
+        assert websocket.delivered == [
+            "Network.enable",
+            "Network.enable",
+            "Target.setDiscoverTargets",
+        ]
+        assert zd.cdp.network in connection.enabled_domains
+    finally:
+        await connection.aclose()
+
+
+async def test_cancelled_send_leaves_no_command_behind(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unhandled: list[dict[str, Any]] = []
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(lambda loop, context: unhandled.append(context))
+    # the enable is rejected while send() opens the connection, and stalls when
+    # send() tries again for its own command, which is then already registered
+    websocket = StalledEnableWebSocket(hold_send=True, rejected_enables=1)
+    connection = connection_with_network_handler(monkeypatch, websocket)
+    task = asyncio.create_task(
+        connection.send(zd.cdp.target.set_discover_targets(discover=True))
+    )
+    try:
+        await asyncio.wait_for(websocket.enable_stalled.wait(), timeout=5)
+        task.cancel()
+        await asyncio.wait({task}, timeout=5)
+        assert task.cancelled(), "send() ignored the cancellation"
+
+        # the command never left, so nothing waits for its response
+        assert connection.mapper == {}
+        await connection.aclose()
+        del task
+        gc.collect()
+        assert not unhandled
+    finally:
+        loop.set_exception_handler(None)
+        await connection.aclose()
+
+
+class ClosingWebSocket(FakeWebSocket):
+    """a write waits for ``fail_write`` and then fails, like one that meets the
+    close of the connection"""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.writing = asyncio.Event()
+        self.fail_write = asyncio.Event()
+
+    async def send(self, message: str) -> None:
+        self.writing.set()
+        await self.fail_write.wait()
+        raise websockets.exceptions.ConnectionClosedOK(None, None)
+
+
+async def test_close_during_a_failing_write_leaves_no_unretrieved_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unhandled: list[dict[str, Any]] = []
+    loop = asyncio.get_running_loop()
+    loop.set_exception_handler(lambda loop, context: unhandled.append(context))
+    websocket = ClosingWebSocket()
+    use_websocket(monkeypatch, websocket)
+    connection = Connection("ws://fake/devtools/browser/fake")
+    task = asyncio.create_task(connection.send(zd.cdp.browser.close()))
+    try:
+        await asyncio.wait_for(websocket.writing.wait(), timeout=5)
+        # like a concurrent Browser.stop(): the close fails the pending command
+        # and then its write
+        await connection.aclose()
+        websocket.fail_write.set()
+        await asyncio.wait({task}, timeout=5)
+        assert isinstance(
+            task.exception(), websockets.exceptions.ConnectionClosedOK
+        ), "send() did not raise the error of its write"
+
+        del task
+        gc.collect()
+        assert not unhandled
+    finally:
+        loop.set_exception_handler(None)
+        await connection.aclose()
+
+
+async def test_cancelled_manual_enable_is_enabled_for_handlers_later(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # the stall hits send()'s own domain enables, after Page counts as enabled
+    websocket = StalledEnableWebSocket(hold_send=True, rejected_enables=1)
+    connection = connection_with_network_handler(monkeypatch, websocket)
+    task = asyncio.create_task(connection.send(zd.cdp.page.enable()))
+    try:
+        await asyncio.wait_for(websocket.enable_stalled.wait(), timeout=5)
+        task.cancel()
+        await asyncio.wait({task}, timeout=5)
+        assert task.cancelled(), "send() ignored the cancellation"
+        assert websocket.delivered == ["Network.enable"]
+
+        # Page.enable was never sent, so a Page handler must still enable it
+        assert zd.cdp.page not in connection.manually_enabled_domains
+        websocket.stall_enable = False
+        connection.add_handler(zd.cdp.page.LoadEventFired, lambda event: None)
+        await asyncio.wait_for(
+            connection.send(zd.cdp.target.set_discover_targets(discover=True)),
+            timeout=5,
+        )
+        assert "Page.enable" in websocket.delivered
+        assert zd.cdp.page in connection.enabled_domains
+    finally:
+        await close_and_finish(connection, task)
+
+
+async def test_command_that_failed_while_enabling_domains_is_not_sent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sent: list[str] = []
+
+    def receive_error_before_enable_reply(command: Command) -> list[Any]:
+        sent.append(command["method"])
+        if command["method"] == "Network.enable":
+            return [RuntimeError("cannot receive")]
+        return []
+
+    connection = connection_with_network_handler(
+        monkeypatch, FakeWebSocket(before_reply=receive_error_before_enable_reply)
+    )
+    try:
+        # the receive error fails the command while its send() still enables
+        # the domain. it must not run in the browser after the caller is told
+        # that it failed
+        with pytest.raises(RuntimeError):
+            await asyncio.wait_for(
+                connection.send(zd.cdp.target.set_discover_targets(discover=True)),
+                timeout=2,
+            )
+        assert "Network.enable" in sent
+        assert "Target.setDiscoverTargets" not in sent
+    finally:
+        await connection.aclose()
 
 
 async def test_handler_that_fails_when_called_does_not_stop_the_listener(
@@ -428,6 +644,45 @@ async def test_flat_session_send_restarts_the_browser_listener(
         await asyncio.wait_for(tab.send(zd.cdp.page.bring_to_front()), timeout=2)
         assert browser_connection.listener is not None
         assert browser_connection.listener.running
+    finally:
+        await tab.aclose()
+        await browser_connection.aclose()
+
+
+async def test_receive_error_spares_responses_routed_to_a_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fail_after_next_session_reply = False
+
+    def receive_error_after_reply(command: Command) -> list[Any]:
+        nonlocal fail_after_next_session_reply
+        if "sessionId" in command and fail_after_next_session_reply:
+            fail_after_next_session_reply = False
+            return ["not json"]
+        return []
+
+    use_websocket(
+        monkeypatch,
+        FakeWebSocket(
+            results={
+                "Target.attachToTarget": {"sessionId": "S1"},
+                "Runtime.evaluate": {"result": {"type": "number", "value": 2}},
+            },
+            after_reply=receive_error_after_reply,
+        ),
+    )
+    browser_connection = Connection("ws://fake/devtools/browser/fake")
+    tab = flat_session_tab(browser_connection)
+    try:
+        await asyncio.wait_for(tab.send(zd.cdp.page.bring_to_front()), timeout=2)
+
+        # the response is routed to the tab before the browser connection's
+        # listener reads a frame it cannot parse. the command has its answer
+        fail_after_next_session_reply = True
+        remote_object, _ = await asyncio.wait_for(
+            tab.send(zd.cdp.runtime.evaluate("1 + 1")), timeout=2
+        )
+        assert remote_object.value == 2
     finally:
         await tab.aclose()
         await browser_connection.aclose()
