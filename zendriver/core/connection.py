@@ -706,7 +706,13 @@ class Connection(metaclass=CantTouchThis):
 
                     await self.send(domain_mod.enable(), _is_update=True)
 
-                except:  # noqa - as broad as possible, we don't want an error before the "actual" request is sent
+                except asyncio.CancelledError:
+                    # the enable may not have reached the browser, so don't keep
+                    # the domain marked as enabled, and let the cancellation through
+                    if domain_mod in self.enabled_domains:
+                        self.enabled_domains.remove(domain_mod)
+                    raise
+                except Exception:  # as broad as possible, we don't want an error before the "actual" request is sent
                     logger.debug("", exc_info=True)
                     try:
                         self.enabled_domains.remove(domain_mod)
