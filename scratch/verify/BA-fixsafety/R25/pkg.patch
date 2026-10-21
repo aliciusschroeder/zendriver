@@ -1,12 +1,15 @@
 diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
 --- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
-+++ b/zendriver/core/browser.py	2026-10-21 01:44:04.633956579 +0000
-@@ -355,8 +355,11 @@
-                     filter(
-                         lambda item: item.target_id == target_info.target_id,
-                         self.targets,
++++ b/zendriver/core/browser.py	2026-10-21 01:49:19.147771128 +0000
+@@ -352,11 +352,11 @@
+                 target_info = event.target_info
+ 
+                 current_tab = next(
+-                    filter(
+-                        lambda item: item.target_id == target_info.target_id,
+-                        self.targets,
 -                    )
-+                    ),
++                    (t for t in self.targets if t.target_id == target_info.target_id),
 +                    None,
                  )
 +                if current_tab is None:
@@ -14,14 +17,12 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriv
                  current_target = current_tab.target
  
                  if logger.getEffectiveLevel() <= 10:
-@@ -384,8 +387,14 @@
+@@ -384,8 +384,12 @@
  
              elif isinstance(event, cdp.target.TargetDestroyed):
                  current_tab = next(
 -                    filter(lambda item: item.target_id == event.target_id, self.targets)
-+                    filter(
-+                        lambda item: item.target_id == event.target_id, self.targets
-+                    ),
++                    (t for t in self.targets if t.target_id == event.target_id),
 +                    None,
                  )
 +                # update_targets may have removed the target already
@@ -30,7 +31,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriv
                  logger.debug(
                      "target removed. id # %d => %s"
                      % (self.targets.index(current_tab), current_tab)
-@@ -634,7 +643,9 @@
+@@ -634,7 +638,9 @@
              self.connection.handlers[cdp.target.TargetCrashed] = [
                  self._handle_target_update
              ]
@@ -41,7 +42,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriv
          await self.update_targets()
          if not connect_existing:
              await self._wait_for_initial_tab()
-@@ -821,6 +832,11 @@
+@@ -821,6 +827,11 @@
      async def update_targets(self) -> None:
          targets: List[cdp.target.TargetInfo]
          targets = await self._get_targets()

@@ -1,0 +1,1 @@
+{"agentType":"workflow-subagent","description":"BB:refute","workflowPhase":"Verify bundles","spawnDepth":1,"requestShape":"foreground","requestNonInteractive":true}

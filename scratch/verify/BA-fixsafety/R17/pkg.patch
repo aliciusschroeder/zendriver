@@ -1,0 +1,55 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
+--- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/browser.py	2026-10-21 01:46:28.659854226 +0000
+@@ -431,15 +431,16 @@
+                 await navigated.wait()
+ 
+         self.connection.add_handler(event_type, get_handler)
++        created_target_id: cdp.target.TargetID | None = None
+         try:
+             if new_tab or new_window:
+                 # create new target using the browser session
+-                target_id = await self.connection.send(
++                created_target_id = await self.connection.send(
+                     cdp.target.create_target(
+                         url, new_window=new_window, enable_begin_frame_control=True
+                     )
+                 )
+-                connection = await self._get_tab(target_id)
++                connection = await self._get_tab(created_target_id)
+             else:
+                 if not self.tabs:
+                     raise RuntimeError(
+@@ -447,12 +448,31 @@
+                     )
+                 connection = self.tabs[0]
+                 # use the tab to navigate to new url
+-                await connection.send(cdp.page.navigate(url))
++                _, _, error_text, _ = await connection.send(cdp.page.navigate(url))
++                if error_text:
++                    # the navigation did not commit a new document (an error,
++                    # a download or a 204 response), so no target change follows
++                    return connection
+             connection.browser = self
+             if connection.target_id is None:
+                 raise RuntimeError("Tab has no target to wait for navigation on")
+ 
+             await asyncio.wait_for(wait_for_navigation(connection.target_id), timeout)
++        except Exception:
++            if created_target_id is not None:
++                # the caller never gets the new tab, so close it instead of leaving it open
++                try:
++                    await asyncio.wait_for(
++                        self.connection.send(
++                            cdp.target.close_target(created_target_id)
++                        ),
++                        timeout,
++                    )
++                except Exception:
++                    logger.debug(
++                        "could not close target %s", created_target_id, exc_info=True
++                    )
++            raise
+         finally:
+             self.connection.remove_handlers(event_type, get_handler)
+ 
