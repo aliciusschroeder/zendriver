@@ -1,0 +1,5 @@
+zendriver from /home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-15/zendriver/__init__.py python 3.10.20
+browser A at 127.0.0.1 59003 pid 1809
+attach-raise: outcome=RuntimeError elapsed=0.00s A alive=True A usable=True leftover registered=0
+attach-cancel: outcome=TimeoutError elapsed=1.00s A alive=True A usable=True leftover registered=0
+attach-final: outcome=- elapsed=0.00s rc=0 profile_exists=False registered=0

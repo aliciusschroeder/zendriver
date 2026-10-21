@@ -1,0 +1,289 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+FFFFFF                                                                   [100%]
+=================================== FAILURES ===================================
+_ test_browser_stop_terminates_a_browser_which_stopped_responding[Target.detachFromTarget] _
+
+method = 'Target.detachFromTarget'
+stub_browser = <function stub_browser.<locals>.create at 0x7f19bd0f2290>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f19bd1088b0>
+
+    @pytest.mark.parametrize("method", ["Target.detachFromTarget", "Browser.close"])
+    async def test_browser_stop_terminates_a_browser_which_stopped_responding(
+        method: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5, raising=False
+        )
+        browser, process = stub_browser()
+        async with _fake_chrome(method, lambda websocket: None) as websocket_url:
+            await _attach_tabs(browser, websocket_url, 2)
+    
+            stop = asyncio.create_task(browser.stop())
+            done, _ = await asyncio.wait({stop}, timeout=10)
+            if not done:
+                stop.cancel()
+                await asyncio.gather(stop, return_exceptions=True)
+>           assert done, f"stop() still waits for the {method} reply"
+E           AssertionError: stop() still waits for the Target.detachFromTarget reply
+E           assert set()
+
+tests/core/test_browser.py:485: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+INFO     websockets.server:server.py:338 server listening on 127.0.0.1:33659
+INFO     websockets.server:server.py:535 connection open
+INFO     websockets.server:server.py:437 server closing
+INFO     websockets.server:server.py:470 server closed
+_ test_browser_stop_terminates_a_browser_which_stopped_responding[Browser.close] _
+
+method = 'Browser.close'
+stub_browser = <function stub_browser.<locals>.create at 0x7f19bd0f24d0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f19bd0ce8f0>
+
+    @pytest.mark.parametrize("method", ["Target.detachFromTarget", "Browser.close"])
+    async def test_browser_stop_terminates_a_browser_which_stopped_responding(
+        method: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5, raising=False
+        )
+        browser, process = stub_browser()
+        async with _fake_chrome(method, lambda websocket: None) as websocket_url:
+            await _attach_tabs(browser, websocket_url, 2)
+    
+            stop = asyncio.create_task(browser.stop())
+            done, _ = await asyncio.wait({stop}, timeout=10)
+            if not done:
+                stop.cancel()
+                await asyncio.gather(stop, return_exceptions=True)
+>           assert done, f"stop() still waits for the {method} reply"
+E           AssertionError: stop() still waits for the Browser.close reply
+E           assert set()
+
+tests/core/test_browser.py:485: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+INFO     websockets.server:server.py:338 server listening on 127.0.0.1:34673
+INFO     websockets.server:server.py:535 connection open
+INFO     websockets.server:server.py:437 server closing
+INFO     websockets.server:server.py:470 server closed
+____ test_browser_stop_cleans_up_when_the_connection_drops_while_detaching _____
+
+stub_browser = <function stub_browser.<locals>.create at 0x7f19bcfa16c0>
+
+    async def test_browser_stop_cleans_up_when_the_connection_drops_while_detaching(
+        stub_browser: StubBrowserFactory,
+    ) -> None:
+        browser, process = stub_browser()
+        # like a browser which crashed: the connection ends without a close frame
+        async with _fake_chrome(
+            "Target.detachFromTarget", lambda websocket: websocket.transport.abort()
+        ) as websocket_url:
+            await _attach_tabs(browser, websocket_url, 2)
+    
+>           await asyncio.wait_for(browser.stop(), timeout=10)
+
+tests/core/test_browser.py:502: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py:445: in wait_for
+    return fut.result()
+zendriver/core/browser.py:872: in stop
+    await self._stop()
+zendriver/core/browser.py:879: in _stop
+    await target.aclose()
+zendriver/core/connection.py:517: in aclose
+    await browser_connection.send(
+zendriver/core/connection.py:662: in send
+    return await tx
+zendriver/core/connection.py:925: in listener_loop
+    message = await asyncio.wait_for(
+/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py:445: in wait_for
+    return fut.result()
+zendriver/core/connection.py:836: in _receive_message
+    message: dict[str, Any] = json.loads(await self.websocket.recv())
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <websockets.asyncio.client.ClientConnection object at 0x7f19bcfe96f0>
+decode = None
+
+    async def recv(self, decode: bool | None = None) -> Data:
+        """
+        Receive the next message.
+    
+        When the connection is closed, :meth:`recv` raises
+        :exc:`~websockets.exceptions.ConnectionClosed`. Specifically, it raises
+        :exc:`~websockets.exceptions.ConnectionClosedOK` after a normal closure
+        and :exc:`~websockets.exceptions.ConnectionClosedError` after a protocol
+        error or a network failure. This is how you detect the end of the
+        message stream.
+    
+        Canceling :meth:`recv` is safe. There's no risk of losing data. The next
+        invocation of :meth:`recv` will return the next message.
+    
+        This makes it possible to enforce a timeout by wrapping :meth:`recv` in
+        :func:`~asyncio.timeout` or :func:`~asyncio.wait_for`.
+    
+        When the message is fragmented, :meth:`recv` waits until all fragments
+        are received, reassembles them, and returns the whole message.
+    
+        Args:
+            decode: Set this flag to override the default behavior of returning
+                :class:`str` or :class:`bytes`. See below for details.
+    
+        Returns:
+            A string (:class:`str`) for a Text_ frame or a bytestring
+            (:class:`bytes`) for a Binary_ frame.
+    
+            .. _Text: https://datatracker.ietf.org/doc/html/rfc6455#section-5.6
+            .. _Binary: https://datatracker.ietf.org/doc/html/rfc6455#section-5.6
+    
+            You may override this behavior with the ``decode`` argument:
+    
+            * Set ``decode=False`` to disable UTF-8 decoding of Text_ frames and
+              return a bytestring (:class:`bytes`). This improves performance
+              when decoding isn't needed, for example if the message contains
+              JSON and you're using a JSON library that expects a bytestring.
+            * Set ``decode=True`` to force UTF-8 decoding of Binary_ frames
+              and return a string (:class:`str`). This may be useful for
+              servers that send binary frames instead of text frames.
+    
+        Raises:
+            ConnectionClosed: When the connection is closed.
+            ConcurrencyError: If two coroutines call :meth:`recv` or
+                :meth:`recv_streaming` concurrently.
+    
+        """
+        try:
+            return await self.recv_messages.get(decode)
+        except EOFError:
+            pass
+            # fallthrough
+        except ConcurrencyError:
+            raise ConcurrencyError(
+                "cannot call recv while another coroutine "
+                "is already running recv or recv_streaming"
+            ) from None
+        except UnicodeDecodeError as exc:
+            async with self.send_context():
+                self.protocol.fail(
+                    CloseCode.INVALID_DATA,
+                    f"{exc.reason} at position {exc.start}",
+                )
+            # fallthrough
+    
+        # Wait for the protocol state to be CLOSED before accessing close_exc.
+        await asyncio.shield(self.connection_lost_waiter)
+>       raise self.protocol.close_exc from self.recv_exc
+E       websockets.exceptions.ConnectionClosedError: no close frame received or sent
+
+.venv/lib/python3.10/site-packages/websockets/asyncio/connection.py:313: ConnectionClosedError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+INFO     websockets.server:server.py:338 server listening on 127.0.0.1:38807
+INFO     websockets.server:server.py:535 connection open
+INFO     websockets.server:server.py:437 server closing
+INFO     websockets.server:server.py:470 server closed
+_______________ test_concurrent_browser_stop_calls_do_not_raise ________________
+
+stub_browser = <function stub_browser.<locals>.create at 0x7f19bcecf490>
+
+    async def test_concurrent_browser_stop_calls_do_not_raise(
+        stub_browser: StubBrowserFactory,
+    ) -> None:
+        # the process takes a while to exit, so that both calls wait for it
+        browser, process = stub_browser(EXITS_A_WHILE_AFTER_SIGTERM)
+    
+        first = asyncio.create_task(browser.stop())
+        await asyncio.sleep(0.1)
+        second = asyncio.create_task(browser.stop())
+        results = await asyncio.wait_for(
+            asyncio.gather(first, second, return_exceptions=True), timeout=10
+        )
+    
+>       assert list(results) == [None, None]
+E       assert [None, Attrib...bute 'poll'")] == [None, None]
+E         
+E         At index 1 diff: AttributeError("'NoneType' object has no attribute 'poll'") != None
+E         Use -v to get more diff
+
+tests/core/test_browser.py:522: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+__ test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_never_called] __
+
+program = "import time; print('ready', flush=True); time.sleep(60)"
+stop = 'never'
+
+    @pytest.mark.parametrize(
+        "program, stop",
+        [(EXITS_ON_SIGTERM, "never"), (IGNORES_SIGTERM, "cancelled")],
+        ids=["stop_never_called", "stop_cancelled"],
+    )
+    def test_atexit_cleanup_stops_the_browser_under_asyncio_run(
+        program: str, stop: str
+    ) -> None:
+        # asyncio.run shuts the default executor down before it closes the loop,
+        # which is when asyncio_atexit runs the cleanup
+        result = subprocess.run(
+            [sys.executable, "-c", ATEXIT_SCRIPT, program, stop],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        lines = result.stdout.splitlines()
+        assert len(lines) == 2, result.stderr
+        pid, user_data_dir = int(lines[0]), lines[1]
+        try:
+            assert result.returncode == 0, result.stderr
+>           assert "Unhandled exception" not in result.stderr, result.stderr
+E           AssertionError: Unhandled exception in asyncio atexit callback <bound method Browser._atexit_cleanup of <zendriver.core.browser.Browser object at 0x7f39f03fe5f0>>: Executor shutdown has been called
+E             
+E           assert 'Unhandled exception' not in 'Unhandled e...een called\n'
+E             
+E             'Unhandled exception' is contained here:
+E               Unhandled exception in asyncio atexit callback <bound method Browser._atexit_cleanup of <zendriver.core.browser.Browser object at 0x7f39f03fe5f0>>: Executor shutdown has been called
+E             ? +++++++++++++++++++
+
+tests/core/test_browser.py:576: AssertionError
+___ test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_cancelled] ____
+
+program = "\nimport signal, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\nprint('ready', flush=True)\ntime.sleep(60)\n"
+stop = 'cancelled'
+
+    @pytest.mark.parametrize(
+        "program, stop",
+        [(EXITS_ON_SIGTERM, "never"), (IGNORES_SIGTERM, "cancelled")],
+        ids=["stop_never_called", "stop_cancelled"],
+    )
+    def test_atexit_cleanup_stops_the_browser_under_asyncio_run(
+        program: str, stop: str
+    ) -> None:
+        # asyncio.run shuts the default executor down before it closes the loop,
+        # which is when asyncio_atexit runs the cleanup
+        result = subprocess.run(
+            [sys.executable, "-c", ATEXIT_SCRIPT, program, stop],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        lines = result.stdout.splitlines()
+        assert len(lines) == 2, result.stderr
+        pid, user_data_dir = int(lines[0]), lines[1]
+        try:
+            assert result.returncode == 0, result.stderr
+            assert "Unhandled exception" not in result.stderr, result.stderr
+>           assert not psutil.pid_exists(pid), "the browser process outlived python"
+E           AssertionError: the browser process outlived python
+E           assert not True
+E            +  where True = <function pid_exists at 0x7f19bd0e1f30>(24127)
+E            +    where <function pid_exists at 0x7f19bd0e1f30> = psutil.pid_exists
+
+tests/core/test_browser.py:577: AssertionError
+=========================== short test summary info ============================
+FAILED tests/core/test_browser.py::test_browser_stop_terminates_a_browser_which_stopped_responding[Target.detachFromTarget]
+FAILED tests/core/test_browser.py::test_browser_stop_terminates_a_browser_which_stopped_responding[Browser.close]
+FAILED tests/core/test_browser.py::test_browser_stop_cleans_up_when_the_connection_drops_while_detaching
+FAILED tests/core/test_browser.py::test_concurrent_browser_stop_calls_do_not_raise
+FAILED tests/core/test_browser.py::test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_never_called]
+FAILED tests/core/test_browser.py::test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_cancelled]
+6 failed, 18 deselected in 22.34s
