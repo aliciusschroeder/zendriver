@@ -1,0 +1,188 @@
+python 3.13.16 zendriver from /home/user/zendriver/zendriver/__init__.py
+(a) chrome reply to unknown session: {"id":1,"error":{"code":-32001,"message":"Session with given id not found."}}
+(b) block=0: results=['ProtocolException:target session was detached', 'ProtocolException:target session was detached', 'ProtocolException:target session was detached', 'ProtocolException:target session was detached', 'ProtocolException:target session was detached', 'ProtocolException:target session was detached', 'ProtocolException:target session was detached', 'ProtocolException:target session was detached']
+  block=0.2: HANG; tab.session_id=C5E4697DDD7D684DEC893969696E818A registered=[SessionID('C5E4697DDD7D684DEC893969696E818A')] tab.mapper=[40] browser mapper=[]
+Stack for <Task pending name='Task-89' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:641> wait_for=<Transaction
+	method: Network.setUserAgentOverride
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 641, in send
+    await self._prepare_headless()
+  later send on the same tab: HANG
+  block=0.2: HANG; tab.session_id=87986D14201E28E45CDEF33AFC8F5B8F registered=[SessionID('C5E4697DDD7D684DEC893969696E818A'), SessionID('87986D14201E28E45CDEF33AFC8F5B8F')] tab.mapper=[45] browser mapper=[]
+Stack for <Task pending name='Task-99' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:641> wait_for=<Transaction
+	method: Network.setUserAgentOverride
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 641, in send
+    await self._prepare_headless()
+  later send on the same tab: HANG
+  block=0.2: HANG; tab.session_id=CA96A59084A1EF05D7E9C5D9684F49E5 registered=[SessionID('C5E4697DDD7D684DEC893969696E818A'), SessionID('87986D14201E28E45CDEF33AFC8F5B8F'), SessionID('CA96A59084A1EF05D7E9C5D9684F49E5')] tab.mapper=[50] browser mapper=[]
+Stack for <Task pending name='Task-109' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:641> wait_for=<Transaction
+	method: Network.setUserAgentOverride
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 641, in send
+    await self._prepare_headless()
+  later send on the same tab: HANG
+  block=0.2: HANG; tab.session_id=E596D6DD28F6E1BD491F8078D984C871 registered=[SessionID('C5E4697DDD7D684DEC893969696E818A'), SessionID('87986D14201E28E45CDEF33AFC8F5B8F'), SessionID('CA96A59084A1EF05D7E9C5D9684F49E5'), SessionID('E596D6DD28F6E1BD491F8078D984C871')] tab.mapper=[55] browser mapper=[]
+Stack for <Task pending name='Task-119' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:641> wait_for=<Transaction
+	method: Network.setUserAgentOverride
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 641, in send
+    await self._prepare_headless()
+  later send on the same tab: HANG
+  block=0.2: HANG; tab.session_id=48056C26ED5B0E1F6FF9CDB39A98BB04 registered=[SessionID('C5E4697DDD7D684DEC893969696E818A'), SessionID('87986D14201E28E45CDEF33AFC8F5B8F'), SessionID('CA96A59084A1EF05D7E9C5D9684F49E5'), SessionID('E596D6DD28F6E1BD491F8078D984C871'), SessionID('48056C26ED5B0E1F6FF9CDB39A98BB04')] tab.mapper=[60] browser mapper=[]
+Stack for <Task pending name='Task-129' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:641> wait_for=<Transaction
+	method: Network.setUserAgentOverride
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 641, in send
+    await self._prepare_headless()
+  later send on the same tab: HANG
+  block=0.2: HANG; tab.session_id=BAED96E8C400632AAEBEF461DD359BB0 registered=[SessionID('C5E4697DDD7D684DEC893969696E818A'), SessionID('87986D14201E28E45CDEF33AFC8F5B8F'), SessionID('CA96A59084A1EF05D7E9C5D9684F49E5'), SessionID('E596D6DD28F6E1BD491F8078D984C871'), SessionID('48056C26ED5B0E1F6FF9CDB39A98BB04'), SessionID('BAED96E8C400632AAEBEF461DD359BB0')] tab.mapper=[65] browser mapper=[]
+Stack for <Task pending name='Task-139' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:641> wait_for=<Transaction
+	method: Network.setUserAgentOverride
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 641, in send
+    await self._prepare_headless()
+  later send on the same tab: HANG
+  block=0.2: HANG; tab.session_id=DCB1B20DB77030404D6631F760C5B812 registered=[SessionID('C5E4697DDD7D684DEC893969696E818A'), SessionID('87986D14201E28E45CDEF33AFC8F5B8F'), SessionID('CA96A59084A1EF05D7E9C5D9684F49E5'), SessionID('E596D6DD28F6E1BD491F8078D984C871'), SessionID('48056C26ED5B0E1F6FF9CDB39A98BB04'), SessionID('BAED96E8C400632AAEBEF461DD359BB0'), SessionID('DCB1B20DB77030404D6631F760C5B812')] tab.mapper=[70] browser mapper=[]
+Stack for <Task pending name='Task-149' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:641> wait_for=<Transaction
+	method: Network.setUserAgentOverride
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 641, in send
+    await self._prepare_headless()
+  later send on the same tab: HANG
+  block=0.2: HANG; tab.session_id=064B5AEE9D313EB8C2A158F2E894A2E5 registered=[SessionID('C5E4697DDD7D684DEC893969696E818A'), SessionID('87986D14201E28E45CDEF33AFC8F5B8F'), SessionID('CA96A59084A1EF05D7E9C5D9684F49E5'), SessionID('E596D6DD28F6E1BD491F8078D984C871'), SessionID('48056C26ED5B0E1F6FF9CDB39A98BB04'), SessionID('BAED96E8C400632AAEBEF461DD359BB0'), SessionID('DCB1B20DB77030404D6631F760C5B812'), SessionID('064B5AEE9D313EB8C2A158F2E894A2E5')] tab.mapper=[75] browser mapper=[]
+Stack for <Task pending name='Task-159' coro=<Connection.send() running at /home/user/zendriver/zendriver/core/connection.py:641> wait_for=<Transaction
+	method: Network.setUserAgentOverride
+	status: pending
+	success: True>> (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 641, in send
+    await self._prepare_headless()
+  later send on the same tab: HANG
+(b) block=0.2: results=['hang', 'hang', 'hang', 'hang', 'hang', 'hang', 'hang', 'hang']
+Task exception was never retrieved
+future: <Task finished name='Task-15' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-25' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-35' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-45' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-55' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-65' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-75' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-85' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection

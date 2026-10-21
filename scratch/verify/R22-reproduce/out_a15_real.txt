@@ -1,0 +1,13 @@
+python 3.13.16 zendriver from /home/user/zendriver/zendriver/__init__.py
+mode=page.close block=0: ['ok', 'ok', 'ok', 'ok', 'ok', 'ok']
+   frames for session B97F1B7A4AE622461FBF9326E2F20FE9 read by the browser listener:
+      {"id": 39, "result": {}, "sessionId": "B97F1B7A4AE622461FBF9326E2F20FE9"}
+      {"method": "Inspector.detached", "params": {"reason": "Render process gone."}, "sessionId": "B97F1B7A4AE622461FBF9326E2F20FE9"}
+      {"method": "Target.detachedFromTarget", "params": {"sessionId": "B97F1B7A4AE622461FBF9326E2F20FE9", "targetId": "6D89663AE4AFD5642562E5E65A9133EE"}}
+mode=page.close block=0.2: ['PE:target session was detached', 'PE:target session was detached', 'PE:target session was detached', 'PE:target session was detached', 'PE:target session was detached', 'PE:target session was detached']
+mode=evaluate+closeTarget block=0: ['ok', 'ok', 'ok', 'ok', 'ok', 'ok']
+   frames for session 45BF46775914365A6EA71F6988AB030F read by the browser listener:
+      {"id": 105, "result": {"result": {"type": "number", "value": 2, "description": "2"}}, "sessionId": "45BF46775914365A6EA71F6988AB030F"}
+      {"method": "Inspector.detached", "params": {"reason": "Render process gone."}, "sessionId": "45BF46775914365A6EA71F6988AB030F"}
+      {"method": "Target.detachedFromTarget", "params": {"sessionId": "45BF46775914365A6EA71F6988AB030F", "targetId": "19EC6788729B78FB4DD24AD82B3976F0"}}
+mode=evaluate+closeTarget block=0.2: ['PE:target session was detached', 'PE:target session was detached', 'PE:target session was detached', 'PE:target session was detached', 'PE:target session was detached', 'PE:target session was detached']

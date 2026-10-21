@@ -1,0 +1,25 @@
+python 3.12.3 zendriver from /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R22-reproduce/pkg/zendriver/__init__.py
+--- detach after attach reply, delay=0.0
+  first send: HANG (not done after 3s)
+    tab.session_id=S1 bc._sessions=[SessionID('S1')] bc.mapper=[] tab.mapper=[2] peer alive sessions=[]
+    last peer frames: [{'id': 1, 'result': {'sessionId': 'S1'}}, {'method': 'Target.detachedFromTarget', 'params': {'sessionId': 'S1', 'targetId': 'T1'}}, {'id': 2, 'error': {'code': -32001, 'message': 'Session with given id not found.'}}]
+    stack of the stuck send task:
+Stack for <Task pending name='Task-3' coro=<Connection.send() running at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R22-reproduce/pkg/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Runtime.evaluate
+	status: pending
+	success: True>> (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R22-reproduce/pkg/zendriver/core/connection.py", line 662, in send
+    return await tx
+  second send: HANG (not done after 3s)
+    tab.session_id=S1 bc._sessions=[SessionID('S1')] bc.mapper=[] tab.mapper=[2, 3] peer alive sessions=[]
+    last peer frames: [{'method': 'Target.detachedFromTarget', 'params': {'sessionId': 'S1', 'targetId': 'T1'}}, {'id': 2, 'error': {'code': -32001, 'message': 'Session with given id not found.'}}, {'id': 3, 'error': {'code': -32001, 'message': 'Session with given id not found.'}}]
+    stack of the stuck send task:
+Stack for <Task pending name='Task-10' coro=<Connection.send() running at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R22-reproduce/pkg/zendriver/core/connection.py:662> wait_for=<Transaction
+	method: Runtime.evaluate
+	status: pending
+	success: True>> (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R22-reproduce/pkg/zendriver/core/connection.py", line 662, in send
+    return await tx
+--- detach after attach reply, delay=0.2
+  first send: success
+  second send: success

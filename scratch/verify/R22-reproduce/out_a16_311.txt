@@ -1,0 +1,20 @@
+python 3.11.17 zendriver from /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R22-reproduce/pkg/zendriver/__init__.py
+new tab session_id: None chrome attached flag before: False
+  wait_for(1e-06): TimeoutError; tab.session_id after = None
+  wait_for(1e-06): TimeoutError; tab.session_id after = None
+  wait_for(1e-06): TimeoutError; tab.session_id after = None
+  cancel #0: CancelledError; tab.session_id after = None
+  cancel #1: CancelledError; tab.session_id after = None
+attached so far for tab: [SessionID('F3508501A04E173CA504F23FEBD1ADCD'), SessionID('5DBE315FC5A83A4AB9FD993057609825'), SessionID('0AEA3EE85D8EB09D1EF4A87114471940'), SessionID('7E3E702873304928E1BA2DD07ACFCF83'), SessionID('0C33D7F6C62C0BDAD7774336CB25270E')]
+evaluate after the cancels: 2 tab.session_id now: 25E0ADBDE128918DC8F54D2C8BF8D5B3
+attached: [SessionID('F3508501A04E173CA504F23FEBD1ADCD'), SessionID('5DBE315FC5A83A4AB9FD993057609825'), SessionID('0AEA3EE85D8EB09D1EF4A87114471940'), SessionID('7E3E702873304928E1BA2DD07ACFCF83'), SessionID('0C33D7F6C62C0BDAD7774336CB25270E'), SessionID('25E0ADBDE128918DC8F54D2C8BF8D5B3')]
+detached after tab.aclose(): [SessionID('25E0ADBDE128918DC8F54D2C8BF8D5B3')]
+orphan sessions (attached, never detached): [SessionID('F3508501A04E173CA504F23FEBD1ADCD'), SessionID('5DBE315FC5A83A4AB9FD993057609825'), SessionID('0AEA3EE85D8EB09D1EF4A87114471940'), SessionID('7E3E702873304928E1BA2DD07ACFCF83'), SessionID('0C33D7F6C62C0BDAD7774336CB25270E')]
+chrome attached flag after tab.aclose(): True
+browser.connection._sessions: []
+explicit Target.detachFromTarget(F3508501A04E173CA504F23FEBD1ADCD): succeeded (session was alive in chrome)
+explicit Target.detachFromTarget(5DBE315FC5A83A4AB9FD993057609825): succeeded (session was alive in chrome)
+explicit Target.detachFromTarget(0AEA3EE85D8EB09D1EF4A87114471940): succeeded (session was alive in chrome)
+explicit Target.detachFromTarget(7E3E702873304928E1BA2DD07ACFCF83): succeeded (session was alive in chrome)
+explicit Target.detachFromTarget(0C33D7F6C62C0BDAD7774336CB25270E): succeeded (session was alive in chrome)
+chrome attached flag after explicit detach of orphans: False
