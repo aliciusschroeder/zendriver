@@ -1,0 +1,6 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+....s....s                                                               [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/core/test_connection.py:75: ExceptionGroup needs Python 3.11+
+SKIPPED [1] tests/core/test_browser.py:367: ExceptionGroup needs Python 3.11+
+8 passed, 2 skipped, 34 deselected in 0.04s

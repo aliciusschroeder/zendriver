@@ -1,0 +1,537 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+FFFFsFFFFs                                                               [100%]
+=================================== FAILURES ===================================
+______________ test_aexit_propagates_the_original_exception[json] ______________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f1f46ec2560>
+make_exception = <function <lambda> at 0x7f1f472e2170>
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        mocker: MockerFixture, make_exception: Callable[[], BaseException]
+    ) -> None:
+        connection = Connection("ws://fake/devtools/browser/fake")
+        aclose = mocker.spy(connection, "aclose")
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+            async with connection:
+>               raise exception
+E               json.decoder.JSONDecodeError: Expecting value: line 1 column 2 (char 1)
+
+tests/core/test_connection.py:107: JSONDecodeError
+
+During handling of the above exception, another exception occurred:
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f1f46ec2560>
+make_exception = <function <lambda> at 0x7f1f472e2170>
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        mocker: MockerFixture, make_exception: Callable[[], BaseException]
+    ) -> None:
+        connection = Connection("ws://fake/devtools/browser/fake")
+        aclose = mocker.spy(connection, "aclose")
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+>           async with connection:
+
+tests/core/test_connection.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zendriver.core.connection.Connection object at 0x7f1f46de45e0>
+exc_type = <class 'json.decoder.JSONDecodeError'>
+exc_val = JSONDecodeError('Expecting value: line 1 column 2 (char 1)')
+exc_tb = <traceback object at 0x7f1f472f5bc0>
+
+    async def __aexit__(
+        self, exc_type: type[BaseException], exc_val: Any, exc_tb: Any
+    ) -> None:
+        """:meta private:"""
+        await self.aclose()
+        if exc_type and exc_val:
+>           raise exc_type(exc_val)
+E           TypeError: JSONDecodeError.__init__() missing 2 required positional arguments: 'doc' and 'pos'
+
+zendriver/core/connection.py:599: TypeError
+_______ test_aexit_propagates_the_original_exception[connection-closed] ________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f1f46dd2080>
+make_exception = <function <lambda> at 0x7f1f472e2b90>
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        mocker: MockerFixture, make_exception: Callable[[], BaseException]
+    ) -> None:
+        connection = Connection("ws://fake/devtools/browser/fake")
+        aclose = mocker.spy(connection, "aclose")
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+            async with connection:
+>               raise exception
+E               websockets.exceptions.ConnectionClosedError: no close frame received or sent
+
+tests/core/test_connection.py:107: ConnectionClosedError
+
+During handling of the above exception, another exception occurred:
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f1f46dd2080>
+make_exception = <function <lambda> at 0x7f1f472e2b90>
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        mocker: MockerFixture, make_exception: Callable[[], BaseException]
+    ) -> None:
+        connection = Connection("ws://fake/devtools/browser/fake")
+        aclose = mocker.spy(connection, "aclose")
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+>           async with connection:
+
+tests/core/test_connection.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zendriver.core.connection.Connection object at 0x7f1f46de40d0>
+exc_type = <class 'websockets.exceptions.ConnectionClosedError'>
+exc_val = ConnectionClosedError(None, None)
+exc_tb = <traceback object at 0x7f1f46de0680>
+
+    async def __aexit__(
+        self, exc_type: type[BaseException], exc_val: Any, exc_tb: Any
+    ) -> None:
+        """:meta private:"""
+        await self.aclose()
+        if exc_type and exc_val:
+>           raise exc_type(exc_val)
+E           TypeError: ConnectionClosed.__init__() missing 1 required positional argument: 'sent'
+
+zendriver/core/connection.py:599: TypeError
+____________ test_aexit_propagates_the_original_exception[protocol] ____________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f1f46c8be50>
+make_exception = <function <lambda> at 0x7f1f472e2b00>
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        mocker: MockerFixture, make_exception: Callable[[], BaseException]
+    ) -> None:
+        connection = Connection("ws://fake/devtools/browser/fake")
+        aclose = mocker.spy(connection, "aclose")
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+            async with connection:
+                raise exception
+    
+>       assert exc_info.value is exception
+E       AssertionError: assert ProtocolException(ProtocolException({'code': -32000, 'message': 'No node found'})) is ProtocolException({'code': -32000, 'message': 'No node found'})
+E        +  where ProtocolException(ProtocolException({'code': -32000, 'message': 'No node found'})) = <ExceptionInfo ProtocolException(ProtocolException({'code': -32000, 'message': 'No node found'})) tblen=2>.value
+
+tests/core/test_connection.py:109: AssertionError
+__________ test_aexit_propagates_the_original_exception[system-exit] ___________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7f1f46c4f910>
+make_exception = <function <lambda> at 0x7f1f472e2c20>
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        mocker: MockerFixture, make_exception: Callable[[], BaseException]
+    ) -> None:
+        connection = Connection("ws://fake/devtools/browser/fake")
+        aclose = mocker.spy(connection, "aclose")
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+            async with connection:
+                raise exception
+    
+>       assert exc_info.value is exception
+E       assert SystemExit(SystemExit(3)) is SystemExit(3)
+E        +  where SystemExit(SystemExit(3)) = <ExceptionInfo SystemExit(SystemExit(3)) tblen=2>.value
+
+tests/core/test_connection.py:109: AssertionError
+______________ test_aexit_propagates_the_original_exception[json] ______________
+
+make_exception = <function <lambda> at 0x7f1f46dc4280>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-162/test_aexit_propagates_the_orig0')
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        make_exception: Callable[[], BaseException], tmp_path: pathlib.Path
+    ) -> None:
+        # never started: the fake path skips the browser lookup and tmp_path keeps
+        # Config from creating a temporary profile directory
+        browser = zd.Browser(
+            zd.Config(browser_executable_path="/path/to/browser", user_data_dir=tmp_path)
+        )
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+            async with browser:
+>               raise exception
+E               json.decoder.JSONDecodeError: Expecting value: line 1 column 2 (char 1)
+
+tests/core/test_browser.py:401: JSONDecodeError
+
+During handling of the above exception, another exception occurred:
+
+make_exception = <function <lambda> at 0x7f1f46dc4280>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-162/test_aexit_propagates_the_orig0')
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        make_exception: Callable[[], BaseException], tmp_path: pathlib.Path
+    ) -> None:
+        # never started: the fake path skips the browser lookup and tmp_path keeps
+        # Config from creating a temporary profile directory
+        browser = zd.Browser(
+            zd.Config(browser_executable_path="/path/to/browser", user_data_dir=tmp_path)
+        )
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+>           async with browser:
+
+tests/core/test_browser.py:400: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zendriver.core.browser.Browser object at 0x7f1f46d1bc70>
+exc_type = <class 'json.decoder.JSONDecodeError'>
+exc_val = JSONDecodeError('Expecting value: line 1 column 2 (char 1)')
+exc_tb = <traceback object at 0x7f1f46e201c0>
+
+    async def __aexit__(
+        self, exc_type: type[BaseException] | None, exc_val: Any, exc_tb: Any
+    ) -> None:
+        if exc_type and exc_val:
+>           raise exc_type(exc_val)
+E           TypeError: JSONDecodeError.__init__() missing 2 required positional arguments: 'doc' and 'pos'
+
+zendriver/core/browser.py:841: TypeError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+_______ test_aexit_propagates_the_original_exception[connection-closed] ________
+
+make_exception = <function <lambda> at 0x7f1f46dc4310>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-162/test_aexit_propagates_the_orig1')
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        make_exception: Callable[[], BaseException], tmp_path: pathlib.Path
+    ) -> None:
+        # never started: the fake path skips the browser lookup and tmp_path keeps
+        # Config from creating a temporary profile directory
+        browser = zd.Browser(
+            zd.Config(browser_executable_path="/path/to/browser", user_data_dir=tmp_path)
+        )
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+            async with browser:
+>               raise exception
+E               websockets.exceptions.ConnectionClosedError: no close frame received or sent
+
+tests/core/test_browser.py:401: ConnectionClosedError
+
+During handling of the above exception, another exception occurred:
+
+make_exception = <function <lambda> at 0x7f1f46dc4310>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-162/test_aexit_propagates_the_orig1')
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        make_exception: Callable[[], BaseException], tmp_path: pathlib.Path
+    ) -> None:
+        # never started: the fake path skips the browser lookup and tmp_path keeps
+        # Config from creating a temporary profile directory
+        browser = zd.Browser(
+            zd.Config(browser_executable_path="/path/to/browser", user_data_dir=tmp_path)
+        )
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+>           async with browser:
+
+tests/core/test_browser.py:400: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zendriver.core.browser.Browser object at 0x7f1f46c4d8a0>
+exc_type = <class 'websockets.exceptions.ConnectionClosedError'>
+exc_val = ConnectionClosedError(None, None)
+exc_tb = <traceback object at 0x7f1f47385540>
+
+    async def __aexit__(
+        self, exc_type: type[BaseException] | None, exc_val: Any, exc_tb: Any
+    ) -> None:
+        if exc_type and exc_val:
+>           raise exc_type(exc_val)
+E           TypeError: ConnectionClosed.__init__() missing 1 required positional argument: 'sent'
+
+zendriver/core/browser.py:841: TypeError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+____________ test_aexit_propagates_the_original_exception[protocol] ____________
+
+make_exception = <function <lambda> at 0x7f1f46dc43a0>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-162/test_aexit_propagates_the_orig2')
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        make_exception: Callable[[], BaseException], tmp_path: pathlib.Path
+    ) -> None:
+        # never started: the fake path skips the browser lookup and tmp_path keeps
+        # Config from creating a temporary profile directory
+        browser = zd.Browser(
+            zd.Config(browser_executable_path="/path/to/browser", user_data_dir=tmp_path)
+        )
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+            async with browser:
+                raise exception
+    
+>       assert exc_info.value is exception
+E       AssertionError: assert ProtocolException(ProtocolException({'code': -32000, 'message': 'No node found'})) is ProtocolException({'code': -32000, 'message': 'No node found'})
+E        +  where ProtocolException(ProtocolException({'code': -32000, 'message': 'No node found'})) = <ExceptionInfo ProtocolException(ProtocolException({'code': -32000, 'message': 'No node found'})) tblen=2>.value
+
+tests/core/test_browser.py:403: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+__________ test_aexit_propagates_the_original_exception[system-exit] ___________
+
+make_exception = <function <lambda> at 0x7f1f46dc4430>
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-162/test_aexit_propagates_the_orig3')
+
+    @pytest.mark.parametrize(
+        "make_exception",
+        [
+            pytest.param(
+                lambda: json.JSONDecodeError("Expecting value", "{bad", 1), id="json"
+            ),
+            pytest.param(
+                lambda: websockets.exceptions.ConnectionClosedError(None, None),
+                id="connection-closed",
+            ),
+            pytest.param(
+                lambda: ProtocolException({"code": -32000, "message": "No node found"}),
+                id="protocol",
+            ),
+            pytest.param(lambda: SystemExit(3), id="system-exit"),
+            pytest.param(_exception_group, id="exception-group"),
+        ],
+    )
+    async def test_aexit_propagates_the_original_exception(
+        make_exception: Callable[[], BaseException], tmp_path: pathlib.Path
+    ) -> None:
+        # never started: the fake path skips the browser lookup and tmp_path keeps
+        # Config from creating a temporary profile directory
+        browser = zd.Browser(
+            zd.Config(browser_executable_path="/path/to/browser", user_data_dir=tmp_path)
+        )
+    
+        exception = make_exception()
+        with pytest.raises(type(exception)) as exc_info:
+            async with browser:
+                raise exception
+    
+>       assert exc_info.value is exception
+E       assert SystemExit(SystemExit(3)) is SystemExit(3)
+E        +  where SystemExit(SystemExit(3)) = <ExceptionInfo SystemExit(SystemExit(3)) tblen=2>.value
+
+tests/core/test_browser.py:403: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+=========================== short test summary info ============================
+SKIPPED [1] tests/core/test_connection.py:77: ExceptionGroup needs Python 3.11+
+SKIPPED [1] tests/core/test_browser.py:368: ExceptionGroup needs Python 3.11+
+8 failed, 2 skipped, 34 deselected in 0.15s
