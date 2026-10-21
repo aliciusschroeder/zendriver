@@ -106,7 +106,9 @@ class FakeChrome:
                 result: dict = {}
                 if message["method"] == "Target.getTargets":
                     result = {"targetInfos": []}
-                await websocket.send(json.dumps({"id": message["id"], "result": result}))
+                await websocket.send(
+                    json.dumps({"id": message["id"], "result": result})
+                )
         except Exception:
             pass
         finally:
@@ -160,12 +162,48 @@ async def test_second_start_of_a_connected_browser_keeps_its_connection() -> Non
             print("warnings:", [str(w.message) for w in caught])
             # either the call is ignored or the first connection is closed: never two
             assert len(chrome.open_websockets) == 1, chrome.open_websockets
-            assert browser.connection is first_connection
-            assert any("no effect" in str(w.message) for w in caught)
+            assert browser.connection is first_connection or (
+                first_connection is not None and first_connection.closed
+            )
+            assert not browser.stopped
+            await asyncio.wait_for(
+                browser.connection.send(zd.cdp.target.get_targets()), 10
+            )
         finally:
             await asyncio.wait_for(browser.stop(), 30)
         await _settle()
         assert len(chrome.open_websockets) == 0
+
+
+async def test_connected_browser_reconnects_when_the_remote_came_back() -> None:
+    # non-regression: start() of a connected browser whose remote died and came
+    # back connects again (the repo code does this, leaking the dead connection)
+    from websockets.asyncio.server import serve as _serve
+
+    chrome = await FakeChrome().__aenter__()
+    port = chrome.port
+    browser = await asyncio.wait_for(
+        zd.start(host="127.0.0.1", port=port, headless=False), 30
+    )
+    chrome2 = FakeChrome()
+    try:
+        await chrome.__aexit__()
+        await _settle()
+        chrome2.port = port
+        chrome2.server = await _serve(
+            chrome2._handler,
+            "127.0.0.1",
+            port,
+            process_request=chrome2._process_request,
+        )
+        await asyncio.wait_for(browser.start(), 30)
+        assert browser.connection is not None
+        await asyncio.wait_for(browser.connection.send(zd.cdp.target.get_targets()), 10)
+        await _settle()
+        assert len(chrome2.open_websockets) == 1
+    finally:
+        await asyncio.wait_for(browser.stop(), 30)
+        await chrome2.__aexit__()
 
 
 async def test_connected_browser_reconnects_after_stop() -> None:

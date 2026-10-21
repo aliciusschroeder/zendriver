@@ -1,5 +1,5 @@
 --- orig/zendriver/core/browser.py	2026-10-21 01:21:34.880987111 +0000
-+++ pkg/zendriver/core/browser.py	2026-10-21 01:21:47.117987260 +0000
++++ pkg/zendriver/core/browser.py	2026-10-21 01:26:12.421420215 +0000
 @@ -228,12 +228,12 @@
              )
          instance = cls(config)
@@ -37,7 +37,7 @@
 +        if self._process and self._process.poll() is not None:
 +            # the browser was closed or crashed: clean up after it, then launch a new one
 +            await self._stop()
-+        if not self.stopped:
++        if self._process:
              warnings.warn("ignored! this call has no effect when already running.")
              return self
  
@@ -52,7 +52,17 @@
          # try to connect immediately, then retry at the configured interval
          connected = await self.test_connection()
          for _ in range(self.config.browser_connection_max_tries):
-@@ -877,6 +885,7 @@
+@@ -604,6 +612,9 @@
+                 )
+             )
+ 
++        if self.connection:
++            # connecting again to a browser through host and port replaces the connection
++            await self.connection.aclose()
+         self.connection = Connection(self.info.webSocketDebuggerUrl, _owner=self)
+ 
+         if self.config.autodiscover_targets:
+@@ -877,6 +888,7 @@
  
          for target in self.targets:
              await target.aclose()
@@ -60,7 +70,7 @@
  
          if self.connection and not self.connection.closed:
              try:
-@@ -915,6 +924,9 @@
+@@ -915,6 +927,9 @@
  
              self._process = None
              self._process_pid = None

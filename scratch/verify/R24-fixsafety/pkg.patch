@@ -1,0 +1,63 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
+--- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/browser.py	2026-10-21 01:28:24.722203012 +0000
+@@ -534,11 +534,10 @@
+             self.config.host = "127.0.0.1"
+             self.config.port = util.free_port()
+ 
++        exe = self.config.browser_executable_path
+         if not connect_existing:
+-            logger.debug(
+-                "BROWSER EXECUTABLE PATH: %s", self.config.browser_executable_path
+-            )
+-            if not pathlib.Path(self.config.browser_executable_path).exists():
++            logger.debug("BROWSER EXECUTABLE PATH: %s", exe)
++            if not exe or not pathlib.Path(exe).exists():
+                 raise FileNotFoundError(
+                     (
+                         """
+@@ -561,7 +560,6 @@
+                 % ",".join(str(_) for _ in self.config._extensions)
+             )  # noqa
+ 
+-        exe = self.config.browser_executable_path
+         params = self.config()
+         params.append("about:blank")
+ 
+@@ -569,6 +567,7 @@
+             "starting\n\texecutable :%s\n\narguments:\n%s", exe, "\n\t".join(params)
+         )
+         if not connect_existing:
++            assert exe is not None  # checked above
+             self._process = util._start_process(
+                 exe, params, is_posix, env=getattr(self.config, "env", None)
+             )
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/config.py b/zendriver/core/config.py
+--- a/zendriver/core/config.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/config.py	2026-10-21 01:27:48.113183120 +0000
+@@ -86,7 +86,9 @@
+         if user_data_dir:
+             self.user_data_dir = str(user_data_dir)
+ 
+-        if not browser_executable_path:
++        # connecting to an existing browser (host and port given) starts no
++        # local browser, so it does not need a local executable either
++        if not browser_executable_path and (host is None or port is None):
+             browser_executable_path = find_executable(browser)
+ 
+         self._browser_args = browser_args
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/util.py b/zendriver/core/util.py
+--- a/zendriver/core/util.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/util.py	2026-10-21 01:27:48.113323318 +0000
+@@ -102,10 +102,8 @@
+     """
+     from .config import Config
+ 
+-    conf = Config()
+-
+     host, port = driver.options.debugger_address.split(":")
+-    conf.host, conf.port = host, int(port)
++    conf = Config(host=host, port=int(port))
+ 
+     # create zendriver Browser instance
+     browser = await start(conf)
