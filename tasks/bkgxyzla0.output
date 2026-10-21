@@ -1,0 +1,7 @@
+cpython-3.12.3-linux-x86_64-gnu                   /usr/bin/python3.12
+cpython-3.11.17-linux-x86_64-gnu                  /usr/bin/python3.11
+cpython-3.10.20-linux-x86_64-gnu                  /root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/bin/python3.10
+8ae752b Add changelog entries for the bug hunt fixes
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+3.10.20 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/flaky-check/zendriver/__init__.py
+195 passed, 3 skipped in 31.66s
