@@ -222,6 +222,12 @@ def snapshot_worktrees(pushed: dict, results: list[str]) -> list[str]:
                         push(f"+{c}:refs/heads/wip/{safe}", f"wiptree:{safe}", tree, pushed, results)
                         wip = f"wip/{safe} (tree {tree[:9]})"
         rows.append(f"| {path} | {branch or '(detached)'} | {head[:9]} | {('uncommitted -> ' + wip) if dirty else 'clean'} |")
+    # every agent fix branch, also when no worktree has it checked out (fixers detach when done)
+    refs = run(["git", "-C", str(REPO), "for-each-ref", "--format=%(refname:short) %(objectname)", "refs/heads/fix/"]).stdout
+    for line in refs.splitlines():
+        name, _, sha = line.partition(" ")
+        if name and sha:
+            push(f"+refs/heads/{name}:refs/heads/{name}", f"branch:{name}", sha, pushed, results)
     # the designated branch itself (fast-forward only, never forced)
     sha = run(["git", "-C", str(REPO), "rev-parse", DESIGNATED]).stdout.strip()
     if sha:
