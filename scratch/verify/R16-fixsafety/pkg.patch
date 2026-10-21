@@ -1,11 +1,46 @@
 diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zendriver/core/connection.py
 --- a/zendriver/core/connection.py	2026-10-20 18:32:07.000000000 +0000
-+++ b/zendriver/core/connection.py	2026-10-21 00:12:41.695796751 +0000
-@@ -524,7 +524,11 @@
-                     logger.debug("could not detach session %s", session_id)
-             logger.debug("\n❌ detached from target %s", self.target_id)
-             return
++++ b/zendriver/core/connection.py	2026-10-21 00:17:42.927987592 +0000
+@@ -508,23 +508,30 @@
+         """
+         closes the websocket connection. should not be called manually by users.
+         """
+-        if self._session_parent is not None:
+-            browser_connection = self._session_parent
+-            session_id = self.session_id
+-            self._detach_session()
+-            if session_id is not None and not browser_connection.closed:
+-                try:
+-                    await browser_connection.send(
+-                        cdp.target.detach_from_target(
+-                            session_id=cdp.target.SessionID(session_id)
+-                        ),
+-                        _is_update=True,
+-                    )
+-                except ProtocolException:
+-                    logger.debug("could not detach session %s", session_id)
+-            logger.debug("\n❌ detached from target %s", self.target_id)
+-            return
 -        if self.websocket is not None:
++        # wait for an attach that is still in progress, so its session is detached
++        # here instead of being attached after this "close"
++        async with self._attach_lock:
++            if self._session_parent is not None:
++                browser_connection = self._session_parent
++                session_id = self.session_id
++                self._detach_session()
++                if session_id is not None and not browser_connection.closed:
++                    try:
++                        await browser_connection.send(
++                            cdp.target.detach_from_target(
++                                session_id=cdp.target.SessionID(session_id)
++                            ),
++                            _is_update=True,
++                        )
++                    except ProtocolException:
++                        logger.debug("could not detach session %s", session_id)
++                logger.debug("\n❌ detached from target %s", self.target_id)
++                return
 +        # wait for an aopen that is still connecting, so its websocket is closed
 +        # here instead of being opened after this "close"
 +        async with self._open_lock:
@@ -14,7 +49,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zend
              for session in list(self._sessions.values()):
                  session._detach_session()
              if self.listener and self.listener.running:
-@@ -664,6 +668,10 @@
+@@ -664,6 +671,10 @@
              e.message = e.message or ""
              e.message += f"\ncommand:{tx.method}\nparams:{tx.params}"
              raise e
@@ -25,7 +60,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zend
  
      #
      async def _register_handlers(self) -> None:
-@@ -898,6 +906,10 @@
+@@ -898,6 +909,10 @@
  
      def run(self) -> None:
          self.task = asyncio.create_task(self.listener_loop())
@@ -36,7 +71,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zend
  
      @property
      def time_before_considered_idle(self) -> float:
-@@ -943,6 +955,11 @@
+@@ -943,6 +958,11 @@
                  )
                  for session in list(self.connection._sessions.values()):
                      session._detach_session()

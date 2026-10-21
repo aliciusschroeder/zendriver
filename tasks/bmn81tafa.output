@@ -1,0 +1,22 @@
+== /home/user/zendriver/.venv/bin/python orig
+      1 zendriver imported from /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R16-fixsafety/orig/zendriver
+      1 tab aclose during attach -> session_id after close: S1 | detachFromTarget sent: False
+      1 concurrent send/aclose: finished, errors: {'ProtocolException': 25} | closed: True | server open conns: 0 | mapper: 0
+      1 aclose returned before connect finished
+      1 peer close with tab: tab.wait() done: False | bc.closed: False | tab.session_id: None
+      1   tab send after peer close raised ConnectionClosedOK received 1000 (OK); then sent 1000 (OK)
+== /home/user/zendriver/.venv/bin/python pkg
+      1 zendriver imported from /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R16-fixsafety/pkg/zendriver/
+      1 tab aclose during attach -> session_id after close: None | detachFromTarget sent: True
+      1 concurrent send/aclose: finished, errors: {'ProtocolException': 50} | closed: True | server open conns: 0 | mapper: 0
+      1 aclose timed out while waiting for the connect (lock held)
+      1 peer close with tab: tab.wait() done: True | bc.closed: True | tab.session_id: None
+      1   tab re-attached after reconnect: T1 session S1 connections 2
+== /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R16-fixsafety/venv311/bin/python orig
+      1 zendriver imported from /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R16-fixsafety/orig/zendriver
+      1 tab aclose during attach -> session_id after close: S1 | detachFromTarget sent: False
+      1 concurrent send/aclose: finished, errors: {'ProtocolException': 25} | closed: True | server open conns: 0 | mapper: 0
+      1 aclose returned before connect finished
+      1 peer close with tab: tab.wait() done: False | bc.closed: False | tab.session_id: None
+      1   tab send after peer close raised ConnectionClosedOK received 1000 (OK); then sent 1000 (OK)
+== /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R16-fixsafety/venv311/bin/python pkg

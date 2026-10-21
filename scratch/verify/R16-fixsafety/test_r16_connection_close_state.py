@@ -248,3 +248,49 @@ async def test_wait_returns_when_session_is_detached_while_busy():
             await _assert_waiter_finishes(waiter)
         finally:
             await _close_quietly(tab, browser_conn)
+
+
+# ------------------------------------------------- SEED-C2, flat session variant
+class SlowAttachCDP(FakeCDP):
+    async def _reader(self, ws, first_connection):
+        try:
+            async for raw in ws:
+                msg = json.loads(raw)
+                self.methods = getattr(self, "methods", []) + [msg["method"]]
+                asyncio.ensure_future(self._reply(ws, msg))
+        except websockets.exceptions.ConnectionClosed:
+            pass
+
+    async def _reply(self, ws, msg):
+        if msg["method"] == "Target.attachToTarget":
+            await asyncio.sleep(0.5)
+        reply = {"id": msg["id"], "result": self.result_for(msg["method"])}
+        if "sessionId" in msg:
+            reply["sessionId"] = msg["sessionId"]
+        try:
+            await ws.send(json.dumps(reply))
+        except websockets.exceptions.ConnectionClosed:
+            pass
+
+
+async def test_tab_aclose_during_attach_leaves_session_detached():
+    async with SlowAttachCDP() as peer:
+        browser_conn = Connection(peer.url)
+        owner = types.SimpleNamespace(connection=browser_conn, config=None)
+        target = cdp.target.TargetInfo.from_json(TARGET_INFO)
+        tab = Connection(peer.url, target=target, _owner=owner)  # type: ignore[arg-type]
+        opener = asyncio.ensure_future(tab.aopen())
+        try:
+            await asyncio.sleep(0.2)
+            assert tab.session_id is None  # attach is still in progress
+            await asyncio.wait_for(tab.aclose(), 5)
+            try:
+                await asyncio.wait_for(opener, 5)
+            except ProtocolException:
+                pass
+            assert tab.session_id is None, "session was attached after aclose()"
+            assert "S1" not in browser_conn._sessions
+        finally:
+            if not opener.done():
+                opener.cancel()
+            await _close_quietly(tab, browser_conn)
