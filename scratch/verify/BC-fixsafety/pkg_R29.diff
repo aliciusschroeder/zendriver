@@ -1,0 +1,81 @@
+diff -ruN -x __pycache__ /home/user/zendriver/zendriver/core/tab.py pkg_R29/zendriver/core/tab.py
+--- /home/user/zendriver/zendriver/core/tab.py	2026-10-20 18:38:27.701980066 +0000
++++ pkg_R29/zendriver/core/tab.py	2026-10-21 02:19:01.389840108 +0000
+@@ -597,11 +597,15 @@
+                         selector, doc, _include_frames=_include_frames
+                     )
+ 
+-                await self.disable_dom_agent()
+-                raise
++            await self.disable_dom_agent()
++            raise
+         if not node_ids:
+             return []
+         items = []
++        # results of an element-scoped query belong to that element's document
++        tree = doc
++        if isinstance(_node, element.Element) and doc is _node and _node.tree:
++            tree = _node.tree
+ 
+         for nid in node_ids:
+             node = util.filter_recurse(doc, lambda n: n.node_id == nid)
+@@ -614,7 +618,9 @@
+             # to improve performance
+             if not node:
+                 continue
+-            elem = element.create(node, self, doc)
++            if isinstance(node, element.Element):
++                node = node.node
++            elem = element.create(node, self, tree)
+             items.append(elem)
+ 
+         return items
+@@ -640,6 +646,8 @@
+             doc = _node
+             if _node.node_name == "IFRAME":
+                 doc = _node.content_document
++                if doc is None:
++                    return None  # cross-origin iframes block access to content_document
+         node_id = None
+ 
+         try:
+@@ -668,15 +676,20 @@
+                 # Prevent double-retry by marking this node as 'last attempt'
+                 setattr(doc, "__last", True)
+                 return await self.query_selector(selector, doc)
+-            else:
+-                await self.disable_dom_agent()
+-                raise
++            await self.disable_dom_agent()
++            raise
+         if not node_id:
+             return None
+         node = util.filter_recurse(doc, lambda n: n.node_id == node_id)
+         if not node:
+             return None
+-        return element.create(node, self, doc)
++        if isinstance(node, element.Element):
++            node = node.node
++        # results of an element-scoped query belong to that element's document
++        tree = doc
++        if isinstance(_node, element.Element) and doc is _node and _node.tree:
++            tree = _node.tree
++        return element.create(node, self, tree)
+ 
+     async def find_elements_by_text(
+         self,
+@@ -762,7 +775,13 @@
+                     )
+                     if iframe_text_nodes:
+                         iframe_text_elems = [
+-                            element.create(text_node.node, self, iframe_elem.tree)
++                            element.create(
++                                text_node.node
++                                if isinstance(text_node, element.Element)
++                                else text_node,
++                                self,
++                                iframe_elem.tree,
++                            )
+                             for text_node in iframe_text_nodes
+                         ]
+                         items.extend(

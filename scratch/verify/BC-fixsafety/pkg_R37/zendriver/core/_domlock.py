@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import functools
-from typing import Any, AsyncIterator, Awaitable, Callable, Concatenate, ParamSpec, TypeVar
+from typing import Any, AsyncIterator, Callable, Concatenate, Coroutine, ParamSpec, TypeVar
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
@@ -33,10 +33,10 @@ async def dom_lock(tab: Any) -> AsyncIterator[None]:
 
 
 def dom_locked(
-    func: Callable[Concatenate[Any, _P], Awaitable[_R]],
-) -> Callable[Concatenate[Any, _P], Awaitable[_R]]:
+    func: Callable[Concatenate[Any, _P], Coroutine[Any, Any, _R]],
+) -> Callable[Concatenate[Any, _P], Coroutine[Any, Any, _R]]:
     @functools.wraps(func)
-    async def wrapper(self: Any, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+    async def wrapper(self: Any, /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
         from .element import Element
 
         tab = self._tab if isinstance(self, Element) else self

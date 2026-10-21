@@ -1,0 +1,156 @@
+diff -ruN -x __pycache__ /home/user/zendriver/zendriver/core/_domlock.py pkg_R37/zendriver/core/_domlock.py
+--- /home/user/zendriver/zendriver/core/_domlock.py	1970-01-01 00:00:00.000000000 +0000
++++ pkg_R37/zendriver/core/_domlock.py	2026-10-21 02:26:28.594847024 +0000
+@@ -0,0 +1,46 @@
++from __future__ import annotations
++
++import asyncio
++import contextlib
++import functools
++from typing import Any, AsyncIterator, Callable, Concatenate, Coroutine, ParamSpec, TypeVar
++
++_P = ParamSpec("_P")
++_R = TypeVar("_R")
++
++
++@contextlib.asynccontextmanager
++async def dom_lock(tab: Any) -> AsyncIterator[None]:
++    """
++    serialise DOM queries on one tab: every DOM.getDocument discards the node ids
++    that other queries on the same tab are still using.
++    re-entrant for the task that holds it (retries call update() and themselves).
++    """
++    state = vars(tab)
++    task = asyncio.current_task()
++    if state.get("_dom_lock_owner") is task:
++        yield
++        return
++    lock = state.get("_dom_lock")
++    if lock is None:
++        lock = state["_dom_lock"] = asyncio.Lock()
++    async with lock:
++        state["_dom_lock_owner"] = task
++        try:
++            yield
++        finally:
++            state["_dom_lock_owner"] = None
++
++
++def dom_locked(
++    func: Callable[Concatenate[Any, _P], Coroutine[Any, Any, _R]],
++) -> Callable[Concatenate[Any, _P], Coroutine[Any, Any, _R]]:
++    @functools.wraps(func)
++    async def wrapper(self: Any, /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
++        from .element import Element
++
++        tab = self._tab if isinstance(self, Element) else self
++        async with dom_lock(tab):
++            return await func(self, *args, **kwargs)
++
++    return wrapper
+diff -ruN -x __pycache__ /home/user/zendriver/zendriver/core/element.py pkg_R37/zendriver/core/element.py
+--- /home/user/zendriver/zendriver/core/element.py	2026-10-20 18:38:27.701980066 +0000
++++ pkg_R37/zendriver/core/element.py	2026-10-21 02:23:01.235701280 +0000
+@@ -12,6 +12,7 @@
+ 
+ from .. import cdp
+ from . import util
++from ._domlock import dom_locked
+ from ._contradict import ContraDict
+ from .config import PathLike
+ from .keys import KeyEvents, KeyPressEvent, SpecialKeys
+@@ -276,6 +277,7 @@
+         await self._tab.send(cdp.dom.set_outer_html(self.node_id, outer_html=str(self)))
+         await self.update()
+ 
++    @dom_locked
+     async def remove_from_dom(self) -> None:
+         """removes the element from dom"""
+         await self.update()  # ensure we have latest node_id
+@@ -290,6 +292,7 @@
+             await self.tab.send(cdp.dom.remove_node(node.node_id))
+         # self._tree = util.remove_from_tree(self.tree, self.node)
+ 
++    @dom_locked
+     async def update(self, _node: cdp.dom.Node | None = None) -> Element:
+         """
+         updates element to retrieve more properties. for example this enables
+@@ -818,6 +821,7 @@
+         text_nodes = util.filter_recurse_all(self.node, lambda n: n.node_type == 3)
+         return " ".join([n.node_value for n in text_nodes])
+ 
++    @dom_locked
+     async def query_selector_all(self, selector: str) -> list[Element]:
+         """
+         like js querySelectorAll()
+@@ -825,6 +829,7 @@
+         await self.update()
+         return await self.tab.query_selector_all(selector, _node=self)
+ 
++    @dom_locked
+     async def query_selector(self, selector: str) -> Element | None:
+         """
+         like js querySelector()
+diff -ruN -x __pycache__ /home/user/zendriver/zendriver/core/tab.py pkg_R37/zendriver/core/tab.py
+--- /home/user/zendriver/zendriver/core/tab.py	2026-10-20 18:38:27.701980066 +0000
++++ pkg_R37/zendriver/core/tab.py	2026-10-21 02:23:01.235109457 +0000
+@@ -27,6 +27,7 @@
+ from .intercept import BaseFetchInterception
+ from .. import cdp
+ from . import element, util
++from ._domlock import dom_locked
+ from .config import PathLike
+ from .connection import Connection, ProtocolException
+ from .expect import DownloadExpectation, RequestExpectation, ResponseExpectation
+@@ -513,6 +514,7 @@
+             await self.wait()
+             return self
+ 
++    @dom_locked
+     async def query_selector_all(
+         self,
+         selector: str,
+@@ -584,9 +586,12 @@
+                         await _node.update()
+                     # make sure this isn't turned into infinite loop
+                     setattr(_node, "__last", True)
+-                    return await self.query_selector_all(
+-                        selector, _node, _include_frames=_include_frames
+-                    )
++                    try:
++                        return await self.query_selector_all(
++                            selector, _node, _include_frames=_include_frames
++                        )
++                    finally:
++                        vars(_node).pop("__last", None)
+             else:
+                 if e.message is not None and "could not find node" in e.message.lower():
+                     # The document node is stale; refetch and retry once
+@@ -619,6 +624,7 @@
+ 
+         return items
+ 
++    @dom_locked
+     async def query_selector(
+         self,
+         selector: str,
+@@ -657,7 +663,10 @@
+                         await _node.update()
+                     # make sure this isn't turned into infinite loop
+                     setattr(_node, "__last", True)
+-                    return await self.query_selector(selector, _node)
++                    try:
++                        return await self.query_selector(selector, _node)
++                    finally:
++                        vars(_node).pop("__last", None)
+             elif (
+                 e.message is not None
+                 and "could not find node" in e.message.lower()
+@@ -678,6 +687,7 @@
+             return None
+         return element.create(node, self, doc)
+ 
++    @dom_locked
+     async def find_elements_by_text(
+         self,
+         text: str,

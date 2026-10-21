@@ -1,0 +1,401 @@
+diff -ruN -x __pycache__ /home/user/zendriver/zendriver/core/_domlock.py pkg_all/zendriver/core/_domlock.py
+--- /home/user/zendriver/zendriver/core/_domlock.py	1970-01-01 00:00:00.000000000 +0000
++++ pkg_all/zendriver/core/_domlock.py	2026-10-21 02:26:28.597909876 +0000
+@@ -0,0 +1,46 @@
++from __future__ import annotations
++
++import asyncio
++import contextlib
++import functools
++from typing import Any, AsyncIterator, Callable, Concatenate, Coroutine, ParamSpec, TypeVar
++
++_P = ParamSpec("_P")
++_R = TypeVar("_R")
++
++
++@contextlib.asynccontextmanager
++async def dom_lock(tab: Any) -> AsyncIterator[None]:
++    """
++    serialise DOM queries on one tab: every DOM.getDocument discards the node ids
++    that other queries on the same tab are still using.
++    re-entrant for the task that holds it (retries call update() and themselves).
++    """
++    state = vars(tab)
++    task = asyncio.current_task()
++    if state.get("_dom_lock_owner") is task:
++        yield
++        return
++    lock = state.get("_dom_lock")
++    if lock is None:
++        lock = state["_dom_lock"] = asyncio.Lock()
++    async with lock:
++        state["_dom_lock_owner"] = task
++        try:
++            yield
++        finally:
++            state["_dom_lock_owner"] = None
++
++
++def dom_locked(
++    func: Callable[Concatenate[Any, _P], Coroutine[Any, Any, _R]],
++) -> Callable[Concatenate[Any, _P], Coroutine[Any, Any, _R]]:
++    @functools.wraps(func)
++    async def wrapper(self: Any, /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
++        from .element import Element
++
++        tab = self._tab if isinstance(self, Element) else self
++        async with dom_lock(tab):
++            return await func(self, *args, **kwargs)
++
++    return wrapper
+diff -ruN -x __pycache__ /home/user/zendriver/zendriver/core/element.py pkg_all/zendriver/core/element.py
+--- /home/user/zendriver/zendriver/core/element.py	2026-10-20 18:38:27.701980066 +0000
++++ pkg_all/zendriver/core/element.py	2026-10-21 02:24:01.326654463 +0000
+@@ -12,6 +12,7 @@
+ 
+ from .. import cdp
+ from . import util
++from ._domlock import dom_locked
+ from ._contradict import ContraDict
+ from .config import PathLike
+ from .keys import KeyEvents, KeyPressEvent, SpecialKeys
+@@ -276,6 +277,7 @@
+         await self._tab.send(cdp.dom.set_outer_html(self.node_id, outer_html=str(self)))
+         await self.update()
+ 
++    @dom_locked
+     async def remove_from_dom(self) -> None:
+         """removes the element from dom"""
+         await self.update()  # ensure we have latest node_id
+@@ -290,6 +292,7 @@
+             await self.tab.send(cdp.dom.remove_node(node.node_id))
+         # self._tree = util.remove_from_tree(self.tree, self.node)
+ 
++    @dom_locked
+     async def update(self, _node: cdp.dom.Node | None = None) -> Element:
+         """
+         updates element to retrieve more properties. for example this enables
+@@ -802,7 +805,9 @@
+         :return:
+         :rtype:
+         """
+-        text_node = util.filter_recurse(self.node, lambda n: n.node_type == 3)
++        text_node = util.filter_recurse(
++            self.node, lambda n: n.node_type == 3, include_frames=False
++        )
+         if text_node:
+             return text_node.node_value
+         return ""
+@@ -818,6 +823,7 @@
+         text_nodes = util.filter_recurse_all(self.node, lambda n: n.node_type == 3)
+         return " ".join([n.node_value for n in text_nodes])
+ 
++    @dom_locked
+     async def query_selector_all(self, selector: str) -> list[Element]:
+         """
+         like js querySelectorAll()
+@@ -825,6 +831,7 @@
+         await self.update()
+         return await self.tab.query_selector_all(selector, _node=self)
+ 
++    @dom_locked
+     async def query_selector(self, selector: str) -> Element | None:
+         """
+         like js querySelector()
+diff -ruN -x __pycache__ /home/user/zendriver/zendriver/core/tab.py pkg_all/zendriver/core/tab.py
+--- /home/user/zendriver/zendriver/core/tab.py	2026-10-20 18:38:27.701980066 +0000
++++ pkg_all/zendriver/core/tab.py	2026-10-21 02:24:01.326099200 +0000
+@@ -27,6 +27,7 @@
+ from .intercept import BaseFetchInterception
+ from .. import cdp
+ from . import element, util
++from ._domlock import dom_locked
+ from .config import PathLike
+ from .connection import Connection, ProtocolException
+ from .expect import DownloadExpectation, RequestExpectation, ResponseExpectation
+@@ -513,6 +514,7 @@
+             await self.wait()
+             return self
+ 
++    @dom_locked
+     async def query_selector_all(
+         self,
+         selector: str,
+@@ -535,42 +537,38 @@
+         if not _node:
+             # Returns all document node ids here
+             doc = await self.send(cdp.dom.get_document(-1, True))
+-            if _include_frames:
+-                # Collect all iframe content_document nodes
+-                stack = [doc]
+-                while stack:
+-                    # pop off items to grab the nodes
+-                    node = stack.pop()
+-                    if node.content_document:
+-                        # save the nodes
+-                        content_doc_nodes.append(node.content_document)
+-                        stack.append(node.content_document)
+-                    if node.children:
+-                        #  add back child nodes to pop later on
+-                        stack.extend(node.children)
+-
+         else:
+             doc = _node
+             if _node.node_name == "IFRAME":
+                 doc = _node.content_document
+                 if doc is None:
+                     return []  # cross-origin iframes block access to content_document, skip gracefully
++        if _include_frames:
++            # Collect all iframe content_document nodes
++            stack = [doc]
++            while stack:
++                # pop off items to grab the nodes
++                node = stack.pop()
++                if node.content_document:
++                    # save the nodes
++                    content_doc_nodes.append(node.content_document)
++                    stack.append(node.content_document)
++                if node.children:
++                    #  add back child nodes to pop later on
++                    stack.extend(node.children)
+         node_ids = []
+ 
+         try:
+             node_ids = await self.send(
+                 cdp.dom.query_selector_all(doc.node_id, selector)
+             )
+-            if _include_frames:
+-                for cd_node in content_doc_nodes:
+-                    try:
+-                        node_ids.extend(
+-                            await self.send(
+-                                cdp.dom.query_selector_all(cd_node.node_id, selector)
+-                            )
+-                        )
+-                    except Exception as e:
+-                        print(f"Exception in new content doc ids loop {e}")
++            for cd_node in content_doc_nodes:
++                # a stale iframe document is retried below like the main document
++                node_ids.extend(
++                    await self.send(
++                        cdp.dom.query_selector_all(cd_node.node_id, selector)
++                    )
++                )
+ 
+         except ProtocolException as e:
+             if _node is not None:
+@@ -584,9 +582,12 @@
+                         await _node.update()
+                     # make sure this isn't turned into infinite loop
+                     setattr(_node, "__last", True)
+-                    return await self.query_selector_all(
+-                        selector, _node, _include_frames=_include_frames
+-                    )
++                    try:
++                        return await self.query_selector_all(
++                            selector, _node, _include_frames=_include_frames
++                        )
++                    finally:
++                        vars(_node).pop("__last", None)
+             else:
+                 if e.message is not None and "could not find node" in e.message.lower():
+                     # The document node is stale; refetch and retry once
+@@ -597,11 +598,15 @@
+                         selector, doc, _include_frames=_include_frames
+                     )
+ 
+-                await self.disable_dom_agent()
+-                raise
++            await self.disable_dom_agent()
++            raise
+         if not node_ids:
+             return []
+         items = []
++        # results of an element-scoped query belong to that element's document
++        tree = doc
++        if isinstance(_node, element.Element) and doc is _node and _node.tree:
++            tree = _node.tree
+ 
+         for nid in node_ids:
+             node = util.filter_recurse(doc, lambda n: n.node_id == nid)
+@@ -614,11 +619,14 @@
+             # to improve performance
+             if not node:
+                 continue
+-            elem = element.create(node, self, doc)
++            if isinstance(node, element.Element):
++                node = node.node
++            elem = element.create(node, self, tree)
+             items.append(elem)
+ 
+         return items
+ 
++    @dom_locked
+     async def query_selector(
+         self,
+         selector: str,
+@@ -640,6 +648,8 @@
+             doc = _node
+             if _node.node_name == "IFRAME":
+                 doc = _node.content_document
++                if doc is None:
++                    return None  # cross-origin iframes block access to content_document
+         node_id = None
+ 
+         try:
+@@ -657,7 +667,10 @@
+                         await _node.update()
+                     # make sure this isn't turned into infinite loop
+                     setattr(_node, "__last", True)
+-                    return await self.query_selector(selector, _node)
++                    try:
++                        return await self.query_selector(selector, _node)
++                    finally:
++                        vars(_node).pop("__last", None)
+             elif (
+                 e.message is not None
+                 and "could not find node" in e.message.lower()
+@@ -668,20 +681,27 @@
+                 # Prevent double-retry by marking this node as 'last attempt'
+                 setattr(doc, "__last", True)
+                 return await self.query_selector(selector, doc)
+-            else:
+-                await self.disable_dom_agent()
+-                raise
++            await self.disable_dom_agent()
++            raise
+         if not node_id:
+             return None
+         node = util.filter_recurse(doc, lambda n: n.node_id == node_id)
+         if not node:
+             return None
+-        return element.create(node, self, doc)
++        if isinstance(node, element.Element):
++            node = node.node
++        # results of an element-scoped query belong to that element's document
++        tree = doc
++        if isinstance(_node, element.Element) and doc is _node and _node.tree:
++            tree = _node.tree
++        return element.create(node, self, tree)
+ 
++    @dom_locked
+     async def find_elements_by_text(
+         self,
+         text: str,
+         tag_hint: Optional[str] = None,
++        return_enclosing_element: bool = True,
+     ) -> list[Element]:
+         """
+         returns element which match the given text.
+@@ -690,6 +710,7 @@
+ 
+         :param text:
+         :param tag_hint: when provided, narrows down search to only elements which match given tag eg: a, div, script, span
++        :param return_enclosing_element: when True (default), text nodes are replaced by the element containing them
+         :return:
+         :rtype:
+         """
+@@ -726,7 +747,7 @@
+                 elem = element.create(node, self, doc)
+             except Exception:
+                 continue
+-            if elem.node_type == 3:
++            if elem.node_type == 3 and return_enclosing_element:
+                 # if found element is a text node (which is plain text, and useless for our purpose),
+                 # we return the parent element of the node (which is often a tag which can have text between their
+                 # opening and closing tags (that is most tags, except for example "img" and "video", "br")
+@@ -762,16 +783,32 @@
+                     )
+                     if iframe_text_nodes:
+                         iframe_text_elems = [
+-                            element.create(text_node.node, self, iframe_elem.tree)
++                            element.create(
++                                text_node.node
++                                if isinstance(text_node, element.Element)
++                                else text_node,
++                                self,
++                                iframe_elem.tree,
++                            )
+                             for text_node in iframe_text_nodes
+                         ]
++                        if not return_enclosing_element:
++                            items.extend(iframe_text_elems)
++                            continue
+                         items.extend(
+                             text_node.parent
+                             for text_node in iframe_text_elems
+                             if text_node.parent
+                         )
+         await self.disable_dom_agent()
+-        return items or []
++        # an element can match more than once (attribute and text, several text nodes)
++        unique: dict[cdp.dom.BackendNodeId, Element] = {}
++        for item in items:
++            unique.setdefault(item.backend_node_id, item)
++        items = list(unique.values())
++        if tag_hint:
++            items = [item for item in items if item.tag == tag_hint.strip().lower()]
++        return items
+ 
+     async def find_element_by_text(
+         self,
+@@ -792,7 +829,9 @@
+         :return:
+         :rtype:
+         """
+-        items = await self.find_elements_by_text(text)
++        items = await self.find_elements_by_text(
++            text, return_enclosing_element=bool(return_enclosing_element)
++        )
+         try:
+             if not items:
+                 return None
+diff -ruN -x __pycache__ /home/user/zendriver/zendriver/core/util.py pkg_all/zendriver/core/util.py
+--- /home/user/zendriver/zendriver/core/util.py	2026-10-20 18:38:27.701980066 +0000
++++ pkg_all/zendriver/core/util.py	2026-10-21 02:24:01.246804309 +0000
+@@ -171,13 +171,17 @@
+ 
+ 
+ def filter_recurse(
+-    doc: cdp.dom.Node, predicate: Callable[[cdp.dom.Node], bool]
++    doc: cdp.dom.Node,
++    predicate: Callable[[cdp.dom.Node], bool],
++    *,
++    include_frames: bool = True,
+ ) -> cdp.dom.Node | None:
+     """
+     test each child using predicate(child), and return the first child of which predicate(child) == True
+ 
+     :param doc: the cdp.dom.Node object or :py:class:`zendriver.Element`
+     :param predicate: a function which takes a node as first parameter and returns a boolean, where True means include
++    :param include_frames: also search the documents of same-origin iframes (their content_document)
+ 
+     """
+     if not hasattr(doc, "children"):
+@@ -189,10 +193,24 @@
+                 # if predicate is True
+                 return child
+             if child.shadow_roots:
+-                shadow_root_result = filter_recurse(child.shadow_roots[0], predicate)
++                shadow_root_result = filter_recurse(
++                    child.shadow_roots[0], predicate, include_frames=include_frames
++                )
+                 if shadow_root_result:
+                     return shadow_root_result
+-            result = filter_recurse(child, predicate)
++            if (
++                include_frames
++                and isinstance(child, cdp.dom.Node)
++                and child.content_document
++            ):
++                # same-origin iframes keep their document under content_document
++                # (Element.children already returns it for iframe elements)
++                content_document_result = filter_recurse(
++                    child.content_document, predicate, include_frames=include_frames
++                )
++                if content_document_result:
++                    return content_document_result
++            result = filter_recurse(child, predicate, include_frames=include_frames)
+             if result:
+                 return result
+ 
