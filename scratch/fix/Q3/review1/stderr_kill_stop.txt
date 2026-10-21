@@ -1,7 +1,10 @@
 Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
-sys:1: ResourceWarning: unclosed file <_io.BufferedWriter name=8>
+/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:872: ResourceWarning: unclosed file <_io.BufferedWriter name=7>
+  await self._stop()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=9>
+/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:872: ResourceWarning: unclosed file <_io.BufferedReader name=8>
+  await self._stop()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-sys:1: ResourceWarning: unclosed file <_io.BufferedReader name=11>
+/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:872: ResourceWarning: unclosed file <_io.BufferedReader name=10>
+  await self._stop()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback

@@ -1,25 +1,16 @@
-_GatheringFuture exception was never retrieved
-future: <_GatheringFuture finished exception=CancelledError()>
-Traceback (most recent call last):
-  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/connection.py", line 517, in aclose
-    await browser_connection.send(
-  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/connection.py", line 662, in send
-    return await tx
-asyncio.exceptions.CancelledError
-
-During handling of the above exception, another exception occurred:
-
-asyncio.exceptions.CancelledError
-/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/base_events.py:528: ResourceWarning: asynchronous generator <async_generator object Connection.send_context at 0x7fd20d8ae940> was scheduled after loop.shutdown_asyncgens() call
+/usr/lib/python3.12/asyncio/base_events.py:554: ResourceWarning: asynchronous generator <async_generator object Connection.send_context at 0x7f3b63788f20> was scheduled after loop.shutdown_asyncgens() call
   warnings.warn(
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
 Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
-/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedWriter name=8>
+/usr/lib/python3.12/asyncio/base_events.py:554: ResourceWarning: asynchronous generator <async_generator object Connection.send_context at 0x7f3b6378abd0> was scheduled after loop.shutdown_asyncgens() call
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedWriter name=7>
   await self._stop()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedReader name=9>
+/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedReader name=8>
   await self._stop()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedReader name=11>
+/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedReader name=10>
   await self._stop()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback

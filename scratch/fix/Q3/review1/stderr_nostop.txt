@@ -1,12 +1,12 @@
-/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/base_events.py:528: ResourceWarning: asynchronous generator <async_generator object Connection.send_context at 0x7f28ec5e76c0> was scheduled after loop.shutdown_asyncgens() call
+/usr/lib/python3.12/asyncio/base_events.py:554: ResourceWarning: asynchronous generator <async_generator object Connection.send_context at 0x7f995a028d00> was scheduled after loop.shutdown_asyncgens() call
   warnings.warn(
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedWriter name=8>
+/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedWriter name=7>
   await self._stop()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedReader name=9>
+/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedReader name=8>
   await self._stop()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
-/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedReader name=11>
+/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-16/zendriver/core/browser.py:239: ResourceWarning: unclosed file <_io.BufferedReader name=10>
   await self._stop()
 ResourceWarning: Enable tracemalloc to get the object allocation traceback
