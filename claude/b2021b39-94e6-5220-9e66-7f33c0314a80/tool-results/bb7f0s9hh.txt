@@ -1,0 +1,249 @@
+# Lens: cancellation
+
+## cancellation-1: After a Q2 timeout cuts off an automatic Domain.enable, the Q12 rollback makes every later send on the tab re-send that enable first. On a page blocked by a dialog those sends hang behind it, so the dialog can never be dismissed
+- severity hang, confidence high, unclear, fixes ['Q2', 'Q12'], python 3.10.20 and 3.13.16 (both reproduced)
+- files: zendriver/core/connection.py (Connection._register_handlers, the new `except asyncio.CancelledError` branch that removes domain_mod from enabled_domains and re-raises); zendriver/core/tab.py (_poll_with_timeout, plus the xpath and cloudflare bounds)
+
+### Scenario
+Public API, real headless Chromium:
+1. The tab has the Page domain enabled (`await tab.send(cdp.page.enable())`, which Page.handleJavaScriptDialog needs).
+2. The page opens alert().
+3. The user enters `async with tab.expect_request('.*')`, or calls `tab.add_handler(cdp.log.EntryAdded / cdp.runtime.ConsoleAPICalled / cdp.network.*, ...)`. Either one adds handlers whose domain enable is sent lazily on the next send.
+4. The user calls `await tab.select('#x', timeout=1)`; find, xpath and wait_for behave the same. aopen's _register_handlers sends Network.enable (or Log.enable, Runtime.enable), which the dialog-blocked renderer does not answer.
+5. The Q2 bound fires at 1.5 s. The CancelledError reaches the nested enable, and Q12 removes the domain from enabled_domains and re-raises. The user gets TimeoutError, as Q2 intends.
+6. The user then tries to recover with `await tab.send(cdp.page.handle_java_script_dialog(accept=True))`. Its aopen -> _register_handlers sees the domain as not enabled and sends X.enable again, and that enable stalls. The dismiss command is never written, so this call hangs forever.
+7. Every later unbounded tab.send/evaluate/get hangs the same way. Every Q2 call times out even after the page would be fine, and each call adds one more pending X.enable to the mapper.
+
+The Q12 reviewer saw this symptom and wrote it off as 'not caused by this fix: every later send waits behind the pending enable'. The experiments show the cause is the rollback, not Chrome: Chrome answers Page.handleJavaScriptDialog while the first enable is still pending.
+
+### Evidence
+All probes are under /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/.
+
+probe_dialog_recover.py <domain> <api> (real headless Chromium; Page enabled before the alert):
+- `PYTHONPATH=pkg python probe_dialog_recover.py log select` on 3.13.16 and 3.10.20:
+  - 'first call TimeoutError after 1.50s'
+  - '[after timeout] enabled_domains=[] ... mapper={13: (Log.enable, True)}'
+  - 'handleJavaScriptDialog HUNG (safety net 8s)'
+  - 'next select raised TimeoutError ... after 3.50s'
+  - final mapper holds three Log.enable txs (13, 14, 15)
+- Same result for runtime+select (3.13), network+select (3.13), runtime+xpath (3.10, which returns [] after 1.50s) and network+find (3.10).
+- Control without a handler ('none select', 3.10 and 3.13): 'handleJavaScriptDialog OK after 0.00s', and 'next select -> <p id=hello>' succeeds.
+
+probe_expect_dialog.py (public flow with tab.expect_request):
+- Fix, 3.13 and 3.10: select TimeoutError at 1.50s, then 'tab.send(Page.handleJavaScriptDialog): TimeoutError after 8.00s' from the safety net, then select('#hello') times out.
+- Base 064148f, 3.13: the first select never returns, even inside asyncio.wait_for(..., 10), because the base bare except swallows the cancel. The process had to be killed by `timeout 40` (exit 124).
+
+Cause isolated with modified copies:
+- norollback/pkg (CancelledError branch only re-raises): log and network both give 'handleJavaScriptDialog OK after 0.00s' and 'next select -> <p id="hello">hello</p>'.
+- Browser-free repro probe_fake_dialog_wedge.py:
+  - integrated code: 'dismiss: HUNG', methods sent ['Log.enable','Log.enable']
+  - norollback: 'dismiss: OK', methods sent ['Log.enable','Page.handleJavaScriptDialog']
+  - same on 3.10 and 3.13
+- Prototype proto/pkg rolls back only when no `<Domain>.enable` tx for that domain is left in self.mapper. _send_transaction pops a tx whose write failed or was cancelled; a tx that was written but not answered stays.
+  - probe_fake_dialog_wedge: dismiss OK.
+  - Real Chromium probe_expect_dialog (3.13) and probe_dialog_recover runtime select (3.10): handleJavaScriptDialog OK and the next select finds the element.
+  - tests/core/test_connection.py: 17 passed on 3.13; 16 passed, 1 skipped on 3.10. This includes test_cancelled_domain_enable_is_sent_again (hold_send) and test_send_timeout_during_domain_enable_is_not_swallowed.
+
+### Suggested fix
+In Connection._register_handlers' `except asyncio.CancelledError` branch, undo the enabled_domains entry only when the enable never reached the browser:
+- How to tell: a written but unanswered enable stays in self.mapper (cancelled) until Chrome answers it, because _send_transaction pops the tx when the write fails or is cancelled. Prototype: `written = any(t.method == f'{Domain}.enable' for t in self.mapper.values())`, then remove the domain only `if not written`. Exposing a 'sent' flag from the nested send would be cleaner.
+- When it was written: keep the domain marked enabled, so later sends do not queue a second enable behind the first.
+- Gap to close: if that written enable later comes back as an error, nobody sees it, because the tx is cancelled and the listener skips done txs. Consider shielding the enable's tx, or adding a done callback that removes the domain on an error response.
+- Regression test: the browser-free DialogPage fake from probe_fake_dialog_wedge.py. It holds every reply until Page.handleJavaScriptDialog arrives; assert that the dismiss succeeds after a bounded send times out during the auto enable.
+
+## cancellation-2: On Python 3.10/3.11 the asyncio.wait_for that Q2 puts around the polling loops loses a task cancellation that arrives in the same loop iteration as the poll's result, so a cancelled polling loop keeps running
+- severity hang, confidence high, new-regression, fixes ['Q2'], python 3.10, 3.11 (reproduced on 3.10.20 and 3.11.17); not 3.12.3 or 3.13.16
+- files: zendriver/core/tab.py (_poll_with_timeout, used by find, select, find_all, select_all, wait_for and tab(); also the asyncio.wait_for in Tab.xpath); zendriver/core/cloudflare.py (the same pattern in cf_wait_for_interactive_challenge and verify_cf). Q3's wait_for calls in Browser._stop share the mechanism, but there a lost cancel only lets stop() finish.
+
+### Scenario
+A watchdog or supervisor cancels a scraping task, e.g. `task = create_task(loop_that_calls tab.select(...)); ...; task.cancel(); await task`.
+- Before 3.12, wait_for runs the poll in a separate task. When the outer task is cancelled in the iteration where that inner task finishes, wait_for takes the `if fut.done(): return fut.result()` branch (CPython gh-86296) and returns the element instead of raising CancelledError.
+- The cancelled task carries on: the next tab.select runs, and so on. `await task` in the watchdog never returns.
+- A variant: if the inner attempt raised instead (for example its own TimeoutError), the cancellation turns into that exception.
+- On base, select has no wait_for, so the CancelledError is delivered at the `await` and the task ends.
+- The window is one event-loop iteration per attempt, so this is rare in practice, but it is deterministic when it happens.
+
+### Evidence
+probe_cancel_swallow.py and probe_cancel_swallow_loop.py, under /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/:
+- Setup: a Tab whose instance query_selector awaits a future. The test resolves that future and calls task.cancel() in the same iteration.
+- Integrated code:
+  - 3.10.20: ["returned 'ELEMENT' (cancellation lost)" x5]. The loop variant prints 'task done: False cancelled: False select attempts after cancel(): 21'.
+  - 3.11.17 (venv /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/fix/Q3-review2/venv3.11): same, 'task done: False cancelled: False ... 21'.
+  - 3.12.3 and 3.13.16: 'task done: True cancelled: True ... 0'.
+- Base 064148f (base/pkg), 3.10.20 and 3.13.16: ['cancelled' x5] and 'task done: True cancelled: True ... 0'.
+- Prototype proto2/pkg replaces wait_for in _poll_with_timeout with `inner = ensure_future(poll); done,_ = await asyncio.wait({inner}, timeout=...)`, cancelling inner on timeout or outer cancel.
+  - Loop probe: 'task done: True cancelled: True ... 0' on 3.10, 3.11, 3.12 and 3.13.
+  - tests/core/test_tab.py + test_cloudflare.py (which include the Q2 tests): 72 passed on 3.10 and on 3.13, real headless Chromium.
+
+### Suggested fix
+Do not use asyncio.wait_for for these bounds before Python 3.12. Use either:
+- `asyncio.wait({inner}, timeout=t)` plus explicit `inner.cancel()` on timeout and in an `except CancelledError` path (retrieve inner's result or exception there to avoid noise). This works on all supported versions.
+- or `asyncio.timeout()` on 3.11 and the wait() form on 3.10.
+
+Apply the same change to Tab.xpath and the two cloudflare bounds. Browser._stop can stay as it is.
+
+## Suspicions (unproven)
+- verify_cf: the Q2 bound on the click phase can fire between Tab.mouse_down (which sets self._mouse_buttons |= LEFT before Input.dispatchMouseEvent mousePressed) and mouse_up. That can happen when a busy challenge page delays the input ack. The tab would then keep LEFT pressed, and Chrome would hold the button, so a later tab.mouse_move sends buttons=1/force=0.5, i.e. a drag. Not reproduced. The same exposure already existed for user-level cancellation.
+- A Q2 timeout that lands while Target.attachToTarget is pending (first use of a flat-session tab) leaks the browser-side session. The next call attaches a second one. probe_attach_cancel.py shows 'attaches sent: 2' with the late session S1 never detached; the lock is released and local bookkeeping is consistent. Pre-existing for any cancellation, low impact.
+- A Q2 timeout during _prepare_headless on a new tab whose page has an alert open leaves _prep_headless_done unset, so every later send re-sends Network.setUserAgentOverride first. The mapper grows by one cancelled tx per call (7, 8, 9, 10 in probe_newtab_alert.py). I did not count this as a fix-caused wedge: with the flag set before sending, Page.enable still blocks and handleJavaScriptDialog says 'No dialog is showing', so Chrome itself makes that tab unrecoverable through its own session.
+- Same root cause as the Q12 reviewer's known orphan-tx note: send() runs _update_manual_domain('enable') before its own _register_handlers. A cancel that lands in that call leaves the domain in manually_enabled_domains although X.enable was never sent, and auto-enable then skips it for good. It is rare because aopen's _register_handlers usually enables first. Not reproduced.
+- A Q2 bound that fires inside find_elements_by_text between DOM.performSearch and DOM.discardSearchResults leaves the search result set allocated in Chrome, one per timed-out find. Not measured.
+- Python 3.10: Q2's wait_for runs the poll in a second task. A KeyboardInterrupt raised inside that task is re-raised again from the main task during asyncio.run's _cancel_all_tasks (wait_for returns fut.result()). That gives a double traceback; loop.close() and the asyncio_atexit cleanup still run. This is reasoning only, not tested.
+
+## Checked OK
+- Q4+Q3 under cancellation, real headless Chromium (probe_start_cancel_scan.py; asyncio.timeout on 3.13.16, asyncio.wait_for on 3.10.20). zd.start() was cancelled at 0.10-1.20 s in 0.1 s steps and at 0.19-0.27 s in 5 ms steps, which covers the CDP phases of _connect. Every cancelled start raised TimeoutError within 0.62 s, with Chrome rc=0, no new temp profile left, no leftover tasks and no asyncio log noise.
+- Q3+Q12 combined: the Q3 reviewer's pre-existing hang (probe_swallowed_cancel.py: frozen peer plus a browser-level Page handler whose enable swallowed wait_for's cancel) is fixed by the combination. On 3.10 and 3.13 it prints 'stop done within 15s: True, process exited: True'. Because of the rollback the enable is sent twice, so stop() takes about 2xSTOP_COMMAND_TIMEOUT there, still bounded.
+- A Q2 timeout during _attach_session releases _attach_lock and leaves session_id None and _sessions consistent. The cancelled attach tx drains from the browser mapper once answered, and the next call re-attaches fine (3.10 and 3.13, probe_attach_cancel.py).
+- A Q2 timeout with a dialog open and no lazily-enabled handlers (alert, then select times out, then handleJavaScriptDialog, then select): the tab recovers. Cancelled txs stay in the mapper as done and are removed when Chrome answers. _fail_pending_transactions skips them, so there is no 'never retrieved' at stop(). Checked on 3.10 and 3.13 with -X dev; the only remaining warning is a pre-existing ResourceWarning for the Popen stdin pipe.
+- Full tests/core with real headless Chromium and live WARNING logs: 3.13.16 gave 183 passed, 1 skipped; 3.10.20 gave 181 passed, 3 skipped. 'Task exception was never retrieved' appears only for exceptions the tests raise on purpose in handlers or in the test SOCKS proxy, none from library code.
+- Huge timeouts (inf, 1e18, 10**30) under the new wait_for bound return normally on 3.10 and 3.13, as on base.
+- Q12 rollback with nested recursion and concurrent sends: no ValueError, and Q7's guarded prune is not reached on cancel. Reviewed, and covered by the passing test_connection.py on both versions.
+
+
+# Lens: connection
+
+## connection-1: Q1's receive-error break fails flat-session commands that already have a reply waiting in the session inbox (Python >= 3.12)
+- severity wrong-result, confidence high, new-regression, fixes ['Q1'], python 3.12+ (verified on 3.13.16). Not on 3.10.20, where wait_for runs the receive in its own task so the tab listener dequeues the reply first; 3.11 should behave like 3.10 but was not run.
+- files: zendriver/core/connection.py: Listener.listener_loop, new `except Exception` branch (~L974-991: `for session in list(self.connection._sessions.values()): session._fail_pending_transactions(e)`)
+
+### Scenario
+tab.send(cdp.runtime.evaluate('1+1')) runs on a flat-session tab. Chrome's reply arrives, and the browser listener routes it into tab._inbox. The next frame that listener reads then raises something other than ConnectionClosed; the fake peer sends a non-JSON frame. On Python 3.12+, asyncio.wait_for runs _receive_message inline in the listener task. The browser listener therefore reads the bad frame before the tab listener has taken the reply off the inbox. It calls _fail_pending_transactions on the tab, which fails the command that already has its reply and clears tab.mapper. The tab listener then dequeues the reply, does not find the id in the mapper, and drops it. tab.send raises JSONDecodeError although Chrome ran the command and answered it. Every tab whose reply was already queued is hit the same way. On base the listener died, but the tab listener still resolved the command from its inbox.
+
+### Evidence
+Probe: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/connection/probes/probe_routed_then_fail.py. The fake peer queues the reply and then 'not json'.
+- Integrated code on 3.13.16, 3 of 3 runs: 'RESULT: send raised JSONDecodeError Expecting value: line 1 column 1 (char 0)'.
+- Base 064148f on 3.13.16 (git archive copy): 'RESULT: send returned 2', plus the base 'Task exception was never retrieved'.
+- Integrated code on 3.10.20 (flaky-check), 3 of 3 runs: 'RESULT: send returned 2'.
+- probe_wait_after_break.py shows the same split: 'first send: RuntimeError' on 3.13 only.
+
+### Suggested fix
+Do not fail session mappers directly from the browser listener. Put a sentinel into each attached session's inbox instead, for example `session._inbox.put_nowait({'_zendriver_receive_error': e})`. The session listener checks for it before the 'id'/event branches: it first dispatches the replies queued ahead of the sentinel, then calls `self.connection._fail_pending_transactions(err)`. Fall back to the direct failure only for a session whose _inbox is None. Note: no real-Chrome trigger for this path was found (Chrome caps JSON nesting near 300, 'CBOR: stack limit exceeded'), so the impact is limited to the defensive path.
+
+## connection-2: A receive error during send()'s own _register_handlers fails the caller's command, and send() still transmits it afterwards
+- severity wrong-result, confidence high, unclear, fixes ['Q1'], python 3.10.20 and 3.13.16 (same result on both)
+- files: zendriver/core/connection.py: Connection.send (the tx is registered in self.mapper at L662-665, before `await self._register_handlers()` at L671; `_send_transaction(tx)` at L677 runs without checking tx.done()); Listener.listener_loop new except branch (L988-990)
+
+### Scenario
+browser.connection.add_handler(cdp.network.RequestWillBeSent, h), or a Page handler. On the browser target Chrome rejects every X.enable ('X.enable' wasn't found); on a fresh tab, CSS.enable likewise fails with 'DOM agent needs to be enabled first'. Every send therefore retries the enable inside send()'s own _register_handlers while the caller's tx already sits in the mapper. Suppose the reader hits an unexpected receive error during that enable:
+- Q1's new branch fails every pending tx, including the caller's tx that was never sent.
+- _register_handlers swallows the enable failure (`except Exception`).
+- send() then calls _send_transaction, so the command goes out on the websocket, and `await tx` raises the receive error at once.
+Chrome executes Target.createTarget (or Input.insertText), but the caller is told the command failed, so a retry duplicates it. The reply is later dropped because the id is no longer in the mapper.
+
+### Evidence
+- Probe /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/connection/probes/probe_failed_then_sent2.py, with a one-shot RuntimeError queued in place of the reply to the second Page.enable:
+  - On 3.13.16 and on 3.10.20: 'RESULT: send raised RuntimeError RuntimeError('cannot receive')' and 'commands that reached the browser: ['Page.enable', 'Page.enable', 'Target.createTarget']'.
+  - On base 064148f it hangs past wait_for(…, 2), because the old bare except swallows the cancellation, until the outer `timeout` kills it ('Terminated').
+- probe_failed_then_sent.py shows the same for both the browser connection and a flat-session tab with Input.insertText ('Network.enable', 'Network.enable', 'Input.insertText').
+- Candidate fix validated in a scratch copy (fixpkg): with `if tx.done(): self.mapper.pop(tx.id, None); return await tx` inserted after the _register_handlers block, only ['Page.enable', 'Page.enable'] reach the browser, and tests/core/test_connection.py passes 17/17 on 3.13.
+
+### Suggested fix
+In Connection.send, after the `if not _is_update:` block and before `_send_transaction`, add `if tx.done(): self.mapper.pop(tx.id, None); return await tx`. This raises the failure without sending a command the caller is told has failed; it is validated with the probes and test_connection.py. A more thorough fix registers the tx in the mapper only right before _send_transaction, combined with the Q1 reviewer's reader-revival check in _send_transaction. That also closes the Q12 reviewer's never-sent, never-retrieved tx leak, which has the same root cause.
+
+## connection-3: With Q12, a cancelled manual X.enable() leaves X in manually_enabled_domains although X.enable never reached the browser, so X's handlers are never auto-enabled
+- severity wrong-result, confidence medium, new-regression, fixes ['Q12'], python 3.10.20 and 3.13.16
+- files: zendriver/core/connection.py: Connection.send L667-673 (`_update_manual_domain(domain_name, 'enable')` runs before `await self._register_handlers()`) together with the Q12 re-raise in Connection._register_handlers L726-731
+
+### Scenario
+1. A tab has a handler whose domain enable keeps failing, for example tab.add_handler(cdp.css.StyleSheetAdded, h) on a fresh tab, where real Chrome answers CSS.enable with 'DOM agent needs to be enabled first'.
+2. The user runs asyncio.wait_for(tab.send(cdp.overlay.enable()), t), or the task is cancelled, while send()'s own _register_handlers awaits CSS.enable. send() has already moved Overlay into manually_enabled_domains. Q12 now lets the cancellation propagate, so Overlay.enable is never sent.
+3. The user adds tab.add_handler(cdp.overlay.InspectNodeRequested, h2). _register_handlers skips Overlay because it is 'manually enabled', so the domain is never enabled and h2 never fires.
+On base the bare except swallowed the cancellation (itself a bug), so Overlay.enable was still sent and the domain really was enabled.
+
+### Evidence
+Probe: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/connection/probes/probe_manual_enable_cancel.py.
+- Integrated code, on both 3.13.16 and 3.10.20:
+  - 'manual send cancelled: True'
+  - 'Overlay.enable sent before the cancel: False'
+  - after adding the Overlay handler and 3 clean sends: 'Overlay.enable ever sent: False' and "manually_enabled_domains: ['zendriver.cdp.overlay']"
+- Base 064148f (3.13.16):
+  - 'manual send cancelled: False None', meaning the cancellation was lost
+  - 'Overlay.enable sent before the cancel: True'
+
+### Suggested fix
+Give the manual bookkeeping in send() the same undo Q12 gave auto-enables. Record whether this call added domain_mod to manually_enabled_domains, and wrap `_register_handlers()` and `_send_transaction(tx)` in `except BaseException:`. In that handler, remove the entry again (if still present) when the enable was never sent, then re-raise. Confidence is medium only because the trigger is narrow: it needs a persistently failing auto-enable and a manual enable cancelled in exactly that window. The mechanism itself is deterministic.
+
+## Suspicions (unproven)
+- Waits that depend only on events still hang after a Q1 break until some send() revives the browser listener. Examples: an expect_request/expect_response future awaited after the navigation command returned, or Tab.close's wait for TargetDestroyed (that one is bounded at 10 s). This is pre-existing: the base listener died the same way. Q1's design is 'break, the next send restarts it'.
+- Connection.aclose() clears enabled_domains and manually_enabled_domains only `if self.listener and self.listener.running`. If the listener already stopped (Q1 break or ConnectionClosed) and the same Connection object is later reopened by a send(), _register_handlers believes those domains are still enabled on the new websocket, and their handlers never fire. This is pre-existing and not reachable through Browser, which never reopens browser.connection. Reasoned only, not run.
+- _attach_session race (reasoned, not reproduced): suppose a tab's attach reply is processed and browser.connection.aclose() runs before the tab task resumes, e.g. a concurrent tab.send during browser.stop(). The tab then registers itself with websocket=None and a session listener that polls an inbox nobody fills. That listener task runs until the tab is detached again. This is pre-existing and not touched by the fixes.
+- The shared ProtocolException('target session was detached') / ('connection was closed') instance set on every pending tx is mutated by each awaiting send() (`e.message += command...`), so its message lists every pending command. Reproduced identically on base and on the integrated code (probes/probe_shared_exc.py: same object: True). The issue is pre-existing and cosmetic, and Q3's gather of aclose() does not change it.
+- On Python < 3.12, a listener whose cancellation is lost inside wait_for (the inner future completes at the same moment) keeps looping. Q1's `connection.closed` guard ends it on the next iteration. A second reader of the same websocket or inbox would only be possible if the connection or session were reopened before that iteration runs. That needs a full CDP round trip, so in practice it is not reachable. Stress runs never saw it.
+
+## Checked OK
+- No second Listener reads one websocket: Q1's aopen revival, send()'s restart, aopen's own restart and _attach_session all check and create synchronously (no await between check and Listener()), and an uncontended asyncio.Lock acquire/release does not yield on 3.10 or 3.13. A stress probe with a concurrent-recv detector found 0 concurrent recv() calls. It mixed flat sessions, one-shot receive errors, non-JSON frames, unanswered commands, browser-initiated Target.detachedFromTarget, re-attach, cancellations and handler churn, and ran 6 seeds × 200 rounds on 3.13.16 and on 3.10.20 (probes/stress.py).
+- No duplicated event dispatch after recovery. The stress probe found 0 events dispatched twice once handler registration was deduplicated. With real headless Chromium, after an injected receive error and revival, each console message was dispatched exactly once (probes/real_chrome.py, both Pythons).
+- No leaked listener tasks. During stress there was at most one live listener task per connection, and none after closing everything. With real Chromium after an injected break plus revival plus `async with tab2` plus re-attach, browser.stop() left 'listener tasks alive after stop: 0', 'process alive after stop: False' and no other tasks, on 3.13.16 and 3.10.20.
+- Q7 guard plus Q12 undo keep enabled_domains consistent. probes/stress_domains.py ran concurrent sends with random handler churn, cancellations at random points (including inside nested Domain.enable), delayed, unanswered and rejected enables, and receive errors. After a clean send, every domain listed is really enabled on the fake for the current session, there are no duplicates, and every handler domain is enabled. Results: 0 problems over 8+6 seeds on 3.13 and 12 runs on 3.10. The harness was validated by mutation: removing Q12's undo produced 'in enabled_domains but never enabled' failures.
+- After a Q1 break on the browser connection, flat sessions keep their own listeners and inboxes. tab.wait(), tab.wait(0.3) and browser_connection.wait() all return and revive the browser listener, on 3.13 and 3.10 (probes/probe_wait_after_break.py).
+- Q9 with real Chromium after a Q1 break: `async with tab2:` raising a two-argument custom exception propagates the original object, detaches the session (session_id None), and tab2 re-attaches and evaluates afterwards. Verified on both Pythons.
+- Raw exceptions from Q1 flow through _register_handlers' `except Exception` (domain removed, then retried) and through Q3's gather(return_exceptions=True) and the `except Exception` around Browser.close, without hanging stop().
+- Looked for a real-Chrome trigger of Q1's generic receive-error path and found none. Chrome refuses responses nested deeper than about 300 levels ('Failed to convert response to JSON: CBOR: stack limit exceeded', DOM depth >= 150, evaluate nesting >= 300). json.loads only fails at about 1000 levels on 3.10.20 and above 5000 on 3.13.16.
+- tests/core/test_connection.py on the integrated code with -W error, 3 runs each: 16 passed and 1 skipped on 3.10.20; 17 passed on 3.13.16.
+
+
+# Lens: lifecycle
+
+## lifecycle-1: Two concurrent Browser.stop() calls still raise AttributeError while a proxy context has a live tunnel, but the new CHANGELOG entry says this is fixed
+- severity wrong-result, confidence high, pre-existing, fixes ['Q3', 'CHANGELOG (8ae752b)'], python 3.10.20 and 3.13.16 (both reproduce)
+- files: zendriver/core/browser.py (Browser._stop forwarder loop), zendriver/core/proxy.py (ProxyForwarder.close), CHANGELOG.md
+
+### Scenario
+Public API on real Chromium. Run b = await zd.start(headless=True). Then ctx = await b.create_context(proxy_server='http://user:pass@127.0.0.1:<upstream>'). Start ctx.get('https://example.test/') through an upstream proxy that answers CONNECT and then holds the tunnel open. Then call await asyncio.gather(b.stop(), b.stop()), as a finally block plus a signal handler would. Both stop() calls reach the forwarder loop together, because both wait in the same process-poll loop. ProxyForwarder.close() is not safe to run twice at once. The first call sets _server=None after wait_closed(), and the second call then does `await self._server.wait_closed()` on None. That stop() call raises AttributeError. Its own atexit unregister and registry discard are skipped; the other call still finishes them. The CHANGELOG line added in 8ae752b says Browser.stop() 'no longer raises when called twice at once'.
+
+### Evidence
+Probe /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/probes/concurrent_stop_proxy_real.py, run with PYTHONPATH set to a copy of the tip. On 3.13.16 it gave `run 1: forwarder clients before stop=4 results=['AttributeError("\'NoneType\' object has no attribute \'wait_closed\'")', 'None']`, 2 of 3 runs. On 3.10.20 it failed 3 of 3 runs. The same probe on base 064148f fails 6 of 6, so this is pre-existing (the Q3 reviewer flagged it with a synthetic client). What is new is that the integrated CHANGELOG claims it is fixed, and this repro uses only the public API with real Chromium.
+
+### Suggested fix
+In Browser._stop, take each forwarder off the list before closing it: `while self._proxy_forwarders: forwarder = self._proxy_forwarders.pop(); try: await asyncio.wait_for(forwarder.close(), STOP_COMMAND_TIMEOUT) ...`. Or make ProxyForwarder.close idempotent by swapping first: `server, self._server = self._server, None; if server is None: return; ...`. Otherwise, narrow the CHANGELOG wording.
+
+## lifecycle-2: New test test_browser_stop_keeps_a_process_started_while_it_ran depends on timing on Python < 3.12 and fails after a 0.1 s event-loop stall
+- severity flaky-test, confidence low, new-regression, fixes ['Q3'], python 3.10 and 3.11 only (3.10.20 reproduced; 3.13.16 immune)
+- files: tests/core/test_browser.py (test_browser_stop_keeps_a_process_started_while_it_ran)
+
+### Scenario
+The test runs `stop = asyncio.create_task(browser.stop())`, then `await asyncio.sleep(0.1)`, then replaces browser._process. On 3.10/3.11, wait_for() wraps detach_from_targets() in a Task. So _stop() needs several loop iterations before it reads `process = self._process`. If the loop stalls for 0.1 s or more in those iterations (GC pause, overloaded CI runner), the sleep timer fires first and the test swaps _process early. stop() then captures the replacement process and SIGTERMs it, and leaves the old one running. The test fails on `process.poll() is not None` and `browser._process is new_process`. On 3.12+, wait_for awaits the coroutine inline, so stop() captures the process before it first yields and the race cannot happen.
+
+### Evidence
+Probe /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/probes/stall_started_while.py copies the test body and adds `loop.call_soon(time.sleep, 0.15)` right after create_task. 3.10.20: `stall=False ... -> PASS`, `stall=True: old exited=False new rc=-15 kept_new=False -> FAIL`. 3.13.16: PASS in both cases. It did not fail without the injected stall: 0 failures among the 79 new tests in 26 loaded full or new-test runs (-n 4, 4-8 CPU hogs, pinned+nice runs, --cov) on both Pythons. The probability is low, and CI's unpinned `uv python install` probably runs 3.12+.
+
+### Suggested fix
+Synchronize on the event instead of sleeping. Have EXITS_A_WHILE_AFTER_SIGTERM print a line such as 'terminating' from its SIGTERM handler, read that line from process.stdout (via asyncio.to_thread with a bound) before replacing browser._process, and only then swap in the new process.
+
+## lifecycle-3: Concurrent stop() logs 'Transaction exception was never retrieved' for Browser.close
+- severity cosmetic, confidence medium, pre-existing, fixes ['Q3'], python 3.13.16 observed (intermittent); 3.10.20 not observed in 3 runs
+- files: zendriver/core/connection.py (Connection.send), zendriver/core/browser.py (Browser._stop)
+
+### Scenario
+Run b = await zd.start(); await b.get(...); await asyncio.gather(b.stop(), b.stop()). Both calls send Browser.close. Connection.send() puts the Transaction into self.mapper before it awaits _register_handlers() and checks or uses the websocket. If the other stop() closes the websocket in that window, send() raises ProtocolException or ConnectionClosed without ever awaiting the tx. That stop() catches it ('Could not send the close command...'). connection.aclose() -> _fail_pending_transactions() later sets an exception on the orphaned tx, and asyncio logs an ERROR with a traceback when the tx is collected. Q3 made concurrent stop() complete without raising, which makes this the visible symptom. The send() ordering is the same in base, and base concurrent stop() also sent Browser.close twice before it crashed.
+
+### Evidence
+Probe /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/probes/concurrent_stop_plain.py (real Chromium, loop exception handler captured, gc.collect after each run). 3.13.16: `run 3: results=[None, None] asyncio errors=['Transaction exception was never retrieved :: <Transaction method: Browser.close status: finished success: False>']`, in 2 of 5 runs. 3.10.20: none in the runs shown. The same ERROR and traceback, raised from listener_loop's ConnectionClosedOK, appear in /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/logs/csp313.txt.
+
+### Suggested fix
+In Connection.send, put the tx into mapper only right before _send_transaction (after _register_handlers and the websocket check). Or wrap the send/await in try/except BaseException that pops the tx from mapper and cancels it if it was never awaited. Optionally, have stop() return early (or await the in-flight stop) when one is already running.
+
+## Suspicions (unproven)
+- Q4's launch-mode cleanup closes the connection first, so a failed or cancelled start ends the launched Chrome with terminate() instead of Browser.close. On Linux this is graceful: with a custom user_data_dir I measured profile exit_type 'SessionEnded' vs 'Normal' (probe /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/probes/exit_type.py). On Windows terminate() is TerminateProcess, which may mark a custom profile as crashed. Now that Q3 bounds Browser.close at 5 s, Q4's stated reason for skipping it ('Browser.close has no timeout until Q3 lands') no longer applies in launch mode. Not verified on Windows.
+- CI also runs on windows-latest. The new stub tests that rely on SIGTERM semantics (concurrent stop, started-while-it-ran, stop_cancelled atexit) pass vacuously there; the Q3 reviewer already noted this. The new test_util tests send multi-line `-c` programs through CreateProcess and a Windows repr path. Their logic looks fine, but I could not run them on Windows.
+- Pre-existing, not caused by the fixes: restarting a stopped instance (`await b.stop(); await b.start()`) reuses the stale config.host/port and self.info. It then attaches to the dead port and raises ConnectionRefusedError after browser_connection_max_tries, the same as on base (probe restart_real.py). With Q4 the registry is now cleaned on that failure.
+- The atexit fallback cleans browsers one after another. Each frozen (SIGSTOPped) browser adds about 24 s to loop close: 24.3 s on 3.13 and 23.8 s on 3.10 for 1 frozen of 3 browsers (probe atexit_multi.py frozen). N frozen browsers would take about N*24 s at interpreter exit. This is bounded but slow; the per-browser worst case is already known from the Q3 review.
+- Pre-existing: Popen stdin=PIPE is never closed by stop(), so -X dev / ResourceWarning shows 'unclosed file <_io.BufferedWriter>' when the Popen is collected. Q5 reduced this from three unclosed pipes to one.
+
+## Checked OK
+- asyncio.run(main) that never calls stop(), real Chromium, Py 3.10.20 and 3.13.16 (probe atexit_real.py): loop close took 0.37 s, no Chrome pid alive, profile removed, no 'Unhandled exception' or 'Executor shutdown' output, stderr drain thread exited, its fd closed, only MainThread left. Same result when stop() was cancelled by wait_for(…, 0.01) first.
+- Three browsers started concurrently with gather and stopped concurrently with gather, 3 rounds, both Pythons (concurrent_real.py): every stop result None in about 0.6 s, no pids alive, no profiles left, every drain thread exited. Registry and asyncio_atexit callbacks return to 0, _stderr_tails is empty after gc, and the fd count is stable (8 -> 7 on 3.13, 9 -> 8 on 3.10). No thread leak across restarts.
+- Process tree: renderers, zygotes, GPU and utility children all inherit the stderr pipe. chrome_crashpad_handler daemonizes (ppid 1) without holding the pipe and exits once the browser is gone. After stop(), and after SIGKILL of the main browser pid followed by stop(), the drain thread exits within 1 s (tree_real.py).
+- Interpreter exit with the loop never closed (run_until_complete, no atexit) while Chrome runs with --enable-logging=stderr --v=1: Python exits in 0.07 s on both versions, so a daemon drain thread blocked in os.read does not delay exit. Chrome being left running in this case is pre-existing.
+- Attach mode against an external Chromium. start() was cancelled, or had a send fail, at each of the 4 CDP messages it sends (attach_kth_real.py), on 3.13 and 3.10. The external browser stays alive with its page target, Browser.close and other messages are never sent after the failure, and registry, atexit and temp profile are clean.
+- Launch mode with start() cancelled or failing at each CDP message (launch_kth_real.py): process exits with rc=0 (SIGTERM path), cleanup takes about 0.6 s, drain thread exits, registry and atexit callbacks are 0, no profile left.
+- SIGINT on 3.13 and 3.10, both during `await asyncio.sleep` with a live browser and no stop(), and during zd.start() at 0.05/0.15/0.3 s: Chrome gone, exact profile path removed, nothing on stderr except KeyboardInterrupt (sigint_drive.sh).
+- Q12 + Q3 combination: the Q3 reviewer's stop() hang (bare except in _register_handlers swallowing wait_for's cancel; probe_swallowed_cancel.py) no longer reproduces at tip. stop finishes within the bound and the process exits on 3.10 and 3.13.
+- No Browser.close is sent to an attached browser through the atexit path, because _atexit_cleanup skips _stop when there is no owned process. A Q4 failed-start cleanup sends only what was observed above.
+- test_multiple_browsers and 3x zd.start() with a shared Config: ports and user-data dirs are unique, and all browsers stop cleanly.
+- New tests under load: 3 full-suite runs on 3.13 and 1 on 3.10 with -n 4 and 4 CPU hogs; 3+3 new-test-only runs with -n 4 and 8 hogs; 3 runs of test_util+test_browser pinned to one CPU with 4 hogs at nice 5; 2 runs of all new tests pinned at nice 10 and 19; 16 more full-suite runs alternating 3.13 and 3.10; 5 tip runs on 3.10 with a pinned hog; CI-style -n 3 --cov=zendriver runs of test_util and test_browser on both Pythons (pytest-cov 6.2.1 subprocess .pth active). None of the 79 new tests failed in any run.
+- Full-suite failures seen under load are pre-existing tests that evaluate JS right after browser.get(), before document.body exists, or that count a second LoadEventFired: test_is_scrolled_to_bottom, test_shadow_children_includes_closed_shadow_root, test_element_get_returns_empty_attribute_value, test_handler_raising_type_error_is_called_once. Base 064148f flaked 4 times in 5 runs under the same conditions, while the tip had 0 failures in 5 runs. The fixes did not introduce them.
+- Global state in the new tests: fake_browser and stub_browser use monkeypatch/mocker and restore everything, kill their own processes and remove profiles. The loop exception handler swapped in test_cancelled_browser_stop_leaves_no_unretrieved_exception is restored in finally. STOP_COMMAND_TIMEOUT patches go through monkeypatch. No registry entries or atexit callbacks are left behind (the fake_browser teardown removes any start() leaves).
+- Repo /home/user/zendriver untouched (git status clean). All Chrome processes, CPU hogs and scratch profiles started for this review were stopped or removed. The hogs, runner scripts, probes and logs are in /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/lifecycle/.
+
+

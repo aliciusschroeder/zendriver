@@ -95,7 +95,21 @@ Note: the machine has 4 CPUs, so each workflow runs at most 2 agents at a time.
 * Final tip 8ae752b: lint clean; full headless suite 4/4 runs 197 passed, 1 skipped (Py 3.13); 2/2 runs 195 passed,
   3 skipped on Py 3.10.20 (2 ExceptionGroup cases skip < 3.11). Baseline was 118 passed, 1 skipped.
 * 79 new tests (ids in scratch/integration/ids-new.txt) run 5x serially: 79 passed every time.
-* Next: final adversarial review workflow (3 reviewers, cross-fix interactions).
+* Final review workflow `zendriver-final-review`, run `wf_e8bd6d8e-82d` (3 reviewers: cancellation, connection,
+  lifecycle; ~57 min). Confirmed with evidence (details: scratch/final-review/FINDINGS.md):
+  - cancellation-1 (Q2+Q12): after a Q2 timeout cuts off a pending auto Domain.enable, Q12's rollback makes every
+    later send re-send it; on a dialog-blocked page even Page.handleJavaScriptDialog can never be sent (3.10 + 3.13).
+  - cancellation-2 (Q2): on Py 3.10/3.11 asyncio.wait_for loses a cancellation arriving in the same loop iteration
+    as the poll result (CPython gh-86296); a cancelled polling loop keeps running. New regression vs base.
+  - connection-1 (Q1, Py >= 3.12): receive-error break fails flat-session commands whose replies are already queued.
+  - connection-2 (Q1 + send ordering): a command failed during send()'s own _register_handlers is still transmitted.
+  - connection-3 (Q12): cancelled manual X.enable() leaves X in manually_enabled_domains although never sent.
+  - lifecycle-1: concurrent stop() still raises with a live proxy tunnel (pre-existing; CHANGELOG claimed fixed).
+  - lifecycle-2: new test test_browser_stop_keeps_a_process_started_while_it_ran is timing-dependent on Py < 3.12.
+  - lifecycle-3: concurrent stop() logs 'Transaction exception was never retrieved' (orphan tx in send()).
+* Follow-up fix workflow `zendriver-followup-fix`, run `wf_2c9e79a3-fb2` (running since ~07:35): U1
+  fix/followup-connection (cancellation-1, connection-1/2/3, lifecycle-3), U2 fix/followup-timeouts
+  (cancellation-2), U3 fix/followup-stop (lifecycle-1/2); fixer + adversarial reviewer, max 2 rounds.
 
 ## Persistence (set up 22:30, during Stage 3)
 * State worktree `/home/user/bughunt-state` on branch `ccr-9a8a26e1-b0l7bh-state`, synced and pushed every 5 min by
