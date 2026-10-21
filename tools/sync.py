@@ -200,7 +200,12 @@ def snapshot_worktrees(pushed: dict, results: list[str]) -> list[str]:
         if not path.exists():
             rows.append(f"| {path} | {branch or '(detached)'} | {head[:9]} | missing on disk |")
             continue
-        if branch:
+        # push only branches that carry new commits (harness worktrees start on throwaway
+        # worktree-* branches at origin/main; remote deletion is refused, so don't litter origin)
+        if branch and not any(
+            run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", head, ref]).returncode == 0
+            for ref in (DESIGNATED, "origin/main")
+        ):
             push(f"+refs/heads/{branch}:refs/heads/{branch}", f"branch:{branch}", head, pushed, results)
         dirty = run(["git", "-C", str(path), "status", "--porcelain"]).stdout.strip()
         wip = ""

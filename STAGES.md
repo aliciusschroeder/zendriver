@@ -51,9 +51,16 @@ Note: the machine has 4 CPUs, so each workflow runs at most 2 agents at a time.
 * Decision: fix queue = Q1–Q12 (all confirmed, 12 groups ≈ "top 10 or so"; Q12 is a prerequisite of Q2's fix).
   All R groups are verified and REPORT-ONLY (below the cap or design/API).
 
-## Stage 4 — fix (pending)
-Planned: one fixer per confirmed queue group (worktree isolation, branch `fix/<slug>`),
-then an adversarial reviewer; at most 2 rounds, else BLOCKED.
+## Stage 4 — fix (running since ~03:27)
+* Workflow `zendriver-fix`, run `wf_453a9023-a6b`. For each of Q1–Q12: fixer (worktree isolation, branch
+  `fix/<slug>` from `ccr-9a8a26e1-b0l7bh`, one commit, regression tests shown failing on base sources and passing
+  on the fix, format + lint + affected tests) → adversarial reviewer (own worktree, re-runs the tests against base
+  sources, 3x flake check) → if changes requested: round-2 fixer (amends the single commit) → reviewer 2 → else BLOCKED.
+* Branches: fix/listener-robustness, fix/timeout-bounds, fix/stop-cleanup, fix/start-cleanup, fix/stderr-pipe,
+  fix/expect-pairing, fix/register-handlers-snapshot, fix/contradict-shadowing, fix/aexit-reraise,
+  fix/tab-call-args, fix/ready-state-order, fix/swallowed-cancellation (pushed by the sync as they appear;
+  uncommitted fixer work goes to `wip/<name>`).
+* Fixers do not touch CHANGELOG.md; the supervisor adds those lines in Stage 5.
 
 ## Stage 5 — integrate (pending)
 Planned: merge fix branches one by one (same-file groups sequentially), lint + unit tests
