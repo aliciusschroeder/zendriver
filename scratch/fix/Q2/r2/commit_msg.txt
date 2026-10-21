@@ -1,0 +1,35 @@
+Bound the polling methods by their timeout when CDP does not answer
+
+Tab.find, select, find_all, select_all, xpath and wait_for (and so
+tab(...)), and the cloudflare helpers cf_wait_for_interactive_challenge,
+cf_is_interactive_challenge_present and verify_cf only compared their
+timeout between CDP round trips. While the page shows a JS dialog the
+renderer never answers DOM.getDocument or DOM.enable, so these calls hung
+forever instead of raising or returning at the timeout, the same problem
+already fixed for wait_for_ready_state.
+
+The polling loops now run under asyncio.wait_for. Their last attempt is
+made at the deadline (the sleep between attempts is clamped to the time
+left) and gets half a second to finish, so an element that shows up just
+before the deadline is still found. wait_for no longer sleeps after it
+found the element. Each method keeps its outcome on timeout: TimeoutError
+for find, select, find_all, select_all, wait_for and verify_cf, [] for
+xpath and False for cf_is_interactive_challenge_present.
+
+With timeout <= 0, find, select, find_all, select_all and wait_for still
+make their single attempt without a bound, as query_selector does, so on
+a page blocked by a dialog they still hang. xpath never raises, so it
+bounds its attempt even then: it gets half a second and returns [] when
+no answer comes.
+
+xpath now makes at least one attempt, so timeout <= 0 runs the query
+instead of returning [] right away, and it waits half a second between
+attempts instead of spinning. verify_cf runs its click phase under the
+time left and clamps the click_delay sleep to the deadline, so it no
+longer overruns its timeout by up to click_delay.
+
+The bound also cuts off a slow attempt that would have succeeded. One DOM
+query on a page with tens of thousands of nodes can take seconds, mostly
+spent parsing the DOM.getDocument reply, so a call whose single attempt
+takes longer than timeout + 0.5s now raises or returns [] where it used
+to return late.
