@@ -29,7 +29,8 @@ time left and clamps the click_delay sleep to the deadline, so it no
 longer overruns its timeout by up to click_delay.
 
 The bound also cuts off a slow attempt that would have succeeded. One DOM
-query on a page with tens of thousands of nodes can take seconds, mostly
-spent parsing the DOM.getDocument reply, so a call whose single attempt
+query on a page with tens of thousands of nodes can take seconds (about
+2s at 50k nodes and 4 to 6s at 100k in headless Chromium, much of it
+spent parsing the DOM.getDocument reply), so a call whose single attempt
 takes longer than timeout + 0.5s now raises or returns [] where it used
 to return late.

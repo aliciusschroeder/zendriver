@@ -1,0 +1,171 @@
+# Stage 3 verification of group Q2
+
+Votes: reproduce=confirmed, refute=confirmed, fixsafety=confirmed. Survives: True.
+
+## Lens: reproduce (verdict confirmed, realism high, severity hang)
+
+### Summary
+Confirmed on real headless Chromium (Python 3.13.16, scratch copy of the package). Tab.select/find/find_all/select_all/xpath/wait_for/__call__, cloudflare.cf_is_interactive_challenge_present and Tab.verify_cf all check their timeout only between CDP round trips. If the renderer never answers (an open alert(), or while(true){}), each call with timeout=2 was still pending after 8 s, and select and xpath were still pending after 30 s. Each one sits on an unbounded Transaction: DOM.getDocument, or DOM.enable for xpath. Under the same conditions the controls (wait_for_ready_state(timeout=2), already fixed in #291, and tab.wait(2)) returned after 2.00 s. If the renderer is busy for a finite 12 s, the same methods return 9 s late (11.2 to 11.7 s for timeout=2). Two smaller defects also reproduced. xpath(timeout<=0) never runs the query and returns [] even when the element exists, and with a positive timeout it spins with no sleep. verify_cf(timeout=1, click_delay=4) takes 4.02 s.
+
+### Refinements
+The root cause matches the claim: each polling loop compares loop.time() with its deadline only after an awaited CDP round trip returns, and none of those awaits (DOM.getDocument in query_selector / query_selector_all / find_elements_by_text / cf_find_interactive_challenge, and DOM.enable in xpath) is bounded. In alert mode the hang is effectively forever: the Transaction stays pending as long as the dialog is open (seen for 30s). In finite-busy mode the deadline is overrun by the busy duration. Other observations: (a) the self.sleep -> update_target send (Target.getTargetInfo) never showed up as a blocking point, because the browser answers it even when the renderer is blocked; (b) Tab.__call__ passes its arguments to wait_for positionally in swapped order (text into selector), which is a separate bug that does not change the hang; (c) A11.4 and A5.7 are timing/contract bugs (wrong-result) rather than hangs, but they share the same files and would naturally be fixed together. A fix that wraps each polling body in asyncio.wait_for(remaining) must keep each method's documented outcome on timeout: TimeoutError for find, select, find_all, select_all, wait_for and verify_cf; [] for xpath; False for cf_is_interactive_challenge_present. The fix should also cancel the stuck Transaction cleanly.
+
+### Member verdicts
+- B13.1: confirmed — Real Chromium, alert and busy modes: select('#nope',timeout=2) was stuck at Tab.select (tab.py:351, query_selector) and select(include_frames=True) at tab.py:347 (_query_selector_all_with_frames); find(timeout=2) at Tab.find tab.py:308; find_all at Tab.find_all tab.py:382; select_all at Tab.select_all tab.py:423. Each one was waiting on Transaction DOM.getDocument (status pending) and was STILL PENDING after 8.00s; select was still pending after 30.00s. Its sub-claim that self.sleep/update_target is one more unbounded send was not observed in any stack (Target.getTargetInfo is answered by the browser, not the renderer).
+- A5.1: confirmed — Same runs as B13.1. Also xpath('//nope', timeout=2), documented as 'will not raise' and to return [], was stuck at Tab.xpath tab.py:473 on Transaction DOM.enable (pending) in alert, busy and busy12 modes, and still pending after 30.00s with alert. Busy 12s: select(timeout=2) raised its TimeoutError only after 11.20s, and xpath returned [] after 11.20s.
+- B13.2: confirmed — wait_for(selector='#nope',timeout=2) was stuck at Tab.wait_for tab.py:1308 and wait_for(text=...) at tab.py:1316, both on DOM.getDocument. tab(selector='#nope',timeout=2) was stuck at Tab.__call__ tab.py:1966. xpath was stuck at tab.py:473 on DOM.enable. All were still pending after 8s (alert and busy). Side observation: __call__ passes (text, selector, timeout) positionally into wait_for(selector, text, timeout), so the arguments are swapped. This is a separate bug that does not change the hang.
+- A6.5: confirmed — Alert: wait_for(selector) and wait_for(text) with timeout=2 were still pending after 8s on DOM.getDocument (tab.py:1308 and tab.py:1316). Busy 12s: wait_for(selector='#nope',timeout=2) raised 'time ran out while waiting' after 11.20s, which matches the finder's figure of about 11.3s. The control wait_for_ready_state(timeout=2) raised after 2.00s.
+- B13.3: confirmed — Alert and busy: cf_is_interactive_challenge_present(tab, timeout=2) was stuck at cloudflare.py:120 (cf_wait_for_interactive_challenge -> cf_find_interactive_challenge -> DOM.getDocument). tab.verify_cf(timeout=2) was stuck at Tab.verify_cf tab.py:1666 on DOM.getDocument. Both were still pending after 8s. Busy 12s: cf_present returned False after 11.70s and verify_cf raised TimeoutError after 11.70s, both with timeout=2. The click-loop phase was not tested against a blocked renderer; the unbounded click_delay is covered under A11.4.
+- A11.4: confirmed — Real Chromium page with a closed shadow root that holds <iframe src='about:blank%23challenges.cloudflare.com'> plus an empty input[name=cf-turnstile-response]; the challenge was detected. verify_cf(timeout=1, click_delay=4) raised 'Could not solve the checkbox in 1 seconds' only after 4.02s with 1 click. verify_cf(timeout=2, click_delay=0.1) raised after 2.01s with 19 clicks. The deadline is checked only at the top of the click loop in cloudflare.verify_cf, and asyncio.sleep(click_delay) is not bounded. The scan overrun is shown by the busy-12s runs (11.7s for timeout=2).
+- A5.7: confirmed — Real Chromium, page with <p id=topp>. xpath("//p[@id='topp']", timeout=2.5) returned [<p id=topp>] in 0.008s, but timeout=0 returned [] and timeout=-1 returned [] in 0.000s (the query never ran). timeout=0.001 found the element. A miss with timeout=0.5 made 215 passes and 1290 sends in 0.501s ({DOM.enable:215, DOM.getDocument:215, DOM.performSearch:215, DOM.discardSearchResults:215, DOM.disable:430}) and no Target.getTargetInfo, so self.sleep never ran: it spins with no delay.
+
+### Evidence
+Commands, run from /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q2-reproduce with PYTHONPATH=<that dir>/pkg (a scratch copy; the probes print zendriver.__file__ from pkg/ and python 3.13.16), PATH including the scratchpad chromium symlink, and PYTHONDONTWRITEBYTECODE=1:
+(1) `timeout 300 /home/user/zendriver/.venv/bin/python probe_real.py alert` and `... busy`. Each case opens a new tab with a data: page, runs setTimeout(()=>alert('blocking'),200) or setTimeout(()=>{while(true){}},200), sleeps 1s, starts the call as a task, waits up to 8s with asyncio.wait, then prints task.print_stack(). Key lines: `[alert] select: STILL PENDING after 8.00s (timeout=2); ... Tab.select() running at .../tab.py:351> wait_for=<Transaction method: DOM.getDocument status: pending>`; `[alert] xpath: STILL PENDING ... tab.py:473 ... method: DOM.enable`; `[alert] wait_for_sel: ... tab.py:1308`; `[alert] call_sel: ... tab.py:1966`; `[alert] cf_present: ... cloudflare.py:120 ... DOM.getDocument`; `[alert] verify_cf: ... tab.py:1666 ... DOM.getDocument`; controls `[alert] CTRL_wait_for_ready_state: DONE in 2.00s -> raised TimeoutError` and `[alert] CTRL_wait: DONE in 2.01s`. The busy run gave the same results for all 11 cases.
+(2) `OUTER=30 timeout 120 ... probe_real.py alert select xpath` -> `[alert] select: STILL PENDING after 30.00s (timeout=2)` and `[alert] xpath: STILL PENDING after 30.00s (timeout=2)`.
+(3) `OUTER=25 timeout 250 ... probe_real.py busy12 select wait_for_sel xpath cf_present verify_cf CTRL_wait_for_ready_state` (12s busy loop) -> select TimeoutError in 11.20s, xpath [] in 11.20s, wait_for_sel TimeoutError in 11.20s, cf_present False in 11.70s, verify_cf TimeoutError in 11.70s; control 2.00s.
+(4) `timeout 150 ... probe_xpath_cf.py` -> xpath timeout=0 / -1 returns [] while the element exists; the miss made 1290 sends in 0.5s; `verify_cf(timeout=1, click_delay=4) raised TimeoutError: Could not solve the checkbox in 1 seconds (timeout during clicks). after 4.02s clicks=1`.
+All chromium pids I started (19468, 19632, 19634, 19636, 24124, 24678 and the probe_xpath_cf instance) were stopped with browser.stop(), and no chrome processes remain. The newest /tmp/uc_* profile dirs date from before my runs, so mine were removed.
+
+### Chrome claims
+- [verified] Chromium does not answer DOM.getDocument / DOM.enable on a page session while a JS alert() is open (probe_real.py alert: the Transaction DOM.getDocument (and DOM.enable for xpath) was still pending after 8s and 30s, while Runtime.evaluate under wait_for_ready_state's wait_for was cut off at 2.00s)
+- [verified] Chromium does not answer DOM.* commands while the renderer main thread runs while(true){}, and answers late after a finite busy loop (probe_real.py busy (pending after 8s) and busy12 (calls with timeout=2 returned after 11.2-11.7s, once the 12s loop finished))
+- [assumed] Target.getTargetInfo (Connection.update_target, used by self.sleep) would also block on a blocked renderer (Not observed: no stack showed the hang there. My reasoning is that the browser process answers the Target domain, so this sub-claim is probably wrong, but I did not test it in isolation)
+
+### Fix assessment
+- kind: minimal-local
+- prototype: 
+- regression test: 
+- fails on repo: not-run; passes on prototype: not-run; mypy ok: not-run
+- diff summary: 
+- risks: 
+
+## Lens: refute (verdict confirmed, realism medium, severity hang)
+
+### Summary
+I tried to refute this group and could not. On real headless Chromium 141 (--headless=new, Python 3.13), a JS alert() open in the tab means DOM.getDocument and DOM.enable never get a reply. Because of that, select, find, find_all, select_all (including include_frames), xpath, wait_for, tab(...), cf_is_interactive_challenge_present and verify_cf all stay pending far past timeout=2: I watched them for 12 s, and the Chrome behaviour behind it held for more than 34 s. Nothing upstream limits the wait. Headless does not auto-dismiss the dialog. The websocket stays up (PING_TIMEOUT=900). The Target.getTargetInfo call that Connection.sleep sends does get answered, so the hang is purely in the DOM sends. The most realistic trigger is a plain script: `tab = await browser.get(page that calls alert() while loading)` returns in 0.01 s, then `await tab.select('#a', timeout=3)` hangs forever even though #a exists. Commit bd88ccd (#291) already treated exactly this 'page stuck behind a dialog' case as a bug in wait_for_ready_state, and no test asserts the current behaviour. A busy main thread that eventually finishes only makes the calls late (an 8 s busy loop made every timeout=2 call finish at about 7.6 s with the documented result); only an infinite JS loop hangs. The two side members are also real: verify_cf can run past its timeout by up to click_delay, and xpath with timeout<=0 never runs the query and otherwise spins without sleeping.
+
+### Refinements
+1. A true hang needs a JS dialog (alert/confirm/prompt) open in the tab, or an infinite JS loop. Bounded busy JS only overshoots until the script yields; the result is still TimeoutError, [] or False, just late.
+2. The trigger is page state, not a caller argument. The most realistic path is a page that alerts during load or from a timer: browser.get/tab.get return right away (about 0.01-0.12 s, verified), and the next select/find/wait_for hangs, even for elements that exist.
+3. A dialog opened by the script's own element.click() or mouse_click() hangs in that click call first (verified), so in that pattern the Q2 methods are never reached.
+4. Recovery: Page.handleJavaScriptDialog returns 'No dialog is showing' unless Page.enable was sent before the dialog opened, and a late Page.enable gets no reply (verified). Navigating away with tab.get closes the dialog and DOM calls work again (verified).
+5. Keepalive never ends the wait: pongs come from the browser process and PING_TIMEOUT is 900 s. Only the mechanism is assumed; the connection itself was verified still usable after 34 s, longer than the 20 s ping_interval.
+6. Not Python-version dependent (an unbounded await on a never-completed Future); I ran 3.13 only.
+7. For A11.4, the overrun is at most click_delay plus one check_input; with the defaults and an immediate find it is about 0.03 s.
+8. For A5.7, the busy spin is limited by the timeout; the real bug is that timeout<=0 makes zero attempts.
+9. Each realism rating: the main hang is medium (pages with load or timer alerts are uncommon but real, and #77/#291 shows users hit the same thing in wait_for_ready_state), A5.7 is low-medium, A11.4 is low.
+
+### Member verdicts
+- B13.1: confirmed — Real Chromium, alert open, timeout=2: select('#nope'), select('#topp') (the element exists!), find, find_all and select_all were all still pending after 12 s. They are stuck on Transaction DOM.getDocument at tab.py:351 (Tab.select -> query_selector), :308 (Tab.find), :382 (Tab.find_all) and :423 (Tab.select_all); with include_frames=True Tab.select is stuck at :347. Also reproduced in a plain script: browser.get(alert-on-load page) then select('#a', timeout=3) was still pending after 20 s. The sleep() -> update_target call is NOT a hang point, because Target.getTargetInfo is answered while the dialog is open (verified).
+- A5.1: confirmed — Same mechanism and evidence as B13.1. xpath('//nope', timeout=2) was still pending after 12 s, stuck at tab.py:473 (Tab.xpath, send(DOM.enable)), which breaks its 'It will not raise' / return-[] contract. DOM.enable gets no reply while the dialog is open (verified).
+- B13.2: confirmed — wait_for(selector=) stuck at tab.py:1308 and wait_for(text=) at :1316 (the first query, before the while condition is ever checked). tab(selector=...) is stuck through Tab.__call__ at :1966. xpath is stuck at :473. All were still pending 12 s past timeout=2. Out of scope but worth knowing: Tab.__call__ passes (text, selector) by position into wait_for(selector, text), which swaps them. I only read the code for this, not tested.
+- A6.5: confirmed — With an alert open it hangs (verified, see B13.2). With an 8 s busy main thread, wait_for(timeout=2) raised TimeoutError only after 7.61 s. That is an overshoot limited by how long the page script runs, not a hang; only an infinite loop would hang.
+- B13.3: confirmed — cf_is_interactive_challenge_present(tab, timeout=2) was stuck at cloudflare.py:120 and tab.verify_cf(timeout=2) at tab.py:1666 -> cloudflare.py:155 (verify_cf) -> :93 (cf_wait_for_interactive_challenge) -> :31 (DOM.getDocument). Both were still pending after 12 s with an alert open. With an 8 s busy page they returned False / raised TimeoutError at 8.10 s (overshoot only).
+- A11.4: confirmed — Real Chromium, local page shaped like a Turnstile challenge (closed shadow root holding an iframe that mentions challenges.cloudflare.com, plus a light-DOM cf-turnstile-response input that never gets a value). verify_cf(timeout=1, click_delay=4) raised TimeoutError after 4.02 s with 1 click. (2, 0.1) took 2.01 s. With the defaults (15, 5) it took 15.03 s, because 15 is a multiple of 5 and the challenge was found at once. So the overrun is at most about click_delay plus one check_input, and it is large only for timeout/click_delay pairs that don't divide evenly or for challenges found late. It still raises the documented TimeoutError, just late. Low impact.
+- A5.7: confirmed — Real Chromium: xpath("//p[@id='topp']", timeout=0) and timeout=-1 returned [] in 0.000 s for an element that exists, while timeout=0.001 found it; find(timeout=0) and select(timeout=0) do make one attempt. A 0.5 s xpath miss sent 1398 Tab.send calls, against 5 for select with the same timeout. The spin is limited by the timeout (default 2.5 s) and yields on every await, so the cost is wasted CDP traffic, not a hang. History: b38d12d ('simplification of xpath (#227)') removed the sleep(0.1) and moved the timeout check before the first attempt; nothing shows that was intended. Tests only use the default and 0.5 timeouts.
+
+### Evidence
+Probes in /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q2-refute/ (chrome_behaviour.py, methods_probe.py, onload_alert.py, cf_overrun.py; output in methods_out.txt, onload_out.txt, cf_out.txt), run under `timeout` with asyncio.wait/wait_for safety nets against /home/user/zendriver/zendriver (printed zendriver.__file__), Python 3.13.16, Chromium 141.0.7390.37 headless.
+
+Key output:
+- 'select(#topp) [exists] STILL PENDING after 12.0s (timeout=2) at core/tab.py line 351'; the same for every member method, each at its own line.
+- onload_alert.py: 'browser.get returned after 0.01s' then 'select(#a, timeout=3) STILL PENDING after 20s', with the stack at Tab.select tab.py:351 on Transaction DOM.getDocument pending.
+- Busy 8 s: all timeout=2 calls done after 7.60-8.10 s with the documented outcome.
+- cf: 'verify_cf(timeout=1, click_delay=4): TimeoutError after 4.02s, clicks=1'.
+- xpath: timeout=0 -> 0 items vs timeout=0.001 -> 1 item; 1398 sends in a 0.5 s miss vs 5 for select.
+
+Code: every polling loop compares loop.time()-start_time only after an unbounded `await self.send(...)` returns, unlike wait_for_ready_state, which bd88ccd (#291) wrapped in asyncio.wait_for for exactly this dialog case.
+
+### Chrome claims
+- [verified] While an alert() is open, DOM.getDocument, DOM.enable and Runtime.evaluate get no CDP reply (chrome_behaviour.py A1/A2: no reply within 4 s windows, still none after 34 s; answered immediately after Page.handleJavaScriptDialog)
+- [verified] Headless (--headless=new) Chromium does not auto-dismiss JS dialogs (Dialog still blocking DOM.getDocument 34 s after it opened (A2), and 20 s in onload_alert.py)
+- [verified] Target.getTargetInfo (Connection.sleep -> update_target) is answered while an alert is open and during a busy loop (chrome_behaviour.py A1/A4: answered in 0.00 s)
+- [verified] A busy main thread delays DOM.getDocument until the script finishes, so finite busy JS causes an overshoot, not a hang (6 s busy loop: getDocument answered after 5.60 s; 8 s busy loop: all timeout=2 methods returned at about 7.6-8.1 s)
+- [assumed] An infinite JS loop (while(true){}) would block DOM replies forever (Extrapolated from the finite busy-loop result; not run, to avoid wedging the renderer)
+- [verified] browser.get/tab.get of a page that calls alert() during load returns promptly and the next DOM call hangs (onload_alert.py: browser.get returned in 0.01 s, then select('#a', timeout=3) was still pending after 20 s; chrome_behaviour.py A7: tab.get returned in 0.12 s)
+- [verified] element.click() and mouse_click() that trigger an alert hang themselves (chrome_behaviour.py A5/A6: both still pending at an outer 5 s limit, with a dialog event received)
+- [verified] Without Page.enable before the dialog, Page.handleJavaScriptDialog fails with 'No dialog is showing' and a late Page.enable gets no reply (methods_probe.py B2)
+- [verified] Navigating away (Page.navigate) closes the dialog and restores DOM replies (onload_alert.py recovery step: tab.get(other page) then select worked in 0.13 s)
+- [assumed] Websocket keepalive pings are answered by the browser process while the renderer is blocked, so the connection does not drop (Only indirect evidence: the connection was still usable after waits longer than the 20 s ping_interval; the ping/pong frames themselves were not inspected)
+
+### Fix assessment
+- kind: minimal-local
+- prototype: 
+- regression test: 
+- fails on repo: not-run; passes on prototype: not-run; mypy ok: not-run
+- diff summary: 
+- risks: 
+
+## Lens: fixsafety (verdict confirmed, realism high, severity hang)
+
+### Summary
+Confirmed on real headless Chromium and with browser-free tests. When the renderer stops answering (an open alert()), find, select, find_all, select_all, wait_for, tab(), xpath, cf_is_interactive_challenge_present and verify_cf all hang forever. Each loop checks its timeout only after an unbounded CDP await returns. On a page with a busy main thread they overrun the timeout by the length of the busy period. verify_cf also overruns by up to click_delay. xpath(timeout<=0) never makes an attempt, and with a positive timeout it busy-loops. The triage fix (wrap each loop in asyncio.wait_for(..., timeout), as #291 did) cures the hang but is NOT safe as written: it causes three confirmed regressions. A safer minimal-local variant was prototyped. It also needs a one-line companion fix in Connection._register_handlers, whose bare `except:` swallows the timeout's CancelledError and leaves the call hanging and uncancellable.
+
+### Refinements
+Locations (repo HEAD 064148f): unbounded awaits in Tab.find tab.py:308, Tab.select :351, Tab.find_all :382, Tab.select_all :423, Tab.xpath :473 (DOM.enable) and :474, Tab.wait_for :1308, Tab.__call__ :1966, cloudflare.cf_wait_for_interactive_challenge (scan loop), cf_is_interactive_challenge_present :120, and the verify_cf click loop (check_input, mouse_click, asyncio.sleep(click_delay)).
+
+One cause sits outside the listed files: Connection._register_handlers (connection.py:709) uses a bare `except:` around `await self.send(domain_mod.enable(), _is_update=True)`. It swallows the CancelledError delivered by any timeout, so the outer send() goes on to re-send the enable and await it again. Whenever a handler exists for a domain whose enable the renderer does not answer (e.g. tab.add_handler(cdp.dom.DocumentUpdated, ...) added while a dialog is open), every bounded call hangs and cannot be cancelled. Even an outer asyncio.wait_for cannot stop it: confirmed on real Chromium and with the fake peer. This also defeats the existing #291 wait_for_ready_state fix. Narrowing it to `except Exception:` fixes it. A more careful variant would also remove domain_mod from enabled_domains on CancelledError and re-raise, so a cancelled enable gets re-sent later.
+
+Separate bug, not in this group: Tab.__call__ passes (text, selector) positionally to wait_for(selector, text), so the two arguments are swapped. element.py:576 has another bare except that swallows CancelledError (around Element.flash in Element.mouse_click), outside the Q2 paths.
+
+### Member verdicts
+- B13.1: confirmed — Real Chromium, alert open: select/find/find_all/select_all('#nope'/'nope', timeout=1) were still pending after 8 s. Stacks showed Tab.select tab.py:351, Tab.find :308, Tab.find_all :382 and Tab.select_all :423, each awaiting a pending DOM.getDocument Transaction. Busy-loop mode (6 s while loop): each raised only after 5.75 s. Control: wait_for_ready_state(timeout=1) raised after 1.00 s. Browser-free tests (query_selector, find_element_by_text, find_elements_by_text or query_selector_all patched to hang; also get_frames hanging with include_frames=True) fail on the repo and pass on the prototype.
+- A5.1: confirmed — Same reproduction as B13.1. In addition, xpath('//nope', timeout=1) was stuck at Tab.xpath tab.py:473 on a pending DOM.enable (an unbounded send(cdp.dom.enable(), True) in every pass).
+- B13.2: confirmed — Real Chromium, alert open: wait_for(selector='#nope', timeout=1) was stuck at Tab.wait_for tab.py:1308 (DOM.getDocument), tab(selector=...) at Tab.__call__ :1966, and xpath at :473 (DOM.enable), all still pending after 8 s. Side finding, a separate bug: Tab.__call__ passes (text, selector) positionally into wait_for(selector, text), so tab(selector=x) actually runs a text search.
+- A6.5: confirmed — Alert: wait_for never returns (pending after 8 s on DOM.getDocument at tab.py:1308). Busy 6 s renderer: wait_for(selector, timeout=1) raised only after 5.75 s. Also found while fixing: wait_for sleeps 0.5 s even after a hit, so a strict wait_for bound throws away an element it has already found (see risks).
+- B13.3: confirmed — Real Chromium, alert open: cf_is_interactive_challenge_present(tab, timeout=1) was pending after 8 s at cloudflare.py:120 (cf_wait_for_interactive_challenge to DOM.getDocument). tab.verify_cf(timeout=1) was pending at tab.py:1666 on DOM.getDocument. Busy: they took 6.25 s instead of 1 s. Click phase, browser-free (query_selector hangs after the first lookup): the repo hits the 6 s outer safety net, the prototype raises TimeoutError after 1.5 s.
+- A11.4: confirmed — Browser-free fake (challenge found, input never gets a value): verify_cf(timeout=1, click_delay=4) raised TimeoutError after 4.01 s on the repo and 1.00 s on the prototype. The deadline is checked only at the top of the click loop, and asyncio.sleep(click_delay) in cloudflare.verify_cf is unbounded. The cf_wait_for_interactive_challenge scan overrun was seen on a busy page (6.25 s for timeout=1).
+- A5.7: confirmed — Real Chromium: xpath('//p[@id="topp"]', timeout=0) returned [] while the default timeout returned 1 element (the loop condition is false before the first pass). One miss with xpath('//nope', timeout=0.5) issued 1272 CDP sends (busy loop with no sleep). The prototype returns the element for timeout=0 and makes 13 sends in 0.5 s. Browser-free: 1,444,228 attempts in 1 s with no-op sends.
+
+### Evidence
+Probes (my own, outer `timeout` plus asyncio.wait for 8 s, Python 3.13.16, websockets 14.1, headless Chromium 141): /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q2-fixsafety/probe_chrome.py (modes alert|busy), probe_semantics.py and probe_swallow.py in the same dir. Repo, alert mode: all 9 methods STILL PENDING after 8.0 s with stacks on pending DOM.getDocument/DOM.enable Transactions; wait_for_ready_state control 1.00 s. Repo, busy mode: 5.75-6.25 s for timeout=1. Final prototype (pkg3): alert and busy modes all raise or return the documented outcome (TimeoutError with the original message, [] for xpath, False for cf_is_interactive_challenge_present) after 1.50 s. After dismissing the dialog (Page.enable is needed before the dialog opens for Page.handleJavaScriptDialog to see it), select, find and xpath work again on both repo and prototype; the mapper drains to 0 and no loop or logging errors appear.
+
+Regression tests: tests_q2/test_q2_timeouts.py (24 tests) and tests_q2/test_q2_fake_peer.py (2 tests, a websocket fake CDP peer that never answers DOM.*).
+- Repo (zendriver from /home/user/zendriver/zendriver/__init__.py): test_q2_timeouts gives '15 failed, 9 passed in 82.30s'. The 9 passing tests are behaviour-preservation tests. In test_q2_fake_peer, test_select_times_out_over_websocket FAILED ('1 failed in 6.25s', only the safety net fired) and test_select_times_out_with_pending_domain_enable was killed by `timeout 30` (exit 124).
+- Prototype pkg3 (zendriver from .../Q2-fixsafety/pkg3/zendriver/__init__.py): '26 passed in 27.58s'.
+- Same results on Python 3.10.20 and 3.11.17 scratch venvs (untouched copy: 15 failed, 9 passed; prototype: 24 passed). This matters for verify_cf, because on 3.10 asyncio.TimeoutError is not the builtin TimeoutError.
+- Repo suite tests/core (copied to scratch, real Chromium, -n 3): untouched copy '109 passed, 1 skipped'; pkg2 and pkg3 '109 passed, 1 skipped'.
+- mypy (uv run mypy --config-file pyproject.toml <copy>/zendriver): output identical between the untouched copy and pkg, pkg2 and pkg3 (all 332 errors are in cdp/, 0 in core/). ruff check and ruff format are clean.
+- The strict-wrap variant (pkg, the triage hypothesis) fails 4 of the behaviour-preservation tests. On real Chromium: an element appearing at 0.3 s with select('#late', timeout=0.5) was found by the repo after 0.504 s, while the strict wrap raised TimeoutError after 0.500 s; appearing at 0.7 s with timeout=1, the repo found it after 1.008 s and the strict wrap raised after 1.001 s. pkg2/pkg3 found both (0.504 s and 1.003 s). asyncio.wait_for(coro, 0) never runs the coroutine (checked on 3.13 and 3.10).
+
+### Chrome claims
+- [verified] Chromium does not answer DOM.getDocument or DOM.enable on a page session while an alert() dialog is open (probe_chrome.py alert mode on headless Chromium 141: task stacks show <Transaction method: DOM.getDocument / DOM.enable status: pending> 8 s after the call)
+- [verified] A busy renderer main thread delays DOM.* replies until the busy period ends (probe_chrome.py busy mode (6 s while loop started via setTimeout): timeout=1 calls returned after 5.75-6.25 s on the repo)
+- [verified] After the dialog is dismissed Chromium answers the queued commands. The Listener pops the cancelled Transactions without error and the tab works again (probe_semantics.py: after Page.handleJavaScriptDialog, select/find/xpath succeed in a few ms, len(tab.mapper)==0, no loop exception handler or ERROR log records)
+- [verified] Page.handleJavaScriptDialog reports 'No dialog is showing' unless the Page domain was enabled before the dialog opened (probe_semantics.py first run without Page.enable got ProtocolException 'No dialog is showing'; with cdp.page.enable() sent first, the dismiss worked)
+
+### Fix assessment
+- kind: minimal-local
+- prototype: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q2-fixsafety/pkg3
+- regression test: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q2-fixsafety/tests_q2/test_q2_timeouts.py (also tests_q2/test_q2_fake_peer.py in the same dir)
+- fails on repo: yes; passes on prototype: yes; mypy ok: yes
+- diff summary: Diffs are in tab_final.diff, cloudflare_final.diff and connection_v3.diff in /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/Q2-fixsafety/ (the strict-wrap variant for comparison is in .../pkg).
+(1) tab.py: new module helper _poll_with_timeout(poll, timeout, message). If timeout <= 0 it awaits poll unbounded, which keeps the single attempt. Otherwise it runs asyncio.wait_for(poll, timeout + 0.5) and turns asyncio.TimeoutError into asyncio.TimeoutError(message).
+(2) find, select, find_all and select_all keep their loops unchanged inside a nested _poll() and return await _poll_with_timeout(...). The 0.5 s sleep is clamped to min(0.5, deadline - now), so the last attempt happens at the deadline and the 0.5 s grace lets it finish.
+(3) wait_for: same wrap, and it sleeps only after a miss (a strict bound would cut the trailing sleep and throw away an element already found).
+(4) xpath: a while-True _poll that always makes at least one attempt, stops when items are found or elapsed >= timeout, sleeps with the same clamp instead of busy-looping, and returns [] on the bound.
+(5) cloudflare.py: cf_wait_for_interactive_challenge wraps its scan loop in asyncio.wait_for(_poll(), timeout + 0.5) and returns (None, None, None) on timeout. verify_cf moves the click phase verbatim into _cf_click_challenge(...), bounded by asyncio.wait_for(..., time left + 0.5). On the bound it raises builtin TimeoutError (needed for 3.10) with the existing 'timeout during clicks' message. asyncio.sleep(click_delay) is clamped to the deadline.
+(6) connection.py:709: `except:` becomes `except Exception:` in Connection._register_handlers, so a timeout's CancelledError is no longer swallowed.
+- risks: (a) The triage hypothesis, a strict asyncio.wait_for(loop, timeout) as in #291, is unsafe as written:
+- wait_for(..., <=0) never runs the attempt. That breaks timeout=0 one-shot checks, and xpath's internal find_all(xpath, timeout=0) would then always return [].
+- It cuts the trailing 0.5 s sleep, so the last attempt is lost. Confirmed on Chromium: elements appearing 0.3 s into timeout=0.5, or 0.7 s into timeout=1, are found by the repo but get TimeoutError with the strict wrap.
+- wait_for's sleep after a hit gets cut, so an element it already found is discarded.
+The prototype avoids all three with the timeout<=0 bypass, a grace of one poll interval, clamped sleeps and no sleep after a hit.
+(b) The companion fix in Connection._register_handlers is required. Without it, a pending domain enable (a handler registered while the page is blocked) makes the call hang and become uncancellable, and the same applies to the existing wait_for_ready_state fix.
+(c) Behaviour changes callers may notice:
+- A blocked page now raises or returns at timeout+0.5 s instead of hanging.
+- wait_for and tab() return as soon as the element is found (no 0.5 s trailing sleep) and give up at about timeout instead of timeout+0.5.
+- The last find/select attempt happens at the deadline instead of up to 0.5 s after it.
+- xpath polls every 0.5 s instead of spinning (13 vs 1272 sends in 0.5 s), so an element can be found up to 0.5 s later. timeout<=0 now makes one attempt and can return elements where it used to return [].
+- verify_cf's click_delay sleeps are clamped to the deadline, so solves that were only detected after the deadline now raise TimeoutError, as the docstring says they should.
+(d) timeout<=0 deliberately keeps one unbounded attempt, so it still hangs on a blocked renderer, as query_selector does.
+(e) Cancellation side effects (the same as with #291):
+- xpath cancelled between DOM.enable and disable leaves the DOM agent enabled.
+- A cancelled performSearch leaves a search session open in the browser.
+- A cancelled Transaction stays in mapper until Chrome replies (verified it drains once the dialog is dismissed).
+- A cancelled first-time _attach_session can leak a browser-side session.
+(f) No lock is held across the bounded region. _open_lock and _attach_lock are released by `async with` on cancel, and the helper takes no lock, so there is no re-entrancy or deadlock issue. Nested calls are fine: xpath calls find_all(timeout=0) from inside its bounded poll.
+(g) Builtin vs asyncio TimeoutError: on 3.10 they differ. verify_cf converts explicitly, and the tab methods keep asyncio.TimeoutError. Verified on 3.10.20, 3.11.17 and 3.13.16.
+(h) The 0.5 s grace is a heuristic. A final attempt that takes longer than 0.5 s on a very heavy page is cut, giving TimeoutError where the repo would have returned the result.
+
