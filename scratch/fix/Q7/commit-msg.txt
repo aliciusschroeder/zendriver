@@ -1,0 +1,10 @@
+Skip already removed domains when pruning in _register_handlers
+
+The final loop of Connection._register_handlers removes the stale
+auto-enabled domains it found in its snapshot of enabled_domains. When
+the pass also has to enable a new domain, the awaited domain.enable()
+send runs _register_handlers again through aopen(), and that nested
+pass already removes the stale domain. The outer pass then called
+list.remove() on it a second time and raised ValueError out of send(),
+so the user's command was never sent. Only remove domains that are
+still present.
