@@ -1,0 +1,1 @@
+{"agentType":"workflow-subagent","description":"R20:reproduce","workflowPhase":"Verify candidates","spawnDepth":1,"requestShape":"foreground","requestNonInteractive":true}

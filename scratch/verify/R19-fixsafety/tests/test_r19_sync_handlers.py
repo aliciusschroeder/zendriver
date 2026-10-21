@@ -167,3 +167,48 @@ async def test_feed_cdp_from_foreign_thread_without_listener_raises() -> None:
 
     await asyncio.to_thread(call)
     assert err and isinstance(err[0], RuntimeError)
+
+
+async def test_handler_object_with_async_call_is_awaited() -> None:
+    class Handler:
+        def __init__(self) -> None:
+            self.ran = asyncio.Event()
+
+        async def __call__(
+            self, event: cdp.fetch.RequestPaused, connection: Connection
+        ) -> None:
+            self.ran.set()
+            await connection.send(
+                cdp.fetch.continue_request(request_id=event.request_id)
+            )
+
+    handler = Handler()
+    try:
+        peer = await _run(handler)
+    except asyncio.TimeoutError:
+        pytest.fail(f"async __call__ handler never ran: ran={handler.ran.is_set()}")
+    assert handler.ran.is_set()
+    assert "Fetch.continueRequest" in peer.methods
+
+
+async def test_feed_cdp_error_is_logged_like_on_loop_path(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # a send that fails (bad generator) must not vanish silently: like the
+    # on-loop path it ends up as an unretrieved task exception on the loop
+    import gc
+
+    def bad() -> Any:
+        raise ValueError("boom")
+        yield  # pragma: no cover
+
+    def on_paused(event: cdp.fetch.RequestPaused, connection: Connection) -> None:
+        connection.feed_cdp(bad())
+        connection.feed_cdp(cdp.fetch.continue_request(request_id=event.request_id))
+
+    with caplog.at_level("ERROR", logger="asyncio"):
+        await _run(on_paused)
+        await asyncio.sleep(0.1)
+        gc.collect()
+        await asyncio.sleep(0)
+    assert any("boom" in r.getMessage() or (r.exc_info and "boom" in str(r.exc_info[1])) for r in caplog.records), [r.getMessage() for r in caplog.records]

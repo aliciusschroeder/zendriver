@@ -1,0 +1,18 @@
+<!doctype html>
+<html><body>
+<form id="f" onsubmit="window.submits=(window.submits||0)+1; event.preventDefault(); return false;">
+  <input id="inp" type="text">
+  <button type="submit">go</button>
+</form>
+<textarea id="ta"></textarea>
+<div id="ce" contenteditable="true"></div>
+<script>
+window.submits = 0;
+window.keylog = [];
+for (const id of ['inp','ta']) {
+  const el = document.getElementById(id);
+  el.addEventListener('keypress', e => window.keylog.push(id+':keypress:'+JSON.stringify(e.key)+':'+e.charCode));
+  el.addEventListener('keydown', e => window.keylog.push(id+':keydown:'+JSON.stringify(e.key)));
+}
+</script>
+</body></html>
