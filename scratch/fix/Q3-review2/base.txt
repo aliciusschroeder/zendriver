@@ -1,0 +1,687 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+FFFFFFFFFF                                                               [100%]
+=================================== FAILURES ===================================
+_ test_browser_stop_terminates_a_browser_which_stopped_responding[Target.detachFromTarget] _
+
+obj = <module 'zendriver.core.browser' from '/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-28/zendriver/core/browser.py'>
+name = 'STOP_COMMAND_TIMEOUT', ann = 'zendriver.core.browser'
+
+    def annotated_getattr(obj: object, name: str, ann: str) -> object:
+        try:
+>           obj = getattr(obj, name)
+E           AttributeError: module 'zendriver.core.browser' has no attribute 'STOP_COMMAND_TIMEOUT'
+
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:95: AttributeError
+
+The above exception was the direct cause of the following exception:
+
+method = 'Target.detachFromTarget'
+stub_browser = <function stub_browser.<locals>.create at 0x7f37295b5ea0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f37295cd4b0>
+
+    @pytest.mark.parametrize("method", ["Target.detachFromTarget", "Browser.close"])
+    async def test_browser_stop_terminates_a_browser_which_stopped_responding(
+        method: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+>       monkeypatch.setattr("zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5)
+
+tests/core/test_browser.py:474: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:109: in derive_importpath
+    annotated_getattr(target, attr, ann=module)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+obj = <module 'zendriver.core.browser' from '/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-28/zendriver/core/browser.py'>
+name = 'STOP_COMMAND_TIMEOUT', ann = 'zendriver.core.browser'
+
+    def annotated_getattr(obj: object, name: str, ann: str) -> object:
+        try:
+            obj = getattr(obj, name)
+        except AttributeError as e:
+>           raise AttributeError(
+                f"{type(obj).__name__!r} object at {ann} has no attribute {name!r}"
+            ) from e
+E           AttributeError: 'module' object at zendriver.core.browser has no attribute 'STOP_COMMAND_TIMEOUT'
+
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:97: AttributeError
+_ test_browser_stop_terminates_a_browser_which_stopped_responding[Browser.close] _
+
+obj = <module 'zendriver.core.browser' from '/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-28/zendriver/core/browser.py'>
+name = 'STOP_COMMAND_TIMEOUT', ann = 'zendriver.core.browser'
+
+    def annotated_getattr(obj: object, name: str, ann: str) -> object:
+        try:
+>           obj = getattr(obj, name)
+E           AttributeError: module 'zendriver.core.browser' has no attribute 'STOP_COMMAND_TIMEOUT'
+
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:95: AttributeError
+
+The above exception was the direct cause of the following exception:
+
+method = 'Browser.close'
+stub_browser = <function stub_browser.<locals>.create at 0x7f3729629480>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f3729596950>
+
+    @pytest.mark.parametrize("method", ["Target.detachFromTarget", "Browser.close"])
+    async def test_browser_stop_terminates_a_browser_which_stopped_responding(
+        method: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+>       monkeypatch.setattr("zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5)
+
+tests/core/test_browser.py:474: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:109: in derive_importpath
+    annotated_getattr(target, attr, ann=module)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+obj = <module 'zendriver.core.browser' from '/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-28/zendriver/core/browser.py'>
+name = 'STOP_COMMAND_TIMEOUT', ann = 'zendriver.core.browser'
+
+    def annotated_getattr(obj: object, name: str, ann: str) -> object:
+        try:
+            obj = getattr(obj, name)
+        except AttributeError as e:
+>           raise AttributeError(
+                f"{type(obj).__name__!r} object at {ann} has no attribute {name!r}"
+            ) from e
+E           AttributeError: 'module' object at zendriver.core.browser has no attribute 'STOP_COMMAND_TIMEOUT'
+
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:97: AttributeError
+____ test_browser_stop_cleans_up_when_the_connection_drops_while_detaching _____
+
+stub_browser = <function stub_browser.<locals>.create at 0x7f372962a830>
+
+    async def test_browser_stop_cleans_up_when_the_connection_drops_while_detaching(
+        stub_browser: StubBrowserFactory,
+    ) -> None:
+        browser, process = stub_browser()
+        # like a browser which crashed: the connection ends without a close frame
+        async with _fake_chrome(
+            "Target.detachFromTarget", lambda websocket: websocket.transport.abort()
+        ) as websocket_url:
+            await _attach_tabs(browser, websocket_url, 2)
+    
+>           await asyncio.wait_for(browser.stop(), timeout=10)
+
+tests/core/test_browser.py:501: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py:445: in wait_for
+    return fut.result()
+zendriver/core/browser.py:872: in stop
+    await self._stop()
+zendriver/core/browser.py:879: in _stop
+    await target.aclose()
+zendriver/core/connection.py:517: in aclose
+    await browser_connection.send(
+zendriver/core/connection.py:662: in send
+    return await tx
+zendriver/core/connection.py:925: in listener_loop
+    message = await asyncio.wait_for(
+/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py:445: in wait_for
+    return fut.result()
+zendriver/core/connection.py:836: in _receive_message
+    message: dict[str, Any] = json.loads(await self.websocket.recv())
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <websockets.asyncio.client.ClientConnection object at 0x7f37294730a0>
+decode = None
+
+    async def recv(self, decode: bool | None = None) -> Data:
+        """
+        Receive the next message.
+    
+        When the connection is closed, :meth:`recv` raises
+        :exc:`~websockets.exceptions.ConnectionClosed`. Specifically, it raises
+        :exc:`~websockets.exceptions.ConnectionClosedOK` after a normal closure
+        and :exc:`~websockets.exceptions.ConnectionClosedError` after a protocol
+        error or a network failure. This is how you detect the end of the
+        message stream.
+    
+        Canceling :meth:`recv` is safe. There's no risk of losing data. The next
+        invocation of :meth:`recv` will return the next message.
+    
+        This makes it possible to enforce a timeout by wrapping :meth:`recv` in
+        :func:`~asyncio.timeout` or :func:`~asyncio.wait_for`.
+    
+        When the message is fragmented, :meth:`recv` waits until all fragments
+        are received, reassembles them, and returns the whole message.
+    
+        Args:
+            decode: Set this flag to override the default behavior of returning
+                :class:`str` or :class:`bytes`. See below for details.
+    
+        Returns:
+            A string (:class:`str`) for a Text_ frame or a bytestring
+            (:class:`bytes`) for a Binary_ frame.
+    
+            .. _Text: https://datatracker.ietf.org/doc/html/rfc6455#section-5.6
+            .. _Binary: https://datatracker.ietf.org/doc/html/rfc6455#section-5.6
+    
+            You may override this behavior with the ``decode`` argument:
+    
+            * Set ``decode=False`` to disable UTF-8 decoding of Text_ frames and
+              return a bytestring (:class:`bytes`). This improves performance
+              when decoding isn't needed, for example if the message contains
+              JSON and you're using a JSON library that expects a bytestring.
+            * Set ``decode=True`` to force UTF-8 decoding of Binary_ frames
+              and return a string (:class:`str`). This may be useful for
+              servers that send binary frames instead of text frames.
+    
+        Raises:
+            ConnectionClosed: When the connection is closed.
+            ConcurrencyError: If two coroutines call :meth:`recv` or
+                :meth:`recv_streaming` concurrently.
+    
+        """
+        try:
+            return await self.recv_messages.get(decode)
+        except EOFError:
+            pass
+            # fallthrough
+        except ConcurrencyError:
+            raise ConcurrencyError(
+                "cannot call recv while another coroutine "
+                "is already running recv or recv_streaming"
+            ) from None
+        except UnicodeDecodeError as exc:
+            async with self.send_context():
+                self.protocol.fail(
+                    CloseCode.INVALID_DATA,
+                    f"{exc.reason} at position {exc.start}",
+                )
+            # fallthrough
+    
+        # Wait for the protocol state to be CLOSED before accessing close_exc.
+        await asyncio.shield(self.connection_lost_waiter)
+>       raise self.protocol.close_exc from self.recv_exc
+E       websockets.exceptions.ConnectionClosedError: no close frame received or sent
+
+.venv/lib/python3.10/site-packages/websockets/asyncio/connection.py:313: ConnectionClosedError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+INFO     websockets.server:server.py:338 server listening on 127.0.0.1:37135
+INFO     websockets.server:server.py:535 connection open
+INFO     websockets.server:server.py:437 server closing
+INFO     websockets.server:server.py:470 server closed
+_______________ test_concurrent_browser_stop_calls_do_not_raise ________________
+
+stub_browser = <function stub_browser.<locals>.create at 0x7f372962a320>
+
+    async def test_concurrent_browser_stop_calls_do_not_raise(
+        stub_browser: StubBrowserFactory,
+    ) -> None:
+        # the process takes a while to exit, so that both calls wait for it
+        browser, process = stub_browser(EXITS_A_WHILE_AFTER_SIGTERM)
+    
+        first = asyncio.create_task(browser.stop())
+        await asyncio.sleep(0.1)
+        second = asyncio.create_task(browser.stop())
+        results = await asyncio.wait_for(
+            asyncio.gather(first, second, return_exceptions=True), timeout=10
+        )
+    
+>       assert list(results) == [None, None]
+E       assert [None, Attrib...bute 'poll'")] == [None, None]
+E         
+E         At index 1 diff: AttributeError("'NoneType' object has no attribute 'poll'") != None
+E         Use -v to get more diff
+
+tests/core/test_browser.py:521: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+_________ test_cancelled_browser_stop_leaves_no_unretrieved_exception __________
+
+self = <zendriver.core.browser.Browser object at 0x7f372938bac0>
+
+    async def stop(self) -> None:
+        asyncio_atexit.unregister(self._atexit_cleanup)
+        util.get_registered_instances().discard(self)
+>       await self._stop()
+
+zendriver/core/browser.py:872: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+zendriver/core/browser.py:879: in _stop
+    await target.aclose()
+zendriver/core/connection.py:517: in aclose
+    await browser_connection.send(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <zendriver.core.connection.Connection object at 0x7f3729596c80>
+cdp_obj = <generator object detach_from_target at 0x7f3729632f80>
+_is_update = True
+
+    async def send(
+        self,
+        cdp_obj: Generator[dict[str, Any], dict[str, Any], T],
+        _is_update: bool = False,
+    ) -> T:
+        """
+        send a protocol command. the commands are made using any of the cdp.<domain>.<method>()'s
+        and is used to send custom cdp commands as well.
+    
+        :param cdp_obj: the generator object created by a cdp method
+    
+        :param _is_update: internal flag
+            prevents infinite loop by skipping the registeration of handlers
+            when multiple calls to connection.send() are made
+        :return:
+        """
+        await self.aopen()
+        if self.websocket is None:
+            raise ProtocolException("connection was closed")
+        if self._owner:
+            browser = self._owner
+            if browser.config:
+                if browser.config.expert:
+                    await self._prepare_expert()
+                if browser.config.headless:
+                    await self._prepare_headless()
+        if not self.listener or not self.listener.running:
+            self.listener = Listener(self)
+    
+        tx = Transaction(cdp_obj)
+        tx.connection = self
+        tx.id = self._next_message_id()
+        self.mapper.update({tx.id: tx})
+    
+        if not _is_update:
+            domain_name, _, action = tx.method.partition(".")
+            if action == "enable":
+                self._update_manual_domain(domain_name, action)
+            await self._register_handlers()
+            if action == "disable":
+                self._update_manual_domain(domain_name, action)
+        if self.websocket is None:
+            raise ProtocolException("target session was detached")
+        tx.session_id = self.session_id
+        await self._send_transaction(tx)
+        try:
+>           return await tx
+E           asyncio.exceptions.CancelledError
+
+zendriver/core/connection.py:662: CancelledError
+
+During handling of the above exception, another exception occurred:
+
+fut = <Task cancelled name='Task-33' coro=<Browser.stop() done, defined at /home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-28/zendriver/core/browser.py:869>>
+timeout = 10
+
+    async def wait_for(fut, timeout):
+        """Wait for the single Future or coroutine to complete, with timeout.
+    
+        Coroutine will be wrapped in Task.
+    
+        Returns result of the Future or coroutine.  When a timeout occurs,
+        it cancels the task and raises TimeoutError.  To avoid the task
+        cancellation, wrap it in shield().
+    
+        If the wait is cancelled, the task is also cancelled.
+    
+        This function is a coroutine.
+        """
+        loop = events.get_running_loop()
+    
+        if timeout is None:
+            return await fut
+    
+        if timeout <= 0:
+            fut = ensure_future(fut, loop=loop)
+    
+            if fut.done():
+                return fut.result()
+    
+            await _cancel_and_wait(fut, loop=loop)
+            try:
+                return fut.result()
+            except exceptions.CancelledError as exc:
+                raise exceptions.TimeoutError() from exc
+    
+        waiter = loop.create_future()
+        timeout_handle = loop.call_later(timeout, _release_waiter, waiter)
+        cb = functools.partial(_release_waiter, waiter)
+    
+        fut = ensure_future(fut, loop=loop)
+        fut.add_done_callback(cb)
+    
+        try:
+            # wait until the future completes or the timeout
+            try:
+                await waiter
+            except exceptions.CancelledError:
+                if fut.done():
+                    return fut.result()
+                else:
+                    fut.remove_done_callback(cb)
+                    # We must ensure that the task is not running
+                    # after wait_for() returns.
+                    # See https://bugs.python.org/issue32751
+                    await _cancel_and_wait(fut, loop=loop)
+                    raise
+    
+            if fut.done():
+                return fut.result()
+            else:
+                fut.remove_done_callback(cb)
+                # We must ensure that the task is not running
+                # after wait_for() returns.
+                # See https://bugs.python.org/issue32751
+                await _cancel_and_wait(fut, loop=loop)
+                # In case task cancellation failed with some
+                # exception, we should re-raise it
+                # See https://bugs.python.org/issue40607
+                try:
+>                   return fut.result()
+E                   asyncio.exceptions.CancelledError
+
+/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py:456: CancelledError
+
+The above exception was the direct cause of the following exception:
+
+stub_browser = <function stub_browser.<locals>.create at 0x7f372962b490>
+
+    async def test_cancelled_browser_stop_leaves_no_unretrieved_exception(
+        stub_browser: StubBrowserFactory,
+    ) -> None:
+        browser, process = stub_browser()
+        loop = asyncio.get_running_loop()
+        # so that garbage left by earlier tests does not reach the handler below
+        gc.collect()
+        contexts: list[dict[str, Any]] = []
+        handler = loop.get_exception_handler()
+        loop.set_exception_handler(lambda loop, context: contexts.append(context))
+        try:
+            detaching = asyncio.Event()
+            async with _fake_chrome(
+                "Target.detachFromTarget", lambda websocket: detaching.set()
+            ) as websocket_url:
+                await _attach_tabs(browser, websocket_url, 2)
+    
+                # cancelled while it waits for the detach replies, as by a ctrl+c
+                # or by asyncio.wait_for(browser.stop(), timeout)
+                stop = asyncio.create_task(browser.stop())
+                await asyncio.wait_for(detaching.wait(), timeout=10)
+                stop.cancel()
+                await asyncio.wait({stop}, timeout=10)
+                assert stop.cancelled()
+                # python < 3.12 reports an exception which was never retrieved
+                # once the futures of the cancelled stop() are collected
+                del stop
+                gc.collect()
+    
+>               await asyncio.wait_for(browser.stop(), timeout=10)
+
+tests/core/test_browser.py:555: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fut = <Task cancelled name='Task-33' coro=<Browser.stop() done, defined at /home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-28/zendriver/core/browser.py:869>>
+timeout = 10
+
+    async def wait_for(fut, timeout):
+        """Wait for the single Future or coroutine to complete, with timeout.
+    
+        Coroutine will be wrapped in Task.
+    
+        Returns result of the Future or coroutine.  When a timeout occurs,
+        it cancels the task and raises TimeoutError.  To avoid the task
+        cancellation, wrap it in shield().
+    
+        If the wait is cancelled, the task is also cancelled.
+    
+        This function is a coroutine.
+        """
+        loop = events.get_running_loop()
+    
+        if timeout is None:
+            return await fut
+    
+        if timeout <= 0:
+            fut = ensure_future(fut, loop=loop)
+    
+            if fut.done():
+                return fut.result()
+    
+            await _cancel_and_wait(fut, loop=loop)
+            try:
+                return fut.result()
+            except exceptions.CancelledError as exc:
+                raise exceptions.TimeoutError() from exc
+    
+        waiter = loop.create_future()
+        timeout_handle = loop.call_later(timeout, _release_waiter, waiter)
+        cb = functools.partial(_release_waiter, waiter)
+    
+        fut = ensure_future(fut, loop=loop)
+        fut.add_done_callback(cb)
+    
+        try:
+            # wait until the future completes or the timeout
+            try:
+                await waiter
+            except exceptions.CancelledError:
+                if fut.done():
+                    return fut.result()
+                else:
+                    fut.remove_done_callback(cb)
+                    # We must ensure that the task is not running
+                    # after wait_for() returns.
+                    # See https://bugs.python.org/issue32751
+                    await _cancel_and_wait(fut, loop=loop)
+                    raise
+    
+            if fut.done():
+                return fut.result()
+            else:
+                fut.remove_done_callback(cb)
+                # We must ensure that the task is not running
+                # after wait_for() returns.
+                # See https://bugs.python.org/issue32751
+                await _cancel_and_wait(fut, loop=loop)
+                # In case task cancellation failed with some
+                # exception, we should re-raise it
+                # See https://bugs.python.org/issue40607
+                try:
+                    return fut.result()
+                except exceptions.CancelledError as exc:
+>                   raise exceptions.TimeoutError() from exc
+E                   asyncio.exceptions.TimeoutError
+
+/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py:458: TimeoutError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+INFO     websockets.server:server.py:338 server listening on 127.0.0.1:34257
+INFO     websockets.server:server.py:535 connection open
+INFO     websockets.server:server.py:437 server closing
+INFO     websockets.server:server.py:470 server closed
+_ test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[once_the_browser_is_gone] _
+
+obj = <module 'zendriver.core.browser' from '/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-28/zendriver/core/browser.py'>
+name = 'STOP_COMMAND_TIMEOUT', ann = 'zendriver.core.browser'
+
+    def annotated_getattr(obj: object, name: str, ann: str) -> object:
+        try:
+>           obj = getattr(obj, name)
+E           AttributeError: module 'zendriver.core.browser' has no attribute 'STOP_COMMAND_TIMEOUT'
+
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:95: AttributeError
+
+The above exception was the direct cause of the following exception:
+
+closes = 'once_the_browser_is_gone'
+stub_browser = <function stub_browser.<locals>.create at 0x7f3729265e10>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f372920ca60>
+
+    @pytest.mark.parametrize("closes", ["once_the_browser_is_gone", "never"])
+    async def test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone(
+        closes: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+>       monkeypatch.setattr("zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5)
+
+tests/core/test_browser.py:570: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:109: in derive_importpath
+    annotated_getattr(target, attr, ann=module)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+obj = <module 'zendriver.core.browser' from '/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-28/zendriver/core/browser.py'>
+name = 'STOP_COMMAND_TIMEOUT', ann = 'zendriver.core.browser'
+
+    def annotated_getattr(obj: object, name: str, ann: str) -> object:
+        try:
+            obj = getattr(obj, name)
+        except AttributeError as e:
+>           raise AttributeError(
+                f"{type(obj).__name__!r} object at {ann} has no attribute {name!r}"
+            ) from e
+E           AttributeError: 'module' object at zendriver.core.browser has no attribute 'STOP_COMMAND_TIMEOUT'
+
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:97: AttributeError
+__ test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[never] ___
+
+obj = <module 'zendriver.core.browser' from '/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-28/zendriver/core/browser.py'>
+name = 'STOP_COMMAND_TIMEOUT', ann = 'zendriver.core.browser'
+
+    def annotated_getattr(obj: object, name: str, ann: str) -> object:
+        try:
+>           obj = getattr(obj, name)
+E           AttributeError: module 'zendriver.core.browser' has no attribute 'STOP_COMMAND_TIMEOUT'
+
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:95: AttributeError
+
+The above exception was the direct cause of the following exception:
+
+closes = 'never'
+stub_browser = <function stub_browser.<locals>.create at 0x7f3729267640>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f372946a560>
+
+    @pytest.mark.parametrize("closes", ["once_the_browser_is_gone", "never"])
+    async def test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone(
+        closes: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+>       monkeypatch.setattr("zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5)
+
+tests/core/test_browser.py:570: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:109: in derive_importpath
+    annotated_getattr(target, attr, ann=module)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+obj = <module 'zendriver.core.browser' from '/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-28/zendriver/core/browser.py'>
+name = 'STOP_COMMAND_TIMEOUT', ann = 'zendriver.core.browser'
+
+    def annotated_getattr(obj: object, name: str, ann: str) -> object:
+        try:
+            obj = getattr(obj, name)
+        except AttributeError as e:
+>           raise AttributeError(
+                f"{type(obj).__name__!r} object at {ann} has no attribute {name!r}"
+            ) from e
+E           AttributeError: 'module' object at zendriver.core.browser has no attribute 'STOP_COMMAND_TIMEOUT'
+
+.venv/lib/python3.10/site-packages/_pytest/monkeypatch.py:97: AttributeError
+____________ test_browser_stop_keeps_a_process_started_while_it_ran ____________
+
+stub_browser = <function stub_browser.<locals>.create at 0x7f3729265d80>
+
+    async def test_browser_stop_keeps_a_process_started_while_it_ran(
+        stub_browser: StubBrowserFactory,
+    ) -> None:
+        browser, process = stub_browser(EXITS_A_WHILE_AFTER_SIGTERM)
+    
+        stop = asyncio.create_task(browser.stop())
+        await asyncio.sleep(0.1)
+        # as if the browser was started again while stop() waits for the old process
+        _, new_process = stub_browser()
+        browser._process, browser._process_pid = new_process, new_process.pid
+        await asyncio.wait_for(stop, timeout=10)
+    
+        assert process.poll() is not None
+>       assert browser._process is new_process
+E       AssertionError: assert None is <Popen: returncode: -9 args: ['/home/user/zendriver/.claude/worktrees/wf_453...>
+E        +  where None = <zendriver.core.browser.Browser object at 0x7f37296c65f0>._process
+
+tests/core/test_browser.py:612: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+__ test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_never_called] __
+
+program = "import time; print('ready', flush=True); time.sleep(60)"
+stop = 'never'
+
+    @pytest.mark.parametrize(
+        "program, stop",
+        [(EXITS_ON_SIGTERM, "never"), (IGNORES_SIGTERM, "cancelled")],
+        ids=["stop_never_called", "stop_cancelled"],
+    )
+    def test_atexit_cleanup_stops_the_browser_under_asyncio_run(
+        program: str, stop: str
+    ) -> None:
+        # asyncio.run shuts the default executor down before it closes the loop,
+        # which is when asyncio_atexit runs the cleanup
+        result = subprocess.run(
+            [sys.executable, "-c", ATEXIT_SCRIPT, program, stop],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        lines = result.stdout.splitlines()
+        assert len(lines) == 2, result.stderr
+        pid, user_data_dir = int(lines[0]), lines[1]
+        try:
+            assert result.returncode == 0, result.stderr
+>           assert "Unhandled exception" not in result.stderr, result.stderr
+E           AssertionError: Unhandled exception in asyncio atexit callback <bound method Browser._atexit_cleanup of <zendriver.core.browser.Browser object at 0x7f1af641a5f0>>: Executor shutdown has been called
+E             
+E           assert 'Unhandled exception' not in 'Unhandled e...een called\n'
+E             
+E             'Unhandled exception' is contained here:
+E               Unhandled exception in asyncio atexit callback <bound method Browser._atexit_cleanup of <zendriver.core.browser.Browser object at 0x7f1af641a5f0>>: Executor shutdown has been called
+E             ? +++++++++++++++++++
+
+tests/core/test_browser.py:665: AssertionError
+___ test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_cancelled] ____
+
+program = "\nimport signal, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\nprint('ready', flush=True)\ntime.sleep(60)\n"
+stop = 'cancelled'
+
+    @pytest.mark.parametrize(
+        "program, stop",
+        [(EXITS_ON_SIGTERM, "never"), (IGNORES_SIGTERM, "cancelled")],
+        ids=["stop_never_called", "stop_cancelled"],
+    )
+    def test_atexit_cleanup_stops_the_browser_under_asyncio_run(
+        program: str, stop: str
+    ) -> None:
+        # asyncio.run shuts the default executor down before it closes the loop,
+        # which is when asyncio_atexit runs the cleanup
+        result = subprocess.run(
+            [sys.executable, "-c", ATEXIT_SCRIPT, program, stop],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        lines = result.stdout.splitlines()
+        assert len(lines) == 2, result.stderr
+        pid, user_data_dir = int(lines[0]), lines[1]
+        try:
+            assert result.returncode == 0, result.stderr
+            assert "Unhandled exception" not in result.stderr, result.stderr
+>           assert not psutil.pid_exists(pid), "the browser process outlived python"
+E           AssertionError: the browser process outlived python
+E           assert not True
+E            +  where True = <function pid_exists at 0x7f37295adea0>(8062)
+E            +    where <function pid_exists at 0x7f37295adea0> = psutil.pid_exists
+
+tests/core/test_browser.py:666: AssertionError
+=========================== short test summary info ============================
+FAILED tests/core/test_browser.py::test_browser_stop_terminates_a_browser_which_stopped_responding[Target.detachFromTarget]
+FAILED tests/core/test_browser.py::test_browser_stop_terminates_a_browser_which_stopped_responding[Browser.close]
+FAILED tests/core/test_browser.py::test_browser_stop_cleans_up_when_the_connection_drops_while_detaching
+FAILED tests/core/test_browser.py::test_concurrent_browser_stop_calls_do_not_raise
+FAILED tests/core/test_browser.py::test_cancelled_browser_stop_leaves_no_unretrieved_exception
+FAILED tests/core/test_browser.py::test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[once_the_browser_is_gone]
+FAILED tests/core/test_browser.py::test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[never]
+FAILED tests/core/test_browser.py::test_browser_stop_keeps_a_process_started_while_it_ran
+FAILED tests/core/test_browser.py::test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_never_called]
+FAILED tests/core/test_browser.py::test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_cancelled]
+10 failed, 18 deselected in 15.45s
