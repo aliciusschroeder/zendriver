@@ -1,0 +1,98 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/cloudflare.py b/zendriver/core/cloudflare.py
+--- a/zendriver/core/cloudflare.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/cloudflare.py	2026-10-21 03:13:26.651047967 +0000
+@@ -236,11 +236,12 @@
+         if not input_el:
+             return False
+         try:
+-            await input_el
++            # do not refresh input_el: a solved challenge usually navigates away,
++            # and the old node can then no longer be resolved
+             fresh_input = await tab.query_selector(current_sltr)
+         except Exception as e:
+             raise Exception(f"Error checking input element: {e}.")
+-        if (input_el.attrs.get("value") or not fresh_input) and ckbx_clckd:
++        if (not fresh_input or fresh_input.attrs.get("value")) and ckbx_clckd:
+             # If the input disappears or gets a value, assume it's successfully completed.
+             logger.debug("Input element check successful (disappeared or has value).")
+             return False
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/proxy.py b/zendriver/core/proxy.py
+--- a/zendriver/core/proxy.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/proxy.py	2026-10-21 03:11:45.000372608 +0000
+@@ -109,10 +109,11 @@
+                 )
+         except BaseException as e:
+             writer.close()
+-            if isinstance(e, (OSError, asyncio.IncompleteReadError)):
+-                raise ProxyError(f"proxy closed the connection: {e!r}") from e
++            # TimeoutError is a subclass of OSError on python 3.11+, so check it first
+             if isinstance(e, asyncio.TimeoutError):
+                 raise ProxyError("timed out waiting for the proxy") from e
++            if isinstance(e, (OSError, asyncio.IncompleteReadError)):
++                raise ProxyError(f"proxy closed the connection: {e!r}") from e
+             raise
+         return reader, writer
+ 
+@@ -260,7 +261,11 @@
+             await pipe(reader, writer, upstream_reader, upstream_writer)
+             return
+ 
+-        url = urllib.parse.urlsplit(target)
++        try:
++            url = urllib.parse.urlsplit(target)
++            port = url.port or 80
++        except ValueError:
++            raise ProxyError(f"invalid request target: {target!r}", 400)
+         if url.scheme != "http" or not url.hostname:
+             raise ProxyError(f"unsupported request target: {target!r}", 400)
+         headers = [
+@@ -271,7 +276,7 @@
+         headers.append("Connection: close")
+         if self.upstream.is_socks:
+             upstream_reader, upstream_writer = await self.upstream.open_tunnel(
+-                url.hostname, url.port or 80
++                url.hostname, port
+             )
+             path = urllib.parse.urlunsplit(("", "", url.path or "/", url.query, ""))
+             request_line = f"{method} {path} {version}"
+@@ -311,17 +316,20 @@
+         await writer.drain()
+     if writer.can_write_eof():
+         writer.write_eof()
++    else:
++        # tls transports can not half-close, so close fully to pass the eof on
++        writer.close()
+ 
+ 
+ def split_authority(authority: str) -> tuple[str, int]:
+-    url = urllib.parse.urlsplit(f"//{authority}")
+     try:
+-        port = url.port
++        url = urllib.parse.urlsplit(f"//{authority}")
++        hostname, port = url.hostname, url.port
+     except ValueError:
+-        port = None
+-    if not url.hostname or port is None:
++        hostname, port = None, None
++    if not hostname or port is None:
+         raise ProxyError(f"invalid CONNECT target: {authority!r}", 400)
+-    return url.hostname, port
++    return hostname, port
+ 
+ 
+ def format_authority(host: str, port: int) -> str:
+@@ -334,8 +342,12 @@
+     try:
+         address = ipaddress.ip_address(host)
+     except ValueError:
+-        domain = host.encode("idna")
+-        return bytes([0x03, len(domain)]) + domain
++        try:
++            domain = host.encode("idna")
++            return bytes([0x03, len(domain)]) + domain
++        except ValueError:
++            # UnicodeError for empty or too long labels, ValueError for over 255 bytes
++            raise ProxyError(f"invalid host name: {host!r}", 400)
+     if address.version == 4:
+         return b"\x01" + address.packed
+     return b"\x04" + address.packed

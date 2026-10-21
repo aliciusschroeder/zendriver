@@ -1,0 +1,1 @@
+{"version": {"major": "1", "minor": "3"}, "domains": [{"domain": "Foo", "types": [{"id": "FooId", "type": "integer", "description": "an id"}]}]}
