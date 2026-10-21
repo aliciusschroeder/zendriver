@@ -1,7 +1,7 @@
 diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
 --- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
-+++ b/zendriver/core/browser.py	2026-10-21 02:57:56.170741015 +0000
-@@ -271,6 +271,11 @@
++++ b/zendriver/core/browser.py	2026-10-21 03:01:13.574280279 +0000
+@@ -271,6 +271,13 @@
              tuple[str, cdp.emulation.UserAgentMetadata] | None
          ) = None
          """user agent and client hint metadata of a headless browser, built at startup"""
@@ -10,12 +10,14 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriv
 +        ] = {}
 +        """download behavior set by zendriver, per browser context (it applies to all
 +        the targets of a context)"""
++        self._download_expectations: dict[cdp.browser.BrowserContextID | None, int] = {}
++        """number of active download expectations, per browser context"""
          logger.debug("Session object initialized: %s" % vars(self))
  
      @property
 diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zendriver/core/connection.py
 --- a/zendriver/core/connection.py	2026-10-20 18:32:07.000000000 +0000
-+++ b/zendriver/core/connection.py	2026-10-21 02:57:47.348146599 +0000
++++ b/zendriver/core/connection.py	2026-10-21 03:01:13.574761191 +0000
 @@ -188,7 +188,6 @@
  class Connection(metaclass=CantTouchThis):
      websocket: websockets.asyncio.client.ClientConnection | None = None
@@ -24,11 +26,14 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zend
  
      def __init__(
          self,
-@@ -218,9 +217,54 @@
+@@ -218,9 +217,71 @@
          self._inbox: asyncio.Queue[dict[str, Any]] | None = None
          self._attach_lock = asyncio.Lock()
          self._open_lock = asyncio.Lock()
 +        self._own_download_behavior: List[str] | None = None
++        self._own_download_expectations: dict[
++            cdp.browser.BrowserContextID | None, int
++        ] = {}
          self.__dict__.update(**kwargs)
  
      @property
@@ -47,6 +52,20 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zend
 +            self._owner._download_behaviors[self.browser_context_id] = value
 +        else:
 +            self._own_download_behavior = value
++
++    def _count_download_expectations(self, delta: int = 0) -> int:
++        """
++        add delta to the number of active download expectations of the browser
++        context of this target, and return that number
++        """
++        counts = (
++            self._owner._download_expectations
++            if self._owner is not None
++            else self._own_download_expectations
++        )
++        count = counts.get(self.browser_context_id, 0) + delta
++        counts[self.browser_context_id] = count
++        return count
 +
 +    async def _set_download_behavior(
 +        self, behavior: str, download_path: str | None = None
@@ -98,44 +117,44 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/element.py b/zendriv
              """
 diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/expect.py b/zendriver/core/expect.py
 --- a/zendriver/core/expect.py	2026-10-20 18:32:07.000000000 +0000
-+++ b/zendriver/core/expect.py	2026-10-21 02:57:47.348806999 +0000
-@@ -214,9 +214,20 @@
++++ b/zendriver/core/expect.py	2026-10-21 03:01:13.575318106 +0000
+@@ -214,9 +214,14 @@
          """
          Enter the context manager, adding download handler, set download behavior to deny.
          """
 -        await self.tab.send(
 -            cdp.browser.set_download_behavior(behavior="deny", events_enabled=True)
-+        # the behavior applies to the whole browser context: restore the one it has
-+        # now, which another tab of the context may have set
-+        self._previous_behavior = self.tab._download_behavior
-+        self.default_behavior = (
-+            self._previous_behavior[0] if self._previous_behavior else "default"
-         )
-+        self.download_path = (
-+            self._previous_behavior[1]
-+            if self._previous_behavior and len(self._previous_behavior) > 1
-+            else None
-+        )
-+        await self.tab._set_download_behavior("deny")
-+        # so that download_file / set_download_path in the block keep it denied
-+        self.tab._download_behavior = ["deny"]
+-        )
++        # the behavior applies to the whole browser context, which other
++        # expectations (on other tabs of the context) may be denying too
++        self.tab._count_download_expectations(1)
++        try:
++            await self.tab._set_download_behavior("deny")
++        except BaseException:
++            self.tab._count_download_expectations(-1)
++            raise
          self.tab.add_handler(cdp.browser.DownloadWillBegin, self._handler)
          return self
  
-@@ -224,12 +235,13 @@
+@@ -224,12 +229,17 @@
          """
          Exit the context manager, removing handler, set download behavior to default.
          """
 -        await self.tab.send(
 -            cdp.browser.set_download_behavior(
 -                behavior=self.default_behavior, download_path=self.download_path
-+        try:
-+            await self.tab._set_download_behavior(
-+                self.default_behavior, self.download_path
-             )
+-            )
 -        )
 -        self._remove_handler()
-+            self.tab._download_behavior = self._previous_behavior
++        try:
++            if self.tab._count_download_expectations(-1) == 0:
++                # restore the behavior set for the context, which another tab of
++                # the context may have changed in the meantime
++                behavior = self.tab._download_behavior
++                await self.tab._set_download_behavior(
++                    behavior[0] if behavior else "default",
++                    behavior[1] if behavior and len(behavior) > 1 else None,
++                )
 +        finally:
 +            self._remove_handler()
  
@@ -143,8 +162,18 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/expect.py b/zendrive
      async def value(self) -> cdp.browser.DownloadWillBegin:
 diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/core/tab.py
 --- a/zendriver/core/tab.py	2026-10-20 18:32:07.000000000 +0000
-+++ b/zendriver/core/tab.py	2026-10-21 02:57:47.348456973 +0000
-@@ -1592,11 +1592,7 @@
++++ b/zendriver/core/tab.py	2026-10-21 03:01:13.575086692 +0000
+@@ -1412,7 +1412,8 @@
+         :param url: url of the file
+         :param filename: the name for the file. if not specified the name is composed from the url file name
+         """
+-        if not self._download_behavior:
++        # an active download expectation denies the download
++        if not self._download_behavior and not self._count_download_expectations():
+             directory_path = pathlib.Path.cwd() / "downloads"
+             directory_path.mkdir(exist_ok=True)
+             await self.set_download_path(directory_path)
+@@ -1592,11 +1593,7 @@
          """
          path = pathlib.Path(path)
          path.mkdir(parents=True, exist_ok=True)

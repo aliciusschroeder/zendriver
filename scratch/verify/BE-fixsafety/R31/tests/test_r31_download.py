@@ -115,3 +115,19 @@ async def test_context_tab_download_path_and_expectation(env) -> None:
     await click_dl(tab, "def.txt")
     assert await wait_file(root, "def.txt")
     assert "dirDef/def.txt" in ls(root), ls(root)
+
+
+async def test_overlapping_expectations_do_not_leave_downloads_denied(env) -> None:
+    browser, base, root = env
+    tab_a = await browser.get(base + "/index.html")
+    await tab_a.set_download_path(root / "dirA")
+    tab_b = await browser.get(base + "/index.html", new_tab=True)
+    ex_a = tab_a.expect_download()
+    ex_b = tab_b.expect_download()
+    await ex_a.__aenter__()
+    await ex_b.__aenter__()
+    await ex_a.__aexit__(None, None, None)  # not nested: a exits first
+    await ex_b.__aexit__(None, None, None)
+    await tab_a.download_file(base + "/data.txt", "after.txt")
+    assert await wait_file(root, "after.txt"), ls(root)
+    assert "dirA/after.txt" in ls(root), ls(root)
