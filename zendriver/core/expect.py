@@ -39,10 +39,15 @@ class BaseRequestExpectation:
         Internal handler for request events.
         :param event: The request event.
         """
+        if self.request_id is not None:
+            # events dispatched before the handler removed itself must not
+            # replace the request that is already tracked
+            return
         if re.fullmatch(self.url_pattern, event.request.url):
             self._remove_request_handler()
             self.request_id = event.request_id
-            self.request_future.set_result(event)
+            if not self.request_future.done():
+                self.request_future.set_result(event)
 
     async def _response_handler(self, event: cdp.network.ResponseReceived) -> None:
         """
@@ -51,7 +56,8 @@ class BaseRequestExpectation:
         """
         if event.request_id == self.request_id:
             self._remove_response_handler()
-            self.response_future.set_result(event)
+            if not self.response_future.done():
+                self.response_future.set_result(event)
 
     async def _loading_finished_handler(
         self, event: cdp.network.LoadingFinished
@@ -62,7 +68,8 @@ class BaseRequestExpectation:
         """
         if event.request_id == self.request_id:
             self._remove_loading_finished_handler()
-            self.loading_finished_future.set_result(event)
+            if not self.loading_finished_future.done():
+                self.loading_finished_future.set_result(event)
 
     def _remove_request_handler(self) -> None:
         """
@@ -205,7 +212,8 @@ class DownloadExpectation:
 
     async def _handler(self, event: cdp.browser.DownloadWillBegin) -> None:
         self._remove_handler()
-        self.future.set_result(event)
+        if not self.future.done():
+            self.future.set_result(event)
 
     def _remove_handler(self) -> None:
         self.tab.remove_handlers(cdp.browser.DownloadWillBegin, self._handler)
