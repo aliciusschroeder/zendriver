@@ -30,7 +30,7 @@ async def main():
                 b = await asyncio.wait_for(coro_f(), 30)
                 v = await b.connection.send(zd.cdp.browser.get_version())
                 print(label, "-> connected OK:", v[1])
-                await b.connection.disconnect()
+                await b.connection.aclose()
                 # do not stop the browser (we own it via proc); just disconnect
             except Exception as e:
                 print(label, "-> raised", type(e).__name__, str(e)[:90])
@@ -45,7 +45,7 @@ async def main():
             v = await b.connection.send(zd.cdp.browser.get_version())
             print("create_from_undetected_chromedriver -> connected OK:", v[1])
             b._process_pid = None
-            await b.connection.disconnect()
+            await b.connection.aclose()
         except Exception as e:
             print("create_from_undetected_chromedriver -> raised", type(e).__name__, str(e)[:90])
     finally:

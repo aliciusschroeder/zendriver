@@ -5,7 +5,7 @@ errors = []
 async def main():
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(lambda l, ctx: errors.append(repr(ctx.get("exception"))))
-    for i in range(3):
+    for i in range(8):
         b = await zd.start(headless=True)
         p = await b.get("about:blank")
         await b.get("about:blank", new_tab=True)
