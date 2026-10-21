@@ -1,0 +1,12 @@
+3.13 run 1: 7 passed in 2.80s 
+3.10 run 1: 7 passed in 2.73s 
+3.13 run 2: 7 passed in 2.85s 
+3.10 run 2: 7 passed in 2.74s 
+3.13 run 3: 7 passed in 2.84s 
+3.10 run 3: 7 passed in 2.77s 
+3.13 run 4: 7 passed in 2.95s 
+3.10 run 4: 7 passed in 2.71s 
+3.13 run 5: 7 passed in 3.01s 
+3.10 run 5: 7 passed in 2.99s 
+
+[exited with code 0]
