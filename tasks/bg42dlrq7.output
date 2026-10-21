@@ -1,0 +1,3 @@
+run 1: seed=2 events=382 sent=1005 problems=0
+run 2: seed=2 events=419 sent=1005 problems=0
+run 3: seed=2 events=427 sent=991 problems=0

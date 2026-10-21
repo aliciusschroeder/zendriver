@@ -1,0 +1,9 @@
+seed=0 events=501 sent=972 problems=0 
+seed=1 events=407 sent=984 problems=0 
+seed=2 events=474 sent=1068 problems=0 
+seed=3 events=525 sent=996 problems=0 
+seed=4 events=378 sent=896 problems=0 
+seed=5 events=485 sent=990 problems=0 
+seed=6 events=382 sent=1005 problems=1   PROBLEM final send on T1 failed twice: RuntimeError('cannot receive') 
+seed=7 events=437 sent=940 problems=0 
+seed=8 events=549 sent=1006 problems=0 

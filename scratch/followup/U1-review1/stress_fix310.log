@@ -1,0 +1,9 @@
+seed=0 events=414 sent=906 problems=0 
+seed=1 events=363 sent=969 problems=0 
+seed=2 events=415 sent=1016 problems=1   PROBLEM final send on T3 failed twice: TimeoutError() 
+seed=3 events=511 sent=934 problems=0 
+seed=4 events=459 sent=1013 problems=0 
+seed=5 events=491 sent=968 problems=0 
+seed=6 events=371 sent=910 problems=0 
+seed=7 events=483 sent=1024 problems=0 
+seed=8 events=469 sent=993 problems=0 
