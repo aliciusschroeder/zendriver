@@ -1,0 +1,20 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+.................................                                        [100%]
+33 passed in 25.93s
+Task exception was never retrieved
+future: <Task finished name='Task-268' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-5/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 432, in wait_for
+    await waiter
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-5/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 435, in wait_for
+    return fut.result()
+  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-5/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
