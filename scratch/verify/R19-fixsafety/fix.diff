@@ -1,0 +1,49 @@
+--- /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R19-fixsafety/orig/zendriver/core/connection.py	2026-10-21 00:35:42.693805244 +0000
++++ /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R19-fixsafety/pkg/zendriver/core/connection.py	2026-10-21 00:37:37.274553648 +0000
+@@ -553,7 +553,18 @@
+         :return:
+         :rtype:
+         """
+-        asyncio.ensure_future(self.send(cdp_obj))
++        loop = None
++        try:
++            asyncio.get_running_loop()
++        except RuntimeError:
++            # synchronous event handlers run in a worker thread (see
++            # Listener.listener_loop), which has no event loop of its own
++            if self.listener and self.listener.task:
++                loop = self.listener.task.get_loop()
++        if loop is not None:
++            loop.call_soon_threadsafe(asyncio.ensure_future, self.send(cdp_obj))
++        else:
++            asyncio.ensure_future(self.send(cdp_obj))
+ 
+     async def wait(self, t: int | float | None = None) -> None:
+         """
+@@ -864,6 +875,17 @@
+             pass
+ 
+ 
++async def _call_sync_handler(handler: Callable[..., Any], *args: Any) -> None:
++    """
++    runs a synchronous event handler in a worker thread, so it cannot block the
++    listener, and awaits what it returns when that is awaitable (for example a
++    lambda that calls a coroutine function)
++    """
++    result = await asyncio.to_thread(handler, *args)
++    if inspect.isawaitable(result):
++        await result
++
++
+ def _accepts_connection_argument(handler: Callable[..., Any]) -> bool:
+     try:
+         inspect.signature(handler).bind(None, None)
+@@ -999,7 +1021,7 @@
+                             if inspect.iscoroutinefunction(callback):
+                                 asyncio.create_task(callback(*args))
+                             else:
+-                                asyncio.create_task(asyncio.to_thread(callback, *args))
++                                asyncio.create_task(_call_sync_handler(callback, *args))
+                         except Exception as e:
+                             logger.warning(
+                                 "exception in callback %s for event %s => %s",
