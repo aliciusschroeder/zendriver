@@ -1,0 +1,194 @@
+F.F                                                                      [100%]
+=================================== FAILURES ===================================
+________________ test_infinite_scrolling_tutorial_1[headless0] _________________
+
+self = <MagicMock name='print' id='140626071180944'>, args = ([],), kwargs = {}
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'print' to be called once. Called 28 times.
+E           Calls: [call([]),
+E            call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E            call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 432, in wait_for\n    await waiter\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E            call('asyncio.exceptions.CancelledError\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E            call('\nDuring handling of the above exception, another exception occurred:\n\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E            call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E            call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 944, in listener_loop\n    message = await asyncio.wait_for(\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E            call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 435, in wait_for\n    return fut.result()\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E            call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 853, in _receive_message\n    raise ValueError("no websocket connection")\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E            call('ValueError: no websocket connection\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E            call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E            call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 432, in wait_for\n    await waiter\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E            call('asyncio.exceptions.CancelledError\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E            call('\nDuring handling of the above exception, another exception occurred:\n\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E            call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E            call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 944, in listener_loop\n    message = await asyncio.wait_for(\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E            call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 435, in wait_for\n    return fut.result()\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E            call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 853, in _receive_message\n    raise ValueError("no websocket connection")\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E            call('ValueError: no websocket connection\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E            call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E            call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 432, in wait_for\n    await waiter\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E            call('asyncio.exceptions.CancelledError\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E            call('\nDuring handling of the above exception, another exception occurred:\n\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E            call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E            call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 944, in listener_loop\n    message = await asyncio.wait_for(\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E            call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 435, in wait_for\n    return fut.result()\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E            call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 853, in _receive_message\n    raise ValueError("no websocket connection")\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E            call('ValueError: no websocket connection\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end='')].
+
+/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/unittest/mock.py:940: AssertionError
+
+During handling of the above exception, another exception occurred:
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7fe60f04d090>
+mock_print = <MagicMock name='print' id='140626071180944'>
+mock_start = <AsyncMock name='start' id='140626071328160'>
+
+    async def test_infinite_scrolling_tutorial_1(
+        mocker: MockerFixture, mock_print: Mock, mock_start: Mock
+    ) -> None:
+        module = import_from_path("docs/tutorials/tutorial-code/infinite-scrolling-1.py")
+    
+        await module.main()
+    
+>       mock_print.assert_called_once_with([])
+E       AssertionError: Expected 'print' to be called once. Called 28 times.
+E       Calls: [call([]),
+E        call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E        call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 432, in wait_for\n    await waiter\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E        call('asyncio.exceptions.CancelledError\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E        call('\nDuring handling of the above exception, another exception occurred:\n\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E        call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E        call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 944, in listener_loop\n    message = await asyncio.wait_for(\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E        call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 435, in wait_for\n    return fut.result()\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E        call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 853, in _receive_message\n    raise ValueError("no websocket connection")\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E        call('ValueError: no websocket connection\n', file=<_io.StringIO object at 0x7fe60e29d3f0>, end=''),
+E        call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E        call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 432, in wait_for\n    await waiter\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E        call('asyncio.exceptions.CancelledError\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E        call('\nDuring handling of the above exception, another exception occurred:\n\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E        call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E        call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 944, in listener_loop\n    message = await asyncio.wait_for(\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E        call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 435, in wait_for\n    return fut.result()\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E        call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 853, in _receive_message\n    raise ValueError("no websocket connection")\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E        call('ValueError: no websocket connection\n', file=<_io.StringIO object at 0x7fe60e29eb90>, end=''),
+E        call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E        call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 432, in wait_for\n    await waiter\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E        call('asyncio.exceptions.CancelledError\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E        call('\nDuring handling of the above exception, another exception occurred:\n\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E        call('Traceback (most recent call last):\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E        call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 944, in listener_loop\n    message = await asyncio.wait_for(\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E        call('  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/tasks.py", line 435, in wait_for\n    return fut.result()\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E        call('  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 853, in _receive_message\n    raise ValueError("no websocket connection")\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end=''),
+E        call('ValueError: no websocket connection\n', file=<_io.StringIO object at 0x7fe60e29ec20>, end='')].
+E       
+E       pytest introspection follows:
+E       
+E       Args:
+E       assert ('ValueError:...onnection\n',) == ([],)
+E         
+E         At index 0 diff: 'ValueError: no websocket connection\n' != []
+E         Use -v to get more diff
+E       Kwargs:
+E       assert {'file': <_io...0>, 'end': ''} == {}
+E         
+E         Left contains 2 more items:
+E         {'end': '', 'file': <_io.StringIO object at 0x7fe60e29ec20>}
+E         Use -v to get more diff
+
+tests/docs/tutorials/test_infinite_scrolling_tutorial.py:19: AssertionError
+------------------------------ Captured log setup ------------------------------
+INFO     zendriver.core.browser:browser.py:568 starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_o4x935q5
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=41147
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO     zendriver.core.browser:browser.py:610 enabling autodiscover targets
+------------------------------ Captured log call -------------------------------
+WARNING  uc.connection:connection.py:971 unexpected exception while reading websocket: no websocket connection
+________________ test_infinite_scrolling_tutorial_3[headless0] _________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x7fe60effe680>
+mock_print = <MagicMock name='print' id='140626056380528'>
+mock_start = <AsyncMock name='start' id='140626056421888'>
+
+    async def test_infinite_scrolling_tutorial_3(
+        mocker: MockerFixture, mock_print: Mock, mock_start: Mock
+    ) -> None:
+        module = import_from_path("docs/tutorials/tutorial-code/infinite-scrolling-3.py")
+    
+        await module.main()
+    
+        # more than one batch can load between two checks of the card count
+        counts = [
+            call.args[1]
+            for call in mock_print.call_args_list
+            if call.args[0] == "Loaded new cards. Current count:"
+        ]
+        assert counts == sorted(set(counts))
+>       assert mock_print.call_args_list[-1] == mocker.call("Lucky card found: Card 27")
+E       AssertionError: assert call('ValueEr...75b0>, end='') == call('Lucky c...und: Card 27')
+E         
+E         Use -v to get more diff
+
+tests/docs/tutorials/test_infinite_scrolling_tutorial.py:48: AssertionError
+------------------------------ Captured log setup ------------------------------
+INFO     zendriver.core.browser:browser.py:568 starting
+	executable :/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin/chromium
+
+arguments:
+--remote-allow-origins=*
+	--no-first-run
+	--no-service-autorun
+	--no-default-browser-check
+	--homepage=about:blank
+	--no-pings
+	--password-store=basic
+	--disable-infobars
+	--disable-breakpad
+	--disable-dev-shm-usage
+	--disable-session-crashed-bubble
+	--disable-search-engine-choice-screen
+	--user-data-dir=/tmp/uc_6q_r083z
+	--headless=new
+	--no-sandbox
+	--remote-debugging-host=127.0.0.1
+	--remote-debugging-port=53225
+	--webrtc-ip-handling-policy=disable_non_proxied_udp
+	--force-webrtc-ip-handling-policy
+	--disable-features=IsolateOrigins,DisableLoadExtensionCommandLineSwitch,site-per-process
+	about:blank
+INFO     zendriver.core.browser:browser.py:610 enabling autodiscover targets
+------------------------------ Captured log call -------------------------------
+WARNING  uc.connection:connection.py:971 unexpected exception while reading websocket: no websocket connection
+=========================== short test summary info ============================
+FAILED tests/docs/tutorials/test_infinite_scrolling_tutorial.py::test_infinite_scrolling_tutorial_1[headless0]
+FAILED tests/docs/tutorials/test_infinite_scrolling_tutorial.py::test_infinite_scrolling_tutorial_3[headless0]
+2 failed, 1 passed in 9.22s
