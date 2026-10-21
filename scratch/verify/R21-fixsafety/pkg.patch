@@ -1,0 +1,22 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/browser.py b/zendriver/core/browser.py
+--- a/zendriver/core/browser.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/browser.py	2026-10-21 00:48:26.610266695 +0000
+@@ -1107,6 +1107,9 @@
+     def __init__(self, addr: Tuple[str, int]):
+         self.host, self.port = addr
+         self.api = "http://%s:%d" % (self.host, self.port)
++        # the devtools endpoint is reached directly: urlopen would send it to the
++        # http_proxy of the environment, which cannot reach the browser's loopback
++        self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+ 
+     async def get(self, endpoint: str) -> Any:
+         return await self._request(endpoint)
+@@ -1131,7 +1134,7 @@
+             request.data = json.dumps(data).encode("utf-8")
+ 
+         response = await asyncio.get_running_loop().run_in_executor(
+-            None, lambda: urllib.request.urlopen(request, timeout=10)
++            None, lambda: self._opener.open(request, timeout=10)
+         )
+         return json.loads(response.read())
+ 

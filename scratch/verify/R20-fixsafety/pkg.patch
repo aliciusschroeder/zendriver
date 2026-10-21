@@ -1,0 +1,12 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/keys.py b/zendriver/core/keys.py
+--- a/zendriver/core/keys.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/keys.py	2026-10-21 00:44:32.374124550 +0000
+@@ -164,7 +164,7 @@
+         if specialKey_key == SpecialKeys.SPACE:
+             return " "
+         elif specialKey_key == SpecialKeys.ENTER:
+-            return "\n"
++            return "\r"
+         elif specialKey_key == SpecialKeys.TAB:
+             return "\t"
+         raise ValueError(
