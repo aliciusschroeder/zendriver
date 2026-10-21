@@ -1,0 +1,29 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+zendriver from /home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/__init__.py 3.10.20
+children 0
+WARNING LOGGED: unexpected exception while reading websocket: no websocket connection
+  listener conn: ws://127.0.0.1:34619/devtools/page/AC45915A521B1DB91A2D7E94DD9A4467 session=D626760156757B125BD609CF17BDFDB5 | now ws: None inbox: None session: None
+  created at:
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/fix/Q1/probe/probe_stop.py", line 62, in <module>
+    asyncio.run(main(sys.argv[1] if len(sys.argv) > 1 else "about:blank"))
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/base_events.py", line 636, in run_until_complete
+    self.run_forever()
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/base_events.py", line 603, in run_forever
+    self._run_once()
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/base_events.py", line 1909, in _run_once
+    handle._run()
+  File "/root/.local/share/uv/python/cpython-3.10-linux-x86_64-gnu/lib/python3.10/asyncio/events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/fix/Q1/probe/probe_stop.py", line 55, in main
+    page = await browser.get(url)
+  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/browser.py", line 450, in get
+    await connection.send(cdp.page.navigate(url))
+  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 651, in send
+    await self.aopen()
+  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 443, in aopen
+    await self._attach_session(browser_connection)
+  File "/home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/core/connection.py", line 495, in _attach_session
+    self.listener = Listener(self)
+

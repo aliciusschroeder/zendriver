@@ -1,0 +1,4 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+zendriver from /home/user/zendriver/.claude/worktrees/wf_453a9023-a6b-1/zendriver/__init__.py 3.10.20
+children 0
+LISTENER DIED ValueError no websocket connection ws://127.0.0.1:52533/devtools/page/88AC319CD5B752FCA773009F142FF44B session=D7B5E5D550DCFCBF8F86D32FC1A2A6B6
