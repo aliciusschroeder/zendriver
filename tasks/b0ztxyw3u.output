@@ -1,0 +1,17 @@
+== R25 own tests
+zendriver imported from /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BA-fixsafety/R25/pkg/zendriver/__init__.py
+5 passed in 2.94s
+== R17 repo suite
+WHICH zendriver: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BA-fixsafety/R17/pkg/zendriver/__init__.py
+105 passed, 1 skipped, 4 deselected in 41.51s
+== R25 repo suite
+WHICH zendriver: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BA-fixsafety/R25/pkg/zendriver/__init__.py
+105 passed, 1 skipped, 4 deselected in 40.84s
+== R35 repo suite
+WHICH zendriver: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BA-fixsafety/R35/pkg/zendriver/__init__.py
+105 passed, 1 skipped, 4 deselected in 41.28s
+== R41 repo suite
+WHICH zendriver: /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BA-fixsafety/R41/pkg/zendriver/__init__.py
+105 passed, 1 skipped, 4 deselected in 41.26s
+
+[exited with code 0]

@@ -1,0 +1,12 @@
+== R25 own tests
+5 passed in 2.94s
+== R17 repo suite
+105 passed, 1 skipped, 4 deselected in 41.51s
+== R25 repo suite
+105 passed, 1 skipped, 4 deselected in 40.84s
+== R35 repo suite
+105 passed, 1 skipped, 4 deselected in 41.28s
+== R41 repo suite
+105 passed, 1 skipped, 4 deselected in 41.26s
+
+[killed]
