@@ -1963,7 +1963,7 @@ class Tab(Connection):
         :return:
         :rtype:
         """
-        return await self.wait_for(text, selector, timeout)
+        return await self.wait_for(selector=selector, text=text, timeout=timeout)
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Tab):
