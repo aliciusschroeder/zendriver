@@ -81,7 +81,7 @@ Note: the machine has 4 CPUs, so each workflow runs at most 2 agents at a time.
 * Sync fix: fixers detach their branch when done, so the sync now pushes every local `fix/*` ref each round
   (before, five branches had not reached origin). All 12 verified on origin.
 
-## Stage 5 — integrate (in progress since 06:12)
+## Stage 5 — integrate (done, 06:12 → ~09:00)
 * Merged into `ccr-9a8a26e1-b0l7bh` one at a time with `git merge --no-ff` (tools/integrate_one.sh: merge, then
   lint + full headless suite): Q8 c852ec8, Q6 522a256, Q5 f092fe8, Q11 9fb97eb, Q10 7fa5cf9, Q2 b5f083e,
   Q7 d22627e, Q12 56c4bb9, Q1 4495b70, Q9 ff60a2a, Q4 4767cf3, Q3 e4846f7. Only test files conflicted (tests
@@ -110,6 +110,10 @@ Note: the machine has 4 CPUs, so each workflow runs at most 2 agents at a time.
 * Follow-up fix workflow `zendriver-followup-fix`, run `wf_2c9e79a3-fb2` (running since ~07:35): U1
   fix/followup-connection (cancellation-1, connection-1/2/3, lifecycle-3), U2 fix/followup-timeouts
   (cancellation-2), U3 fix/followup-stop (lifecycle-1/2); fixer + adversarial reviewer, max 2 rounds.
+  Result: U1 e7d5a85, U2 530989e, U3 02868a8 — all approved in round 1; merged as 822610d, 4d988bc, 24b0c4a.
+* Final tip 822610d (pushed): lint clean; full headless suite 3/3 runs 224 passed, 1 skipped (Py 3.13), 2/2 runs
+  222 passed, 3 skipped (Py 3.10). 106 new tests (scratch/integration/ids-new2.txt) 5x serially: all passed.
+* Deliverables: REPORT.md (this branch and scratch/REPORT.md), PR.md (title + body per the PR template; PR not opened).
 
 ## Persistence (set up 22:30, during Stage 3)
 * State worktree `/home/user/bughunt-state` on branch `ccr-9a8a26e1-b0l7bh-state`, synced and pushed every 5 min by

@@ -12,6 +12,8 @@ title/body goes to `scratch/PR.md` at the end.
 | file | what it is |
 |---|---|
 | `README.md` | this orientation (hand-written, updated at stage boundaries) |
+| `REPORT.md` | **final report**: one entry per group, dropped findings, uncovered areas, test counts |
+| `PR.md` | PR title and body for the designated branch (not opened) |
 | `STAGES.md` | stage-by-stage log: what ran, workflow run ids, outcomes, decisions |
 | `STATUS.md` | **generated** every sync: workflows and agents in flight, worktrees, pushes |
 | `scratch/` | mirror of the supervisor scratchpad: baseline, triage, stage outputs, every finder/verifier probe and test. Prototype package copies (`*/pkg/zendriver`) are stored as `pkg.patch` against base commit `064148f` |
