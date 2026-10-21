@@ -1,0 +1,4 @@
+applied gather_to_wait_for
+round-1 gather: never retrieved lines: 1
+_GatheringFuture exception was never retrieved
+restored
