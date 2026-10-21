@@ -1,0 +1,28 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/core/tab.py
+--- a/zendriver/core/tab.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/tab.py	2026-10-21 02:50:32.264584894 +0000
+@@ -1197,12 +1197,21 @@
+         window_state = getattr(
+             cdp.browser.WindowState, state_name.upper(), cdp.browser.WindowState.NORMAL
+         )
++        if bounds.window_state not in (None, cdp.browser.WindowState.NORMAL):
++            # min, max, full can only be used when current state == NORMAL, and
++            # chrome ignores the size and position while it restores the window
++            # therefore we first switch to NORMAL, keeping the window's own bounds
++            await self.send(
++                cdp.browser.set_window_bounds(
++                    window_id,
++                    bounds=cdp.browser.Bounds(
++                        window_state=cdp.browser.WindowState.NORMAL
++                    ),
++                )
++            )
+         if window_state == cdp.browser.WindowState.NORMAL:
+             bounds = cdp.browser.Bounds(left, top, width, height, window_state)
+         else:
+-            # min, max, full can only be used when current state == NORMAL
+-            # therefore we first switch to NORMAL
+-            await self.set_window_state(state="normal")
+             bounds = cdp.browser.Bounds(window_state=window_state)
+ 
+         await self.send(cdp.browser.set_window_bounds(window_id, bounds=bounds))

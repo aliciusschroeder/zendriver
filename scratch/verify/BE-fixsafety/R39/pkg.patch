@@ -1,0 +1,164 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/tab.py b/zendriver/core/tab.py
+--- a/zendriver/core/tab.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/tab.py	2026-10-21 02:53:58.081928465 +0000
+@@ -1426,7 +1426,7 @@
+             filename = filename.split("?")[0]
+ 
+         code = """
+-         (elem) => {
++         (elem, imageSrc, nameOfDownload) => {
+             async function _downloadFile(
+               imageSrc,
+               nameOfDownload,
+@@ -1447,12 +1447,9 @@
+                 window.URL.revokeObjectURL(href);
+                 }, 500);
+             }
+-            _downloadFile('%s', '%s')
++            _downloadFile(imageSrc, nameOfDownload)
+             }
+-            """ % (
+-            url,
+-            filename,
+-        )
++            """
+ 
+         body = (await self.query_selector_all("body"))[0]
+         await body.update()
+@@ -1460,7 +1457,13 @@
+             cdp.runtime.call_function_on(
+                 code,
+                 object_id=body.object_id,
+-                arguments=[cdp.runtime.CallArgument(object_id=body.object_id)],
++                arguments=[
++                    cdp.runtime.CallArgument(object_id=body.object_id),
++                    # passed as values, so that quotes and backslashes in them
++                    # do not break (or inject into) the function
++                    cdp.runtime.CallArgument(value=url),
++                    cdp.runtime.CallArgument(value=str(filename)),
++                ],
+             )
+         )
+ 
+@@ -1478,7 +1481,8 @@
+                 "Could not take snapshot. Most possible cause is the page has not finished loading yet."
+             )
+ 
+-        with open(filename, "w") as file:
++        # the snapshot already has CRLF line endings, which must be written as is
++        with open(filename, "w", newline="") as file:
+             file.write(data)
+ 
+     async def screenshot_b64(
+@@ -1533,13 +1537,18 @@
+         :return: the path/filename of saved screenshot
+         :rtype: str
+         """
++        ext = ""
+         if format.lower() in ["jpg", "jpeg"]:
+             ext = ".jpg"
+ 
+         elif format.lower() in ["png"]:
+             ext = ".png"
+ 
+-        if not filename or filename == "auto":
++        elif format.lower() in ["webp"]:
++            ext = ".webp"
++
++        auto_name = not filename or filename == "auto"
++        if auto_name:
+             assert self.target is not None
+             parsed = urllib.parse.urlparse(self.target.url)
+             parts = parsed.path.split("/")
+@@ -1557,6 +1566,14 @@
+         data_bytes = base64.b64decode(data)
+         if not path:
+             raise RuntimeError("invalid filename or path: '%s'" % filename)
++        if auto_name:
++            # several screenshots can be taken within the same second: do not
++            # overwrite one (checked after the last await, so that concurrent
++            # calls do not pick the same name either)
++            index = 1
++            while path.exists():
++                path = pathlib.Path(f"{candidate}_{index}{ext}")
++                index += 1
+         path.write_bytes(data_bytes)
+         return str(path)
+ 
+@@ -1575,9 +1592,24 @@
+                 f"filename {filename} must be a file path, not a directory"
+             )
+ 
+-        data, _ = await self.send(cdp.page.print_to_pdf(**kwargs))
++        data, stream = await self.send(cdp.page.print_to_pdf(**kwargs))
+ 
+-        data_bytes = base64.b64decode(data)
++        if stream is not None:
++            # transfer_mode="ReturnAsStream": the pdf is read from the stream
++            chunks: List[bytes] = []
++            try:
++                while True:
++                    base64_encoded, chunk, eof = await self.send(cdp.io.read(stream))
++                    chunks.append(
++                        base64.b64decode(chunk) if base64_encoded else chunk.encode()
++                    )
++                    if eof:
++                        break
++            finally:
++                await self.send(cdp.io.close(stream))
++            data_bytes = b"".join(chunks)
++        else:
++            data_bytes = base64.b64decode(data)
+         filename.write_bytes(data_bytes)
+         return filename
+ 
+@@ -1620,6 +1652,11 @@
+ 
+         res: list[str] = []
+         all_assets = await self.query_selector_all(selector="a,link,img,script,meta")
++        # relative urls resolve against the document's base url (the page url,
++        # or its <base href>), not against the origin
++        base_url = await self.evaluate("document.baseURI") if absolute else None
++        if not isinstance(base_url, str):
++            base_url = self.url or ""
+         for asset in all_assets:
+             if not absolute:
+                 res_to_add = asset.src or asset.href
+@@ -1628,13 +1665,10 @@
+             else:
+                 for k, v in asset.attrs.items():
+                     if k in ("src", "href"):
+-                        if "#" in v:
++                        if v.startswith("#"):
++                            # a link to a part of this page
+                             continue
+-                        if not any([_ in v for _ in ("http", "//", "/")]):
+-                            continue
+-                        abs_url = urllib.parse.urljoin(
+-                            "/".join(self.url.rsplit("/")[:3] if self.url else []), v
+-                        )
++                        abs_url = urllib.parse.urljoin(base_url, v)
+                         if not abs_url.startswith(("http", "//", "ws")):
+                             continue
+                         res.append(abs_url)
+@@ -1941,11 +1975,20 @@
+                     "Could not read existing user agent from navigator object"
+                 )
+ 
++        # an override without client hint metadata makes the target drop its
++        # client hints: keep those of the headless user agent override
++        # (see Connection._prepare_headless)
++        user_agent_metadata = None
++        headless_user_agent = self.browser.headless_user_agent if self.browser else None
++        if headless_user_agent is not None and user_agent == headless_user_agent[0]:
++            user_agent_metadata = headless_user_agent[1]
++
+         await self.send(
+             cdp.network.set_user_agent_override(
+                 user_agent=user_agent,
+                 accept_language=accept_language,
+                 platform=platform,
++                user_agent_metadata=user_agent_metadata,
+             )
+         )
+ 

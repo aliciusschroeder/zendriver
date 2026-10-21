@@ -1,0 +1,29 @@
+INFO:cdpgen:Parsing JSON file /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BF-reproduce/r47/root/browser_protocol.json
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BF-reproduce/r47/root/scripts/generate_cdp.py", line 1010, in main
+    domains.extend(parse(json_path, output_path))
+                   ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BF-reproduce/r47/root/scripts/generate_cdp.py", line 919, in parse
+    with json_path.open() as json_file:
+         ~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/pathlib/_local.py", line 537, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BF-reproduce/r47/root/browser_protocol.json'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BF-reproduce/r47/root/scripts/generate_cdp.py", line 1071, in <module>
+    main()
+    ~~~~^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BF-reproduce/r47/root/scripts/generate_cdp.py", line 1060, in main
+    list(map(lambda x: x.unlink(), json_paths))
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BF-reproduce/r47/root/scripts/generate_cdp.py", line 1060, in <lambda>
+    list(map(lambda x: x.unlink(), json_paths))
+                       ~~~~~~~~^^
+  File "/usr/lib/python3.13/pathlib/_local.py", line 746, in unlink
+    os.unlink(self)
+    ~~~~~~~~~^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/BF-reproduce/r47/root/browser_protocol.json'
