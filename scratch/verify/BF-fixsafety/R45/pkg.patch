@@ -1,0 +1,59 @@
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/config.py b/zendriver/core/config.py
+--- a/zendriver/core/config.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/config.py	2026-10-21 03:10:07.519630215 +0000
+@@ -3,8 +3,10 @@
+ import os
+ import pathlib
+ import secrets
++import shutil
+ import sys
+ import tempfile
++import weakref
+ import zipfile
+ from typing import Any, List, Literal, Optional, Union
+ 
+@@ -179,13 +181,20 @@
+ 
+         if path.is_file():
+             tf = tempfile.mkdtemp(prefix="extension_", suffix=secrets.token_hex(4))
++            # remove the extracted copy once this config is gone (or at exit)
++            weakref.finalize(self, shutil.rmtree, tf, ignore_errors=True)
+             with zipfile.ZipFile(path, "r") as z:
+                 z.extractall(tf)
+                 self._extensions.append(tf)
+ 
+         elif path.is_dir():
+-            for item in path.rglob("manifest.*"):
+-                path = item.parent
++            if not (path / "manifest.json").is_file():
++                # use the shallowest manifest, not one bundled deeper inside the extension
++                for item in sorted(
++                    path.rglob("manifest.json"), key=lambda p: len(p.parts)
++                ):
++                    path = item.parent
++                    break
+             self._extensions.append(path)
+ 
+     # def __getattr__(self, item):
+diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/util.py b/zendriver/core/util.py
+--- a/zendriver/core/util.py	2026-10-20 18:32:07.000000000 +0000
++++ b/zendriver/core/util.py	2026-10-21 03:10:07.519293633 +0000
+@@ -216,7 +216,7 @@
+ 
+     r = radius
+     w = num
+-    if not y:
++    if y is None:
+         y = x
+     a = int(x - r * 2)
+     b = int(y - r * 2)
+@@ -263,9 +263,6 @@
+                 )
+             else:
+                 out += child
+-
+-            if not isinstance(child, str):
+-                out += await html_from_tree(child, target)
+     return out
+ 
+ 
