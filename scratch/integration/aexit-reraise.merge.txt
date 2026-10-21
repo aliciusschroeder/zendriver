@@ -1,0 +1,4 @@
+Auto-merging tests/core/test_connection.py
+CONFLICT (content): Merge conflict in tests/core/test_connection.py
+Auto-merging zendriver/core/connection.py
+Automatic merge failed; fix conflicts and then commit the result.

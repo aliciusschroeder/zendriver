@@ -1,0 +1,4 @@
+Auto-merging tests/core/test_browser.py
+CONFLICT (content): Merge conflict in tests/core/test_browser.py
+Auto-merging zendriver/core/browser.py
+Automatic merge failed; fix conflicts and then commit the result.
