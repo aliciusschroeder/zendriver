@@ -1,5 +1,6 @@
 #!/bin/bash
 # runs the reviewer probes against the worktree checkout on 3.10, 3.11, 3.13
+export PATH=/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/bin:$PATH
 WT=/home/user/zendriver/.claude/worktrees/wf_2c9e79a3-fb2-4
 D=/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation
 S=/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad
