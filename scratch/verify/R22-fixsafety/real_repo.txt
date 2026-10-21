@@ -1,0 +1,228 @@
+zendriver: /home/user/zendriver/zendriver/__init__.py python: 3.13.16
+Task exception was never retrieved
+future: <Task finished name='Task-118' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-127' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-136' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-145' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-154' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-163' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+A1.5 page.close via own session: {'page.close ok': 15}
+B14.7 first send racing close_target: {'ProtocolException: target session was detached': 15}
+Task exception was never retrieved
+future: <Task finished name='Task-172' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-181' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-190' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-199' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-208' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-217' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-226' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-235' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection
+Task exception was never retrieved
+future: <Task finished name='Task-244' coro=<Listener.listener_loop() done, defined at /home/user/zendriver/zendriver/core/connection.py:922> exception=ValueError('no websocket connection')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/zendriver/core/connection.py", line 925, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/home/user/zendriver/zendriver/core/connection.py", line 834, in _receive_message
+    raise ValueError("no websocket connection")
+ValueError: no websocket connection

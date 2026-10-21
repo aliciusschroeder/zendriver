@@ -1,6 +1,6 @@
 diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zendriver/core/connection.py
 --- a/zendriver/core/connection.py	2026-10-20 18:32:07.000000000 +0000
-+++ b/zendriver/core/connection.py	2026-10-21 01:11:45.218203885 +0000
++++ b/zendriver/core/connection.py	2026-10-21 01:17:56.331924413 +0000
 @@ -217,6 +217,7 @@
          self._sessions: dict[str, Connection] = {}
          self._inbox: asyncio.Queue[dict[str, Any]] | None = None
@@ -9,7 +9,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zend
          self._open_lock = asyncio.Lock()
          self.__dict__.update(**kwargs)
  
-@@ -464,19 +465,33 @@
+@@ -464,19 +465,35 @@
              if self.target_id is None:
                  raise RuntimeError("cannot attach a session without a target")
              await browser_connection.aopen()
@@ -37,6 +37,8 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zend
 +                    )
 +                )
 +            await asyncio.shield(self._attaching)
++            if self.session_id is None:
++                raise ProtocolException("target session was detached")
 +
 +    def _attach_to_target(
 +        self, browser_connection: Connection, target_id: cdp.target.TargetID
@@ -56,7 +58,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zend
  
      def _detach_session(self) -> None:
          """
-@@ -484,6 +499,7 @@
+@@ -484,6 +501,7 @@
          """
          if self._session_parent is not None and self.session_id is not None:
              self._session_parent._sessions.pop(self.session_id, None)
@@ -64,7 +66,7 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zend
          self.session_id = None
          self._session_parent = None
          self._inbox = None
-@@ -494,6 +510,18 @@
+@@ -494,6 +512,18 @@
          self.manually_enabled_domains.clear()
          self.__dict__.pop("_prep_headless_done", None)
          self.__dict__.pop("_prep_expert_done", None)
@@ -83,3 +85,16 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/connection.py b/zend
          self._fail_pending_transactions(
              ProtocolException("target session was detached")
          )
+@@ -508,6 +538,12 @@
+         """
+         closes the websocket connection. should not be called manually by users.
+         """
++        if self._attaching is not None and not self._attaching.done():
++            # a session chrome is still creating would otherwise outlive the close
++            try:
++                await asyncio.shield(self._attaching)
++            except Exception:
++                pass
+         if self._session_parent is not None:
+             browser_connection = self._session_parent
+             session_id = self.session_id

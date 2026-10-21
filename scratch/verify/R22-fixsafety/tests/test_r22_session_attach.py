@@ -171,3 +171,15 @@ async def test_cancelled_first_command_does_not_orphan_a_session(peer: Any) -> N
     await asyncio.wait_for(tab.aclose(), 5)
     await asyncio.sleep(0.1)
     assert fake.attached and sorted(fake.attached) == sorted(fake.detached)
+
+
+async def test_aclose_while_attach_pending_does_not_orphan_a_session(peer: Any) -> None:
+    """A1.6 variant: the tab is closed before chrome answers the cancelled attach"""
+    fake, browser_connection, tab = peer
+    fake.attach_delay = 0.3
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(tab.send(evaluate()), 0.1)
+    await asyncio.wait_for(tab.aclose(), 5)
+    await asyncio.sleep(0.5)  # a late attach reply would arrive by now
+    assert tab.closed and browser_connection._sessions == {}
+    assert fake.attached and sorted(fake.attached) == sorted(fake.detached)
