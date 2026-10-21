@@ -1,0 +1,97 @@
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: [<object object at 0x7f5591d79300>]
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: [<object object at 0x7f5591d79360>]
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: [<object object at 0x7f5591d793b0>]
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: [<object object at 0x7f5591d793c0>]
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: [<object object at 0x7f5591d79410>]
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: [<object object at 0x7f5591d79460>]
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: [<object object at 0x7f5591d79480>]
+_ test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-select] _
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: ProtocolException('the attempt failed')
+E        +    where <built-in method cancelled of _asyncio.Task object at 0x7f5591c18520> = <Task finished name='Task-22' coro=<Tab.select() done, defined at /h
+_ test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-select_all] _
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: ProtocolException('the attempt failed')
+E        +    where <built-in method cancelled of _asyncio.Task object at 0x7f5591c186c0> = <Task finished name='Task-25' coro=<Tab.select_all() done, defined a
+_ test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-find] _
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: ProtocolException('the attempt failed')
+E        +    where <built-in method cancelled of _asyncio.Task object at 0x7f5591c18a00> = <Task finished name='Task-28' coro=<Tab.find() done, defined at /hom
+_ test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-find_all] _
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: ProtocolException('the attempt failed')
+E        +    where <built-in method cancelled of _asyncio.Task object at 0x7f5591c18ba0> = <Task finished name='Task-31' coro=<Tab.find_all() done, defined at 
+_ test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-wait_for_selector] _
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: ProtocolException('the attempt failed')
+E        +    where <built-in method cancelled of _asyncio.Task object at 0x7f5591c18d40> = <Task finished name='Task-34' coro=<Tab.wait_for() done, defined at 
+_ test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-wait_for_text] _
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(ProtocolException("the attempt failed"))
+E       AssertionError: ProtocolException('the attempt failed')
+E        +    where <built-in method cancelled of _asyncio.Task object at 0x7f5591c18ee0> = <Task finished name='Task-37' coro=<Tab.wait_for() done, defined at 
+                raise ProtocolException("the cancelled attempt failed") from None
+>       assert "the cancelled attempt failed" not in caplog.text
+E       assert 'the cancell...tempt failed' not in 'ERROR    as...mpt failed\n'
+E         'the cancelled attempt failed' is contained here:
+E           xception('the cancelled attempt failed')>
+E               raise ProtocolException("the cancelled attempt failed") from None
+E           zendriver.core.connection.ProtocolException: the cancelled attempt failed
+ERROR    asyncio:base_events.py:1758 Task exception was never retrieved
+future: <Task finished name='Task-45' coro=<Tab.select.<locals>._poll() done, defined at /home/user/zendriver/.claude/worktrees/wf_2c9e79a3-fb2-2/zendriver/core
+    raise ProtocolException("the cancelled attempt failed") from None
+zendriver.core.connection.ProtocolException: the cancelled attempt failed
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(RuntimeError("the attempt failed"))
+E       AssertionError: True
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(RuntimeError("the attempt failed"))
+E       AssertionError: None
+____ test_cf_bounds_keep_a_cancel_that_arrives_with_the_answer[failed-find] ____
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(RuntimeError("the attempt failed"))
+E       AssertionError: RuntimeError('the attempt failed')
+E        +    where <built-in method cancelled of _asyncio.Task object at 0x7f5591c18d40> = <Task finished name='Task-52' coro=<cf_is_interactive_challenge_pres
+___ test_cf_bounds_keep_a_cancel_that_arrives_with_the_answer[failed-click] ____
+    @pytest.mark.parametrize("fails", [False, True], ids=["found", "failed"])
+            answer.set_exception(RuntimeError("the attempt failed"))
+E       AssertionError: RuntimeError('the attempt failed')
+E        +    where <built-in method cancelled of _asyncio.Task object at 0x7f5591c18ba0> = <Task finished name='Task-55' coro=<verify_cf() done, defined at /ho
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[found-select]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[found-select_all]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[found-find]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[found-find_all]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[found-wait_for_selector]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[found-wait_for_text]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[found-xpath]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-select]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-select_all]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-find]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-find_all]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-wait_for_selector]
+FAILED tests/core/test_tab.py::test_polling_methods_keep_a_cancel_that_arrives_with_the_answer[failed-wait_for_text]
+FAILED tests/core/test_tab.py::test_polling_methods_retrieve_the_error_of_a_cancelled_attempt
+FAILED tests/core/test_cloudflare.py::test_cf_bounds_keep_a_cancel_that_arrives_with_the_answer[found-find]
+FAILED tests/core/test_cloudflare.py::test_cf_bounds_keep_a_cancel_that_arrives_with_the_answer[found-click]
+FAILED tests/core/test_cloudflare.py::test_cf_bounds_keep_a_cancel_that_arrives_with_the_answer[failed-find]
+FAILED tests/core/test_cloudflare.py::test_cf_bounds_keep_a_cancel_that_arrives_with_the_answer[failed-click]
+18 failed, 1 passed, 119 deselected in 0.31s
