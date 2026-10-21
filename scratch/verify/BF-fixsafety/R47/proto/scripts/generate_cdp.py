@@ -358,18 +358,28 @@ class CdpType:
         if doc:
             code += indent(doc, 4) + "\n"
 
+        if self.items and self.items.ref:
+            # convert the items as well, like generate_to_json does for properties
+            json_type = "typing.List[typing.Any]"
+            to_json_expr = "[i.to_json() for i in self]"
+            from_json_expr = f"cls([{nested_type}.from_json(i) for i in json])"
+        else:
+            json_type = py_type
+            to_json_expr = "self"
+            from_json_expr = "cls(json)"
+
         def_to_json = dedent(
             f"""\
-            def to_json(self) -> {py_type}:
-                return self"""
+            def to_json(self) -> {json_type}:
+                return {to_json_expr}"""
         )
         code += indent(def_to_json, 4)
 
         def_from_json = dedent(
             f"""\
             @classmethod
-            def from_json(cls, json: {py_type}) -> {self.id}:
-                return cls(json)"""
+            def from_json(cls, json: {json_type}) -> {self.id}:
+                return {from_json_expr}"""
         )
         code += "\n\n" + indent(def_from_json, 4)
 
@@ -379,6 +389,16 @@ class CdpType:
                 return '{self.id}({{}})'.format(super().__repr__())"""
         )
         code += "\n\n" + indent(def_repr, 4)
+
+        if superclass in ("int", "float"):
+            # int and float have no __str__ of their own, so keep str() and f-strings
+            # from falling through to the __repr__ above
+            def_str = dedent(
+                """\
+                def __str__(self):
+                    return super().__repr__()"""
+            )
+            code += "\n\n" + indent(def_str, 4)
 
         return code
 

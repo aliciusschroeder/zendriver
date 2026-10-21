@@ -1,7 +1,7 @@
 diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/_contradict.py b/zendriver/core/_contradict.py
 --- a/zendriver/core/_contradict.py	2026-10-20 18:32:07.000000000 +0000
-+++ b/zendriver/core/_contradict.py	2026-10-21 03:09:22.607226444 +0000
-@@ -49,11 +49,29 @@
++++ b/zendriver/core/_contradict.py	2026-10-21 03:17:34.332327275 +0000
+@@ -49,11 +49,30 @@
      def __setattr__(self, key: str, value: Any) -> None:
          super().__setitem__(key, _wrap(self.__class__, value))
  
@@ -19,7 +19,8 @@ diff -ruN -x __pycache__ -x '*.pyc' -x cdp a/zendriver/core/_contradict.py b/zen
 +            self[key] = default
 +        return self[key]
 +
-+    def __ior__(self, other: Any) -> "ContraDict":
++    # dict's generic __or__ overloads can not be matched by a subclass, hence the ignore
++    def __ior__(self, other: Any) -> "ContraDict":  # type: ignore[override,misc]
 +        ContraDict.update(self, other)
 +        return self
 +
