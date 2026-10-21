@@ -16,6 +16,7 @@ from typing import (
     Generator,
     List,
     Literal,
+    NamedTuple,
     Optional,
     TypeVar,
     Union,
@@ -194,6 +195,17 @@ class CantTouchThis(type):
         )
 
 
+class _ReceiveError(NamedTuple):
+    """
+    queued into a flat session's inbox when the reader of the websocket stopped on
+    an error, so that the session's commands that were waiting then fail behind the
+    responses already routed to it
+    """
+
+    exception: Exception
+    pending: list[int]
+
+
 class Connection(metaclass=CantTouchThis):
     websocket: websockets.asyncio.client.ClientConnection | None = None
     _target: cdp.target.TargetInfo | None
@@ -224,7 +236,7 @@ class Connection(metaclass=CantTouchThis):
         self.session_id: str | None = None
         self._session_parent: Connection | None = None
         self._sessions: dict[str, Connection] = {}
-        self._inbox: asyncio.Queue[dict[str, Any]] | None = None
+        self._inbox: asyncio.Queue[dict[str, Any] | _ReceiveError] | None = None
         self._attach_lock = asyncio.Lock()
         self._open_lock = asyncio.Lock()
         self.__dict__.update(**kwargs)
@@ -664,17 +676,38 @@ class Connection(metaclass=CantTouchThis):
         tx.id = self._next_message_id()
         self.mapper.update({tx.id: tx})
 
-        if not _is_update:
-            domain_name, _, action = tx.method.partition(".")
-            if action == "enable":
-                self._update_manual_domain(domain_name, action)
-            await self._register_handlers()
-            if action == "disable":
-                self._update_manual_domain(domain_name, action)
-        if self.websocket is None:
-            raise ProtocolException("target session was detached")
-        tx.session_id = self.session_id
-        await self._send_transaction(tx)
+        sent = False
+        manual_domain = None
+        try:
+            if not _is_update:
+                domain_name, _, action = tx.method.partition(".")
+                if action == "enable":
+                    manual_domain = self._update_manual_domain(domain_name, action)
+                await self._register_handlers()
+                if action == "disable":
+                    self._update_manual_domain(domain_name, action)
+            # the command may have failed meanwhile, e.g. when the reader stopped.
+            # don't send a command the caller is told has failed
+            if not tx.done():
+                if self.websocket is None:
+                    raise ProtocolException("target session was detached")
+                tx.session_id = self.session_id
+                await self._send_transaction(tx)
+                sent = True
+        finally:
+            if not sent:
+                # forget the command that never left, and its manual enable,
+                # so that the domain can still be enabled for its handlers
+                self.mapper.pop(tx.id, None)
+                if tx.done() and not tx.cancelled():
+                    # it failed meanwhile, e.g. by the close that then failed
+                    # its write too. send() may raise another error than this
+                    tx.exception()
+                if (
+                    manual_domain is not None
+                    and manual_domain in self.manually_enabled_domains
+                ):
+                    self.manually_enabled_domains.remove(manual_domain)
         try:
             return await tx
         except ProtocolException as e:
@@ -721,13 +754,26 @@ class Connection(metaclass=CantTouchThis):
                     logger.debug("registered %s", domain_mod)
                     self.enabled_domains.append(domain_mod)
 
-                    await self.send(domain_mod.enable(), _is_update=True)
+                    enable = domain_mod.enable()
+                    await self.send(enable, _is_update=True)
 
                 except asyncio.CancelledError:
-                    # the enable may not have reached the browser, so don't keep
-                    # the domain marked as enabled, and let the cancellation through
-                    if domain_mod in self.enabled_domains:
-                        self.enabled_domains.remove(domain_mod)
+                    # an enable that was written stays in the mapper until its
+                    # response arrives; send() forgets one that never left
+                    written = next(
+                        (i for i, t in self.mapper.items() if t.__cdp_obj__ is enable),
+                        None,
+                    )
+                    if written is None:
+                        # don't keep the domain marked as enabled, so the next
+                        # send enables it
+                        if domain_mod in self.enabled_domains:
+                            self.enabled_domains.remove(domain_mod)
+                    else:
+                        # keep it, or every later send enables it again first
+                        # and waits behind the pending one (e.g. while a dialog
+                        # blocks the page). only a rejection still undoes it
+                        self._expect_enable_response(written, domain_mod)
                     raise
                 except Exception:  # as broad as possible, we don't want an error before the "actual" request is sent
                     logger.debug("", exc_info=True)
@@ -745,19 +791,37 @@ class Connection(metaclass=CantTouchThis):
             if ed in self.enabled_domains:
                 self.enabled_domains.remove(ed)
 
+    def _expect_enable_response(self, tx_id: int, domain_mod: Any) -> None:
+        """
+        takes the place of a cancelled domain enable that reached the browser, so
+        that its response still removes the domain from the enabled domains when
+        the browser rejects the enable
+        """
+
+        def on_response(response: asyncio.Future[Any]) -> None:
+            if response.cancelled() or response.exception() is not None:
+                if domain_mod in self.enabled_domains:
+                    self.enabled_domains.remove(domain_mod)
+
+        stand_in: Transaction[Any] = Transaction(domain_mod.enable())
+        stand_in.connection = self
+        stand_in.id = tx_id
+        stand_in.add_done_callback(on_response)
+        self.mapper[tx_id] = stand_in
+
     def _update_manual_domain(
         self, domain_name: str, action: Literal["enable", "disable"]
-    ) -> None:
+    ) -> Any:
         """
         Updates the enabled domain lists for the given domain name
 
         :param domain_name:
         :param action:
-        :return:
+        :return: the domain module if it was added to the manually enabled domains
         :rtype:
         """
         if action not in ("enable", "disable"):
-            return
+            return None
         try:
             domain_mod = util.cdp_get_module(domain_name.lower())
         except ModuleNotFoundError:
@@ -765,7 +829,7 @@ class Connection(metaclass=CantTouchThis):
                 "Could not find module for domain %s",
                 domain_name,
             )
-            return
+            return None
 
         # manual enables/disables always overwrite auto enabled domains
         if domain_mod in self.enabled_domains:
@@ -774,6 +838,8 @@ class Connection(metaclass=CantTouchThis):
             self.manually_enabled_domains.remove(domain_mod)
         elif action == "enable" and domain_mod not in self.manually_enabled_domains:
             self.manually_enabled_domains.append(domain_mod)
+            return domain_mod
+        return None
 
     async def _prepare_headless(self) -> None:
         """
@@ -852,10 +918,18 @@ class Connection(metaclass=CantTouchThis):
     async def _receive_message(self) -> dict[str, Any] | None:
         """
         returns the next message addressed to this connection, or None when
-        the received message was routed to one of the flat sessions instead
+        the received message was routed to one of the flat sessions instead,
+        or was a receive error handled here
         """
         if self._inbox is not None:
-            return await self._inbox.get()
+            queued = await self._inbox.get()
+            if isinstance(queued, _ReceiveError):
+                for tx_id in queued.pending:
+                    tx = self.mapper.pop(tx_id, None)
+                    if tx is not None and not tx.done():
+                        tx.set_exception(queued.exception)
+                return None
+            return queued
         if self.websocket is None:
             raise ValueError("no websocket connection")
 
@@ -986,7 +1060,13 @@ class Listener:
                     exc_info=True,
                 )
                 for session in list(self.connection._sessions.values()):
-                    session._fail_pending_transactions(e)
+                    if session._inbox is not None:
+                        # only after the responses already routed to the session
+                        session._inbox.put_nowait(
+                            _ReceiveError(e, list(session.mapper))
+                        )
+                    else:
+                        session._fail_pending_transactions(e)
                 self.connection._fail_pending_transactions(e)
                 break
 
