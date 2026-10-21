@@ -1,0 +1,18 @@
+
+tests/core/test_tab.py:501
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R18-fixsafety/repotests/tests/core/test_tab.py:501: PytestUnknownMarkWarning: Unknown pytest.mark.external - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.external
+
+tests/core/test_tab.py:525
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R18-fixsafety/repotests/tests/core/test_tab.py:525: PytestUnknownMarkWarning: Unknown pytest.mark.external - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.external
+
+tests/core/test_tab.py:564
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R18-fixsafety/repotests/tests/core/test_tab.py:564: PytestUnknownMarkWarning: Unknown pytest.mark.external - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.external
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+95 passed, 14 deselected, 5 warnings in 37.96s
+/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R18-fixsafety/pkg/zendriver/__init__.py
+
+[exited with code 0]

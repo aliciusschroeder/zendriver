@@ -1,0 +1,65 @@
+--- /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R18-fixsafety/orig/zendriver/core/connection.py	2026-10-21 00:23:13.492440149 +0000
++++ /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/verify/R18-fixsafety/pkg/zendriver/core/connection.py	2026-10-21 00:26:43.363998404 +0000
+@@ -218,6 +218,7 @@
+         self._inbox: asyncio.Queue[dict[str, Any]] | None = None
+         self._attach_lock = asyncio.Lock()
+         self._open_lock = asyncio.Lock()
++        self._prepare_lock = asyncio.Lock()
+         self.__dict__.update(**kwargs)
+ 
+     @property
+@@ -635,10 +636,15 @@
+         if self._owner:
+             browser = self._owner
+             if browser.config:
+-                if browser.config.expert:
+-                    await self._prepare_expert()
+-                if browser.config.headless:
+-                    await self._prepare_headless()
++                # concurrent first sends must prepare the target only once: a second
++                # copy of the expert script makes attachShadow call itself
++                async with self._prepare_lock:
++                    if browser.config.expert:
++                        await self._prepare_expert()
++                    if browser.config.headless:
++                        await self._prepare_headless()
++            if self.websocket is None:
++                raise ProtocolException("target session was detached")
+         if not self.listener or not self.listener.running:
+             self.listener = Listener(self)
+ 
+@@ -758,6 +764,7 @@
+         """
+         if getattr(self, "_prep_headless_done", None):
+             return
++        session_id = self.session_id
+         headless_user_agent = self._owner._headless_user_agent if self._owner else None
+         if headless_user_agent is not None:
+             user_agent, metadata = headless_user_agent
+@@ -784,11 +791,14 @@
+                         user_agent=ua.replace("Headless", ""),
+                     )
+                 )
+-        setattr(self, "_prep_headless_done", True)
++        # a session detached meanwhile is prepared again once it is reattached
++        if self.websocket is not None and self.session_id == session_id:
++            setattr(self, "_prep_headless_done", True)
+ 
+     async def _prepare_expert(self) -> None:
+         if getattr(self, "_prep_expert_done", None):
+             return
++        session_id = self.session_id
+         if self._owner:
+             await self._send_oneshot(
+                 cdp.page.add_script_to_evaluate_on_new_document(
+@@ -802,7 +812,9 @@
+             )
+ 
+             await self._send_oneshot(cdp.page.enable())
+-        setattr(self, "_prep_expert_done", True)
++        # a session detached meanwhile is prepared again once it is reattached
++        if self.websocket is not None and self.session_id == session_id:
++            setattr(self, "_prep_expert_done", True)
+ 
+     def _next_message_id(self) -> int:
+         """
