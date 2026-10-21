@@ -1,21 +1,30 @@
 import asyncio
+import contextlib
 import gc
 import http.cookiejar
+import json
+import os
 import pathlib
 import pickle
+import shutil
 import subprocess
+import sys
 import weakref
+from typing import Any, AsyncIterator, Callable, Iterator
 
 import psutil
 import pytest
 from psutil import Process
 from pytest_mock import MockerFixture
+from websockets.asyncio.server import ServerConnection, serve
+from websockets.exceptions import ConnectionClosed
 
 import zendriver as zd
 from tests.conftest import CreateBrowser
 from tests.sample_data import sample_file
 from zendriver import cdp
 from zendriver.core.connection import ProtocolException
+from zendriver.core.proxy import ProxyForwarder, UpstreamProxy
 
 # these tests exercise the browser lifecycle (e.g. stopping it)
 pytestmark = pytest.mark.fresh_browser
@@ -356,3 +365,307 @@ async def test_get_tab_matches_url_and_title(browser: zd.Browser) -> None:
     assert await browser.get_tab("groceries.html") is tab
     assert await browser.get_tab("grocery list") is tab
     assert await browser.get_tab("does-not-exist") is None
+
+
+# python programs which stand in for the browser process in the stop() tests
+# below, so that these need no browser. each prints "ready" once it can be stopped
+EXITS_ON_SIGTERM = "import time; print('ready', flush=True); time.sleep(60)"
+EXITS_A_WHILE_AFTER_SIGTERM = """
+import os, signal, time
+def exit_soon(*_):
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    time.sleep(0.4)
+    os._exit(0)
+signal.signal(signal.SIGTERM, exit_soon)
+print('ready', flush=True)
+time.sleep(60)
+"""
+IGNORES_SIGTERM = """
+import signal, time
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+print('ready', flush=True)
+time.sleep(60)
+"""
+
+StubBrowserFactory = Callable[..., tuple[zd.Browser, subprocess.Popen[bytes]]]
+
+
+@pytest.fixture
+def stub_browser() -> Iterator[StubBrowserFactory]:
+    """creates browsers whose process runs one of the programs above"""
+    created: list[tuple[zd.Browser, subprocess.Popen[bytes]]] = []
+
+    def create(
+        program: str = EXITS_ON_SIGTERM,
+    ) -> tuple[zd.Browser, subprocess.Popen[bytes]]:
+        browser = zd.Browser(zd.Config(browser_executable_path=sys.executable))
+        # creates the temporary profile, as start() does
+        assert os.path.isdir(browser.config.user_data_dir)
+        process = subprocess.Popen(
+            [sys.executable, "-c", program], stdout=subprocess.PIPE
+        )
+        created.append((browser, process))
+        assert process.stdout is not None
+        assert process.stdout.readline().strip() == b"ready"
+        browser._process, browser._process_pid = process, process.pid
+        return browser, process
+
+    yield create
+    for browser, process in created:
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+        if process.stdout is not None:
+            process.stdout.close()
+        shutil.rmtree(browser.config.user_data_dir, ignore_errors=True)
+
+
+@contextlib.asynccontextmanager
+async def _fake_chrome(
+    method: str, misbehave: Callable[[ServerConnection], None]
+) -> AsyncIterator[str]:
+    """
+    serves a cdp peer which answers every command with an empty result, except
+    `method`, on which it calls `misbehave` instead. yields its websocket url
+    """
+
+    async def handler(websocket: ServerConnection) -> None:
+        with contextlib.suppress(ConnectionClosed):
+            async for raw in websocket:
+                message = json.loads(raw)
+                if message["method"] == method:
+                    misbehave(websocket)
+                    continue
+                result: dict[str, Any] = {}
+                if message["method"] == "Target.attachToTarget":
+                    target_id = message["params"]["targetId"]
+                    result = {"sessionId": f"session-{target_id}"}
+                reply: dict[str, Any] = {"id": message["id"], "result": result}
+                if "sessionId" in message:
+                    reply["sessionId"] = message["sessionId"]
+                await websocket.send(json.dumps(reply))
+
+    async with serve(handler, "127.0.0.1", 0) as server:
+        port = list(server.sockets)[0].getsockname()[1]
+        yield f"ws://127.0.0.1:{port}/devtools/browser/fake"
+
+
+async def _attach_tabs(browser: zd.Browser, websocket_url: str, count: int) -> None:
+    browser.connection = zd.Connection(websocket_url, _owner=browser)
+    for i in range(count):
+        target = cdp.target.TargetInfo(
+            target_id=cdp.target.TargetID(f"tab-{i}"),
+            type_="page",
+            title="",
+            url="about:blank",
+            attached=False,
+            can_access_opener=False,
+        )
+        tab = zd.Tab(websocket_url, target=target, browser=browser)
+        browser.targets.append(tab)
+        await tab.aopen()
+        assert tab.session_id is not None
+
+
+@pytest.mark.parametrize("method", ["Target.detachFromTarget", "Browser.close"])
+async def test_browser_stop_terminates_a_browser_which_stopped_responding(
+    method: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5)
+    browser, process = stub_browser()
+    async with _fake_chrome(method, lambda websocket: None) as websocket_url:
+        await _attach_tabs(browser, websocket_url, 2)
+
+        stop = asyncio.create_task(browser.stop())
+        done, _ = await asyncio.wait({stop}, timeout=10)
+        if not done:
+            stop.cancel()
+            await asyncio.gather(stop, return_exceptions=True)
+        assert done, f"stop() still waits for the {method} reply"
+        await stop
+
+    assert process.poll() is not None
+    assert not os.path.exists(browser.config.user_data_dir)
+
+
+async def test_browser_stop_cleans_up_when_the_connection_drops_while_detaching(
+    stub_browser: StubBrowserFactory,
+) -> None:
+    browser, process = stub_browser()
+    # like a browser which crashed: the connection ends without a close frame
+    async with _fake_chrome(
+        "Target.detachFromTarget", lambda websocket: websocket.transport.abort()
+    ) as websocket_url:
+        await _attach_tabs(browser, websocket_url, 2)
+
+        await asyncio.wait_for(browser.stop(), timeout=10)
+
+    assert browser._process is None
+    assert process.poll() is not None
+    assert not os.path.exists(browser.config.user_data_dir)
+
+
+async def test_concurrent_browser_stop_calls_do_not_raise(
+    stub_browser: StubBrowserFactory,
+) -> None:
+    # the process takes a while to exit, so that both calls wait for it
+    browser, process = stub_browser(EXITS_A_WHILE_AFTER_SIGTERM)
+
+    first = asyncio.create_task(browser.stop())
+    await asyncio.sleep(0.1)
+    second = asyncio.create_task(browser.stop())
+    results = await asyncio.wait_for(
+        asyncio.gather(first, second, return_exceptions=True), timeout=10
+    )
+
+    assert list(results) == [None, None]
+    assert process.poll() is not None
+    assert not os.path.exists(browser.config.user_data_dir)
+
+
+async def test_cancelled_browser_stop_leaves_no_unretrieved_exception(
+    stub_browser: StubBrowserFactory,
+) -> None:
+    browser, process = stub_browser()
+    loop = asyncio.get_running_loop()
+    # so that garbage left by earlier tests does not reach the handler below
+    gc.collect()
+    contexts: list[dict[str, Any]] = []
+    handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda loop, context: contexts.append(context))
+    try:
+        detaching = asyncio.Event()
+        async with _fake_chrome(
+            "Target.detachFromTarget", lambda websocket: detaching.set()
+        ) as websocket_url:
+            await _attach_tabs(browser, websocket_url, 2)
+
+            # cancelled while it waits for the detach replies, as by a ctrl+c
+            # or by asyncio.wait_for(browser.stop(), timeout)
+            stop = asyncio.create_task(browser.stop())
+            await asyncio.wait_for(detaching.wait(), timeout=10)
+            stop.cancel()
+            await asyncio.wait({stop}, timeout=10)
+            assert stop.cancelled()
+            # python < 3.12 reports an exception which was never retrieved
+            # once the futures of the cancelled stop() are collected
+            del stop
+            gc.collect()
+
+            await asyncio.wait_for(browser.stop(), timeout=10)
+    finally:
+        loop.set_exception_handler(handler)
+
+    assert not [
+        context for context in contexts if "never retrieved" in context["message"]
+    ], contexts
+    assert process.poll() is not None
+    assert not os.path.exists(browser.config.user_data_dir)
+
+
+@pytest.mark.parametrize("closes", ["once_the_browser_is_gone", "never"])
+async def test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone(
+    closes: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5)
+    browser, process = stub_browser()
+    forwarder = ProxyForwarder(UpstreamProxy("http", "127.0.0.1", 1, "user", "pass"))
+    closed = asyncio.Event()
+
+    async def close() -> None:
+        # as ProxyForwarder.close() does on python >= 3.12.1, which waits until
+        # the browser's connections to the forwarder are closed
+        while closes == "never" or process.poll() is None:
+            await asyncio.sleep(0.05)
+        closed.set()
+
+    monkeypatch.setattr(forwarder, "close", close)
+    browser._proxy_forwarders.append(forwarder)
+
+    stop = asyncio.create_task(browser.stop())
+    done, _ = await asyncio.wait({stop}, timeout=10)
+    if not done:
+        stop.cancel()
+        await asyncio.gather(stop, return_exceptions=True)
+    assert done, "stop() still waits for the proxy forwarder to close"
+    await stop
+
+    assert closed.is_set() == (closes == "once_the_browser_is_gone")
+    assert not browser._proxy_forwarders
+    assert process.poll() is not None
+    assert not os.path.exists(browser.config.user_data_dir)
+
+
+async def test_browser_stop_keeps_a_process_started_while_it_ran(
+    stub_browser: StubBrowserFactory,
+) -> None:
+    browser, process = stub_browser(EXITS_A_WHILE_AFTER_SIGTERM)
+
+    stop = asyncio.create_task(browser.stop())
+    await asyncio.sleep(0.1)
+    # as if the browser was started again while stop() waits for the old process
+    _, new_process = stub_browser()
+    browser._process, browser._process_pid = new_process, new_process.pid
+    await asyncio.wait_for(stop, timeout=10)
+
+    assert process.poll() is not None
+    assert browser._process is new_process
+    assert browser._process_pid == new_process.pid
+
+
+ATEXIT_SCRIPT = """
+import asyncio, subprocess, sys
+import asyncio_atexit
+import zendriver as zd
+
+async def main():
+    browser = zd.Browser(zd.Config(browser_executable_path=sys.executable))
+    process = subprocess.Popen(
+        [sys.executable, "-c", sys.argv[1]],
+        stdout=subprocess.PIPE,
+        # so that a process which is left running does not hold the test's pipe
+        stderr=subprocess.DEVNULL,
+    )
+    assert process.stdout.readline().strip() == b"ready"
+    browser._process, browser._process_pid = process, process.pid
+    asyncio_atexit.register(browser._atexit_cleanup)  # as Browser.create does
+    print(process.pid, flush=True)
+    print(browser.config.user_data_dir, flush=True)
+    if sys.argv[2] == "cancelled":
+        try:
+            await asyncio.wait_for(browser.stop(), 0.5)
+        except asyncio.TimeoutError:
+            pass
+
+asyncio.run(main())
+"""
+
+
+@pytest.mark.parametrize(
+    "program, stop",
+    [(EXITS_ON_SIGTERM, "never"), (IGNORES_SIGTERM, "cancelled")],
+    ids=["stop_never_called", "stop_cancelled"],
+)
+def test_atexit_cleanup_stops_the_browser_under_asyncio_run(
+    program: str, stop: str
+) -> None:
+    # asyncio.run shuts the default executor down before it closes the loop,
+    # which is when asyncio_atexit runs the cleanup
+    result = subprocess.run(
+        [sys.executable, "-c", ATEXIT_SCRIPT, program, stop],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    lines = result.stdout.splitlines()
+    assert len(lines) == 2, result.stderr
+    pid, user_data_dir = int(lines[0]), lines[1]
+    try:
+        assert result.returncode == 0, result.stderr
+        assert "Unhandled exception" not in result.stderr, result.stderr
+        assert not psutil.pid_exists(pid), "the browser process outlived python"
+        assert not os.path.exists(user_data_dir)
+    finally:
+        with contextlib.suppress(psutil.NoSuchProcess):
+            Process(pid).kill()
+        shutil.rmtree(user_data_dir, ignore_errors=True)
