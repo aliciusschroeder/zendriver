@@ -1,0 +1,24 @@
+Make Browser.stop() always terminate the process and remove the profile
+
+stop() awaited Target.detachFromTarget for every target and then
+Browser.close with no timeout, so a browser which stopped responding kept
+it from ever reaching terminate()/kill(). Both steps are now bounded by
+STOP_COMMAND_TIMEOUT (5 s), and errors from detaching, such as the
+ConnectionClosedError a crashed browser causes, no longer abort the
+cleanup.
+
+The proxy forwarders are now closed only once the browser process is
+gone, and with the same bound, because on Python >= 3.12.1 closing one
+waits until the browser's connections to it are closed, which a browser
+that stopped reading from them holds open.
+
+The atexit cleanup failed under asyncio.run, because asyncio.run shuts
+the default executor down before asyncio_atexit runs, so the
+asyncio.to_thread(process.wait) call raised and the temporary profile
+was left behind. The killed process is now polled instead.
+
+_stop() works on a local reference to the process, so that a concurrent
+stop() setting self._process to None can not make it raise
+AttributeError, and it forgets the process only if nothing replaced it
+in the meantime. stop() unregisters the atexit cleanup only once
+stopped, so that a stop() which is cancelled or fails keeps it.

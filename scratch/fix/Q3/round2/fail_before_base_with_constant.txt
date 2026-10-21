@@ -1,0 +1,145 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+_ test_browser_stop_terminates_a_browser_which_stopped_responding[Target.detachFromTarget] _
+
+method = 'Target.detachFromTarget'
+stub_browser = <function stub_browser.<locals>.create at 0x7f260c61e050>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f260c634e20>
+
+    @pytest.mark.parametrize("method", ["Target.detachFromTarget", "Browser.close"])
+    async def test_browser_stop_terminates_a_browser_which_stopped_responding(
+        method: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5)
+        browser, process = stub_browser()
+        async with _fake_chrome(method, lambda websocket: None) as websocket_url:
+            await _attach_tabs(browser, websocket_url, 2)
+    
+            stop = asyncio.create_task(browser.stop())
+            done, _ = await asyncio.wait({stop}, timeout=10)
+            if not done:
+                stop.cancel()
+                await asyncio.gather(stop, return_exceptions=True)
+>           assert done, f"stop() still waits for the {method} reply"
+E           AssertionError: stop() still waits for the Target.detachFromTarget reply
+E           assert set()
+
+tests/core/test_browser.py:484: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+INFO     websockets.server:server.py:338 server listening on 127.0.0.1:33971
+INFO     websockets.server:server.py:535 connection open
+INFO     websockets.server:server.py:437 server closing
+INFO     websockets.server:server.py:470 server closed
+_ test_browser_stop_terminates_a_browser_which_stopped_responding[Browser.close] _
+
+method = 'Browser.close'
+stub_browser = <function stub_browser.<locals>.create at 0x7f260c61e320>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f260c602920>
+
+    @pytest.mark.parametrize("method", ["Target.detachFromTarget", "Browser.close"])
+    async def test_browser_stop_terminates_a_browser_which_stopped_responding(
+        method: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5)
+        browser, process = stub_browser()
+        async with _fake_chrome(method, lambda websocket: None) as websocket_url:
+            await _attach_tabs(browser, websocket_url, 2)
+    
+            stop = asyncio.create_task(browser.stop())
+            done, _ = await asyncio.wait({stop}, timeout=10)
+            if not done:
+                stop.cancel()
+                await asyncio.gather(stop, return_exceptions=True)
+>           assert done, f"stop() still waits for the {method} reply"
+E           AssertionError: stop() still waits for the Browser.close reply
+E           assert set()
+
+tests/core/test_browser.py:484: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+INFO     websockets.server:server.py:338 server listening on 127.0.0.1:39789
+INFO     websockets.server:server.py:535 connection open
+INFO     websockets.server:server.py:437 server closing
+INFO     websockets.server:server.py:470 server closed
+_ test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[once_the_browser_is_gone] _
+
+closes = 'once_the_browser_is_gone'
+stub_browser = <function stub_browser.<locals>.create at 0x7f260c4d1900>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f260c523ee0>
+
+    @pytest.mark.parametrize("closes", ["once_the_browser_is_gone", "never"])
+    async def test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone(
+        closes: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5)
+        browser, process = stub_browser()
+        forwarder = ProxyForwarder(UpstreamProxy("http", "127.0.0.1", 1, "user", "pass"))
+        closed = asyncio.Event()
+    
+        async def close() -> None:
+            # as ProxyForwarder.close() does on python >= 3.12.1, which waits until
+            # the browser's connections to the forwarder are closed
+            while closes == "never" or process.poll() is None:
+                await asyncio.sleep(0.05)
+            closed.set()
+    
+        monkeypatch.setattr(forwarder, "close", close)
+        browser._proxy_forwarders.append(forwarder)
+    
+        stop = asyncio.create_task(browser.stop())
+        done, _ = await asyncio.wait({stop}, timeout=10)
+        if not done:
+            stop.cancel()
+            await asyncio.gather(stop, return_exceptions=True)
+>       assert done, "stop() still waits for the proxy forwarder to close"
+E       AssertionError: stop() still waits for the proxy forwarder to close
+E       assert set()
+
+tests/core/test_browser.py:590: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+__ test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[never] ___
+
+closes = 'never'
+stub_browser = <function stub_browser.<locals>.create at 0x7f260c4d1b40>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f260c4fd3f0>
+
+    @pytest.mark.parametrize("closes", ["once_the_browser_is_gone", "never"])
+    async def test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone(
+        closes: str, stub_browser: StubBrowserFactory, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("zendriver.core.browser.STOP_COMMAND_TIMEOUT", 0.5)
+        browser, process = stub_browser()
+        forwarder = ProxyForwarder(UpstreamProxy("http", "127.0.0.1", 1, "user", "pass"))
+        closed = asyncio.Event()
+    
+        async def close() -> None:
+            # as ProxyForwarder.close() does on python >= 3.12.1, which waits until
+            # the browser's connections to the forwarder are closed
+            while closes == "never" or process.poll() is None:
+                await asyncio.sleep(0.05)
+            closed.set()
+    
+        monkeypatch.setattr(forwarder, "close", close)
+        browser._proxy_forwarders.append(forwarder)
+    
+        stop = asyncio.create_task(browser.stop())
+        done, _ = await asyncio.wait({stop}, timeout=10)
+        if not done:
+            stop.cancel()
+            await asyncio.gather(stop, return_exceptions=True)
+>       assert done, "stop() still waits for the proxy forwarder to close"
+E       AssertionError: stop() still waits for the proxy forwarder to close
+E       assert set()
+
+tests/core/test_browser.py:590: AssertionError
+------------------------------ Captured log call -------------------------------
+INFO     zendriver.core.config:config.py:107 detected root usage, auto disabling sandbox mode
+=========================== short test summary info ============================
+FAILED tests/core/test_browser.py::test_browser_stop_terminates_a_browser_which_stopped_responding[Target.detachFromTarget]
+FAILED tests/core/test_browser.py::test_browser_stop_terminates_a_browser_which_stopped_responding[Browser.close]
+FAILED tests/core/test_browser.py::test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[once_the_browser_is_gone]
+FAILED tests/core/test_browser.py::test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[never]
+4 failed, 24 deselected in 40.15s

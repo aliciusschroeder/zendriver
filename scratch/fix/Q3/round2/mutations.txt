@@ -1,0 +1,13 @@
+applied unbounded_forwarders
+FAILED tests/core/test_browser.py::test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[never]
+1 failed, 9 passed, 18 deselected in 18.08s
+applied forwarders_before_process
+FAILED tests/core/test_browser.py::test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[once_the_browser_is_gone]
+1 failed, 9 passed, 18 deselected in 9.32s
+applied gather_to_wait_for
+FAILED tests/core/test_browser.py::test_cancelled_browser_stop_leaves_no_unretrieved_exception
+1 failed, 9 passed, 18 deselected in 8.84s
+applied unguarded_process_reset
+FAILED tests/core/test_browser.py::test_browser_stop_keeps_a_process_started_while_it_ran
+1 failed, 9 passed, 18 deselected in 8.84s
+restored
