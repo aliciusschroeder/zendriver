@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import subprocess
+import threading
 import types
 import typing
+import weakref
 from asyncio import AbstractEventLoop
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Set, Union
@@ -345,22 +348,73 @@ def _start_process(
 
     :return: An instance of `subprocess.Popen`.
     """
-    return subprocess.Popen(
+    process = subprocess.Popen(
         [str(exe)] + params,
         stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         close_fds=is_posix,
         env=None if env is None else dict(env),
     )
+    if process.stderr is not None:
+        _stderr_tails[process] = _StderrTail(process.stderr)
+    return process
+
+
+class _StderrTail:
+    """
+    Keep reading the stderr of a browser process in a daemon thread.
+
+    A browser whose stderr pipe is full blocks on its next log write and stops
+    answering CDP, so the pipe is drained for as long as the browser runs. Only
+    the last ``size`` bytes are kept, to show them when the browser fails to start.
+    """
+
+    def __init__(self, stream: typing.IO[bytes], size: int = 2**16) -> None:
+        self._size = size
+        self._data = bytearray()
+        self._lock = threading.Lock()
+        self._thread = threading.Thread(
+            target=self._drain,
+            args=(stream,),
+            name="zendriver-browser-stderr",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def _drain(self, stream: typing.IO[bytes]) -> None:
+        try:
+            # os.read returns what is available instead of waiting for a full chunk
+            while chunk := os.read(stream.fileno(), 2**16):
+                with self._lock:
+                    self._data += chunk
+                    del self._data[: -self._size]
+        except (OSError, ValueError):
+            pass
+        finally:
+            stream.close()
+
+    async def read(self, n: int, timeout: float) -> bytes:
+        # give the thread a moment to read what an exiting browser wrote last
+        await asyncio.to_thread(self._thread.join, timeout)
+        with self._lock:
+            return bytes(self._data[max(0, len(self._data) - n) :])
+
+
+_stderr_tails: weakref.WeakKeyDictionary[subprocess.Popen[bytes], _StderrTail] = (
+    weakref.WeakKeyDictionary()
+)
 
 
 async def _read_process_stderr(process: subprocess.Popen[bytes], n: int = 2**16) -> str:
     """
-    Read the given number of bytes from the stderr of the given process.
+    Read up to the given number of bytes the given process last wrote to stderr.
 
     Read bytes are automatically decoded to utf-8.
     """
+    tail = _stderr_tails.get(process)
+    if tail is not None:
+        return (await tail.read(n, 0.25)).decode("utf-8", errors="replace")
 
     async def read_stderr() -> bytes:
         if process.stderr is None:
@@ -368,7 +422,9 @@ async def _read_process_stderr(process: subprocess.Popen[bytes], n: int = 2**16)
         return await asyncio.to_thread(process.stderr.read, n)
 
     try:
-        return (await asyncio.wait_for(read_stderr(), 0.25)).decode("utf-8")
+        return (await asyncio.wait_for(read_stderr(), 0.25)).decode(
+            "utf-8", errors="replace"
+        )
     except asyncio.TimeoutError:
         logger.debug("Timeout reading process stderr")
         return ""
