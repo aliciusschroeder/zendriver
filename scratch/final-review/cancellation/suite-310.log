@@ -1,0 +1,56 @@
+
+tests/core/test_browser.py::test_connection_error_raises_exception_and_logs_stderr PASSED [  0%]
+tests/core/test_browser.py::test_get_content_gets_html_content[headless0] PASSED [  1%]
+tests/core/test_browser.py::test_update_target_sets_target_title[headless0] PASSED [  1%]
+tests/core/test_browser.py::test_browser_stop_can_be_called_on_a_closed_connection[headless0] PASSED [  2%]
+tests/core/test_browser.py::test_browser_stop_can_be_called_multiple_times[headless0] PASSED [  2%]
+tests/core/test_browser.py::test_browser_stop_exits_gracefully_without_kill[headless0] PASSED [  3%]
+tests/core/test_browser.py::test_browser_is_garbage_collected_after_stop PASSED [  3%]
+tests/core/test_browser.py::test_browser_stopped_is_true_after_calling_stop[headless0] PASSED [  4%]
+tests/core/test_browser.py::test_browser_stopped_is_true_when_stopped_externally[headless0] PASSED [  4%]
+tests/core/test_browser.py::test_cookies_save_writes_only_the_cookies_matching_the_pattern[headless0] PASSED [  5%]
+tests/core/test_browser.py::test_cookies_save_and_load_round_trip[headless0] PASSED [  5%]
+tests/core/test_browser.py::test_cookies_get_all_in_requests_cookie_format[headless0] PASSED [  6%]
+tests/core/test_browser.py::test_browser_starts_with_lang_option PASSED  [  7%]
+tests/core/test_browser.py::test_iframe_target_can_be_connected_to[headless0] PASSED [  7%]
+tests/core/test_browser.py::test_start_waits_for_initial_tab[headless0] PASSED [  8%]
+tests/core/test_browser.py::test_pending_commands_fail_when_browser_process_dies[headless0] PASSED [  8%]
+------------------------------ live log teardown -------------------------------
+WARNING  zendriver.core.browser:browser.py:929 Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
+
+tests/core/test_browser.py::test_pending_commands_fail_when_connection_is_closed[headless0] PASSED [  9%]
+tests/core/test_browser.py::test_get_tab_matches_url_and_title[headless0] PASSED [  9%]
+tests/core/test_browser.py::test_aexit_propagates_the_original_exception[json] PASSED [ 10%]
+tests/core/test_browser.py::test_aexit_propagates_the_original_exception[connection-closed] PASSED [ 10%]
+tests/core/test_browser.py::test_aexit_propagates_the_original_exception[protocol] PASSED [ 11%]
+tests/core/test_browser.py::test_aexit_propagates_the_original_exception[system-exit] PASSED [ 11%]
+tests/core/test_browser.py::test_aexit_propagates_the_original_exception[exception-group] SKIPPED [ 12%]
+tests/core/test_browser.py::test_cancelled_start_stops_the_launched_browser PASSED [ 13%]
+tests/core/test_browser.py::test_failed_start_stops_the_launched_browser PASSED [ 13%]
+tests/core/test_browser.py::test_failed_start_does_not_close_an_attached_browser PASSED [ 14%]
+tests/core/test_browser.py::test_browser_stop_terminates_a_browser_which_stopped_responding[Target.detachFromTarget] PASSED [ 14%]
+tests/core/test_browser.py::test_browser_stop_terminates_a_browser_which_stopped_responding[Browser.close] 
+-------------------------------- live log call ---------------------------------
+WARNING  zendriver.core.browser:browser.py:929 Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
+PASSED                                                                   [ 15%]
+tests/core/test_browser.py::test_browser_stop_cleans_up_when_the_connection_drops_while_detaching 
+-------------------------------- live log call ---------------------------------
+WARNING  zendriver.core.browser:browser.py:929 Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
+PASSED                                                                   [ 15%]
+tests/core/test_browser.py::test_concurrent_browser_stop_calls_do_not_raise PASSED [ 16%]
+tests/core/test_browser.py::test_cancelled_browser_stop_leaves_no_unretrieved_exception PASSED [ 16%]
+tests/core/test_browser.py::test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[once_the_browser_is_gone] PASSED [ 17%]
+tests/core/test_browser.py::test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[never] PASSED [ 17%]
+tests/core/test_browser.py::test_browser_stop_keeps_a_process_started_while_it_ran PASSED [ 18%]
+tests/core/test_browser.py::test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_never_called] PASSED [ 19%]
+tests/core/test_browser.py::test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_cancelled] PASSED [ 19%]
+tests/core/test_cloudflare.py::test_verify_cf_clicks_checkbox_when_input_is_document_level PASSED [ 20%]
+tests/core/test_cloudflare.py::test_cf_is_interactive_challenge_present_is_false_when_cdp_reply_never_arrives 
+-------------------------------- live log call ---------------------------------
+WARNING  zendriver.core.cloudflare:cloudflare.py:114 Timeout: Cloudflare challenge elements not found or not visible within 1 seconds.
+PASSED                                                                   [ 20%]
+tests/core/test_cloudflare.py::test_verify_cf_raises_when_cdp_reply_never_arrives 
+-------------------------------- live log call ---------------------------------
+WARNING  zendriver.core.cloudflare:cloudflare.py:114 Timeout: Cloudflare challenge elements not found or not visible within 1 seconds.
+PASSED                                                                   [ 21%]
+tests/core/test_cloudflare.py::test_verify_cf_raises_when_cdp_reply_never_arrives_during_clicks 

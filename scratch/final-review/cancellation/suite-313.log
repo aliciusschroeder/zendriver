@@ -1,0 +1,320 @@
+
+tests/core/test_browser.py::test_connection_error_raises_exception_and_logs_stderr PASSED [  0%]
+tests/core/test_browser.py::test_get_content_gets_html_content[headless0] PASSED [  1%]
+tests/core/test_browser.py::test_update_target_sets_target_title[headless0] PASSED [  1%]
+tests/core/test_browser.py::test_browser_stop_can_be_called_on_a_closed_connection[headless0] PASSED [  2%]
+tests/core/test_browser.py::test_browser_stop_can_be_called_multiple_times[headless0] PASSED [  2%]
+tests/core/test_browser.py::test_browser_stop_exits_gracefully_without_kill[headless0] PASSED [  3%]
+tests/core/test_browser.py::test_browser_is_garbage_collected_after_stop PASSED [  3%]
+tests/core/test_browser.py::test_browser_stopped_is_true_after_calling_stop[headless0] PASSED [  4%]
+tests/core/test_browser.py::test_browser_stopped_is_true_when_stopped_externally[headless0] PASSED [  4%]
+tests/core/test_browser.py::test_cookies_save_writes_only_the_cookies_matching_the_pattern[headless0] PASSED [  5%]
+tests/core/test_browser.py::test_cookies_save_and_load_round_trip[headless0] PASSED [  5%]
+tests/core/test_browser.py::test_cookies_get_all_in_requests_cookie_format[headless0] PASSED [  6%]
+tests/core/test_browser.py::test_browser_starts_with_lang_option PASSED  [  7%]
+tests/core/test_browser.py::test_iframe_target_can_be_connected_to[headless0] PASSED [  7%]
+tests/core/test_browser.py::test_start_waits_for_initial_tab[headless0] PASSED [  8%]
+tests/core/test_browser.py::test_pending_commands_fail_when_browser_process_dies[headless0] PASSED [  8%]
+------------------------------ live log teardown -------------------------------
+WARNING  zendriver.core.browser:browser.py:929 Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
+
+tests/core/test_browser.py::test_pending_commands_fail_when_connection_is_closed[headless0] PASSED [  9%]
+tests/core/test_browser.py::test_get_tab_matches_url_and_title[headless0] PASSED [  9%]
+tests/core/test_browser.py::test_aexit_propagates_the_original_exception[json] PASSED [ 10%]
+tests/core/test_browser.py::test_aexit_propagates_the_original_exception[connection-closed] PASSED [ 10%]
+tests/core/test_browser.py::test_aexit_propagates_the_original_exception[protocol] PASSED [ 11%]
+tests/core/test_browser.py::test_aexit_propagates_the_original_exception[system-exit] PASSED [ 11%]
+tests/core/test_browser.py::test_aexit_propagates_the_original_exception[exception-group] PASSED [ 12%]
+tests/core/test_browser.py::test_cancelled_start_stops_the_launched_browser PASSED [ 13%]
+tests/core/test_browser.py::test_failed_start_stops_the_launched_browser PASSED [ 13%]
+tests/core/test_browser.py::test_failed_start_does_not_close_an_attached_browser PASSED [ 14%]
+tests/core/test_browser.py::test_browser_stop_terminates_a_browser_which_stopped_responding[Target.detachFromTarget] PASSED [ 14%]
+tests/core/test_browser.py::test_browser_stop_terminates_a_browser_which_stopped_responding[Browser.close] 
+-------------------------------- live log call ---------------------------------
+WARNING  zendriver.core.browser:browser.py:929 Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
+PASSED                                                                   [ 15%]
+tests/core/test_browser.py::test_browser_stop_cleans_up_when_the_connection_drops_while_detaching 
+-------------------------------- live log call ---------------------------------
+WARNING  zendriver.core.browser:browser.py:929 Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection.
+PASSED                                                                   [ 15%]
+tests/core/test_browser.py::test_concurrent_browser_stop_calls_do_not_raise PASSED [ 16%]
+tests/core/test_browser.py::test_cancelled_browser_stop_leaves_no_unretrieved_exception PASSED [ 16%]
+tests/core/test_browser.py::test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[once_the_browser_is_gone] PASSED [ 17%]
+tests/core/test_browser.py::test_browser_stop_closes_proxy_forwarders_once_the_browser_is_gone[never] PASSED [ 17%]
+tests/core/test_browser.py::test_browser_stop_keeps_a_process_started_while_it_ran PASSED [ 18%]
+tests/core/test_browser.py::test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_never_called] PASSED [ 19%]
+tests/core/test_browser.py::test_atexit_cleanup_stops_the_browser_under_asyncio_run[stop_cancelled] PASSED [ 19%]
+tests/core/test_cloudflare.py::test_verify_cf_clicks_checkbox_when_input_is_document_level PASSED [ 20%]
+tests/core/test_cloudflare.py::test_cf_is_interactive_challenge_present_is_false_when_cdp_reply_never_arrives 
+-------------------------------- live log call ---------------------------------
+WARNING  zendriver.core.cloudflare:cloudflare.py:114 Timeout: Cloudflare challenge elements not found or not visible within 1 seconds.
+PASSED                                                                   [ 20%]
+tests/core/test_cloudflare.py::test_verify_cf_raises_when_cdp_reply_never_arrives 
+-------------------------------- live log call ---------------------------------
+WARNING  zendriver.core.cloudflare:cloudflare.py:114 Timeout: Cloudflare challenge elements not found or not visible within 1 seconds.
+PASSED                                                                   [ 21%]
+tests/core/test_cloudflare.py::test_verify_cf_raises_when_cdp_reply_never_arrives_during_clicks PASSED [ 21%]
+tests/core/test_cloudflare.py::test_verify_cf_click_delay_does_not_overrun_timeout PASSED [ 22%]
+tests/core/test_config.py::test_lang_is_added_to_browser_args PASSED     [ 22%]
+tests/core/test_config.py::test_lang_is_omitted_when_unset PASSED        [ 23%]
+tests/core/test_config.py::test_lang_can_be_combined_with_other_browser_args PASSED [ 23%]
+tests/core/test_config.py::test_add_argument_still_rejects_lang PASSED   [ 24%]
+tests/core/test_config.py::test_disable_features_is_passed_once PASSED   [ 25%]
+tests/core/test_config.py::test_disable_features_merges_browser_args_and_add_argument PASSED [ 25%]
+tests/core/test_config.py::test_default_args_contain_no_duplicates PASSED [ 26%]
+tests/core/test_config.py::test_extensions_enable_unsafe_extension_debugging PASSED [ 26%]
+tests/core/test_config.py::test_expert_does_not_disable_web_security PASSED [ 27%]
+tests/core/test_connection.py::test_concurrent_sends_open_a_single_websocket PASSED [ 27%]
+tests/core/test_connection.py::test_send_drops_stale_domain_while_enabling_a_new_one PASSED [ 28%]
+tests/core/test_connection.py::test_unparsable_response_fails_only_its_command[generated-parser] PASSED [ 28%]
+tests/core/test_connection.py::test_unparsable_response_fails_only_its_command[custom-raises] PASSED [ 29%]
+tests/core/test_connection.py::test_unparsable_response_fails_only_its_command[custom-does-not-stop] PASSED [ 29%]
+tests/core/test_connection.py::test_send_timeout_during_domain_enable_is_not_swallowed PASSED [ 30%]
+tests/core/test_connection.py::test_cancelled_domain_enable_is_sent_again PASSED [ 30%]
+tests/core/test_connection.py::test_handler_that_fails_when_called_does_not_stop_the_listener 
+-------------------------------- live log call ---------------------------------
+WARNING  uc.connection:connection.py:1048 exception in callback <function test_handler_that_fails_when_called_does_not_stop_the_listener.<locals>.takes_no_event at 0x7f347cc3ce00> for event TargetCreated => test_handler_that_fails_when_called_does_not_stop_the_listener.<locals>.takes_no_event() takes 0 positional arguments but 1 was given
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/pkg/zendriver/core/connection.py", line 1044, in listener_loop
+    asyncio.create_task(callback(*args))
+                        ~~~~~~~~^^^^^^^
+TypeError: test_handler_that_fails_when_called_does_not_stop_the_listener.<locals>.takes_no_event() takes 0 positional arguments but 1 was given
+PASSED                                                                   [ 31%]
+tests/core/test_connection.py::test_unexpected_receive_error_fails_pending_commands[not-json] 
+-------------------------------- live log call ---------------------------------
+WARNING  uc.connection:connection.py:983 unexpected exception while reading websocket: Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/pkg/zendriver/core/connection.py", line 951, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/pkg/zendriver/core/connection.py", line 862, in _receive_message
+    message: dict[str, Any] = json.loads(await self.websocket.recv())
+                              ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.13/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+PASSED                                                                   [ 32%]
+tests/core/test_connection.py::test_unexpected_receive_error_fails_pending_commands[recv-raises] 
+-------------------------------- live log call ---------------------------------
+WARNING  uc.connection:connection.py:983 unexpected exception while reading websocket: cannot receive
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/pkg/zendriver/core/connection.py", line 951, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/pkg/zendriver/core/connection.py", line 862, in _receive_message
+    message: dict[str, Any] = json.loads(await self.websocket.recv())
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_connection.py", line 49, in recv
+    raise frame
+RuntimeError: cannot receive
+PASSED                                                                   [ 32%]
+tests/core/test_connection.py::test_flat_session_send_restarts_the_browser_listener 
+-------------------------------- live log call ---------------------------------
+WARNING  uc.connection:connection.py:983 unexpected exception while reading websocket: cannot receive
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/pkg/zendriver/core/connection.py", line 951, in listener_loop
+    message = await asyncio.wait_for(
+              ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "/usr/lib/python3.13/asyncio/tasks.py", line 514, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/pkg/zendriver/core/connection.py", line 862, in _receive_message
+    message: dict[str, Any] = json.loads(await self.websocket.recv())
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_connection.py", line 49, in recv
+    raise frame
+RuntimeError: cannot receive
+PASSED                                                                   [ 33%]
+tests/core/test_connection.py::test_detaching_a_session_stops_its_listener_quietly PASSED [ 33%]
+tests/core/test_connection.py::test_aexit_propagates_the_original_exception[json] PASSED [ 34%]
+tests/core/test_connection.py::test_aexit_propagates_the_original_exception[connection-closed] PASSED [ 34%]
+tests/core/test_connection.py::test_aexit_propagates_the_original_exception[protocol] PASSED [ 35%]
+tests/core/test_connection.py::test_aexit_propagates_the_original_exception[system-exit] PASSED [ 35%]
+tests/core/test_connection.py::test_aexit_propagates_the_original_exception[exception-group] PASSED [ 36%]
+tests/core/test_contradict.py::test_keys_named_like_dict_methods_do_not_shadow_them PASSED [ 36%]
+tests/core/test_contradict.py::test_other_keys_are_still_available_as_attributes PASSED [ 37%]
+tests/core/test_contradict.py::test_element_with_clear_attribute_can_update PASSED [ 38%]
+tests/core/test_contradict.py::test_element_with_items_attribute_can_be_printed PASSED [ 38%]
+tests/core/test_contradict.py::test_element_with_get_attribute_can_get_attributes PASSED [ 39%]
+tests/core/test_drm.py::test_widevine_is_supported[headless0] SKIPPED    [ 39%]
+tests/core/test_expect.py::test_expectation_burst_keeps_first_matching_request[RequestExpectation] PASSED [ 40%]
+tests/core/test_expect.py::test_expectation_burst_keeps_first_matching_request[ResponseExpectation] PASSED [ 40%]
+tests/core/test_expect.py::test_events_after_timed_out_waits_are_tracked_without_errors PASSED [ 41%]
+tests/core/test_expect.py::test_download_expectation_burst_keeps_first_download PASSED [ 41%]
+tests/core/test_frames.py::test_tab_uses_session_on_browser_websocket[headless0] PASSED [ 42%]
+tests/core/test_frames.py::test_tab_session_is_detached_when_tab_closes[headless0] PASSED [ 42%]
+tests/core/test_frames.py::test_get_frames_returns_nested_cross_site_frames[headless0] PASSED [ 43%]
+tests/core/test_frames.py::test_select_with_include_frames_clicks_element_in_cross_site_frame[headless0] PASSED [ 44%]
+tests/core/test_frames.py::test_select_all_with_include_frames_searches_nested_cross_site_frames[headless0] PASSED [ 44%]
+tests/core/test_frames.py::test_find_with_include_frames_searches_cross_site_frames[headless0] PASSED [ 45%]
+tests/core/test_frames.py::test_element_get_frame_returns_frame_of_cross_site_iframe[headless0] PASSED [ 45%]
+tests/core/test_headless_user_agent.py::test_user_agent_platform[Windows] PASSED [ 46%]
+tests/core/test_headless_user_agent.py::test_user_agent_platform[macOS] PASSED [ 46%]
+tests/core/test_headless_user_agent.py::test_user_agent_platform[Linux] PASSED [ 47%]
+tests/core/test_headless_user_agent.py::test_user_agent_platform[Chrome OS] PASSED [ 47%]
+tests/core/test_headless_user_agent.py::test_user_agent_platform[Android] PASSED [ 48%]
+tests/core/test_headless_user_agent.py::test_headless_user_agent_of_this_host PASSED [ 48%]
+tests/core/test_headless_user_agent.py::test_headless_user_agent_of_another_platform PASSED [ 49%]
+tests/core/test_headless_user_agent.py::test_user_agent_is_a_visible_chrome_with_client_hints[headless0] PASSED [ 50%]
+tests/core/test_keyinputs.py::test_visible_events[headless0] PASSED      [ 50%]
+tests/core/test_keyinputs.py::test_escape_key_popup[headless0] PASSED    [ 51%]
+tests/core/test_mouse.py::test_mouse_click_releases_button[headless0] PASSED [ 51%]
+tests/core/test_mouse.py::test_mouse_move_does_not_release_button[headless0] PASSED [ 52%]
+tests/core/test_mouse.py::test_mouse_down_move_up_holds_button[headless0] PASSED [ 52%]
+tests/core/test_mouse.py::test_tab_mouse_drag_relative[headless0] PASSED [ 53%]
+tests/core/test_mouse.py::test_element_mouse_drag_holds_button[headless0] PASSED [ 53%]
+tests/core/test_mouse.py::test_element_mouse_click_does_not_swallow_cancellation PASSED [ 54%]
+tests/core/test_multiple_browsers.py::test_multiple_browsers_diff_userdata PASSED [ 54%]
+tests/core/test_proxy.py::test_create_context_with_authenticated_proxy[headless0-http] PASSED [ 55%]
+tests/core/test_proxy.py::test_create_context_with_authenticated_proxy[headless0-socks5] 
+-------------------------------- live log call ---------------------------------
+ERROR    asyncio:base_events.py:1890 Unhandled exception in client_connected_cb
+transport: <_SelectorSocketTransport closed fd=33>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_proxy.py", line 94, in handle
+    assert address_type == 0x01
+AssertionError: assert 3 == 1
+WARNING  zendriver.core.proxy:proxy.py:230 proxy request failed: proxy closed the connection: IncompleteReadError('0 bytes read on a total of 4 expected bytes')
+ERROR    asyncio:base_events.py:1890 Unhandled exception in client_connected_cb
+transport: <_SelectorSocketTransport closed fd=33>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_proxy.py", line 94, in handle
+    assert address_type == 0x01
+AssertionError: assert 3 == 1
+WARNING  zendriver.core.proxy:proxy.py:230 proxy request failed: proxy closed the connection: IncompleteReadError('0 bytes read on a total of 4 expected bytes')
+ERROR    asyncio:base_events.py:1890 Unhandled exception in client_connected_cb
+transport: <_SelectorSocketTransport closed fd=33>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_proxy.py", line 94, in handle
+    assert address_type == 0x01
+AssertionError: assert 3 == 1
+WARNING  zendriver.core.proxy:proxy.py:230 proxy request failed: proxy closed the connection: IncompleteReadError('0 bytes read on a total of 4 expected bytes')
+ERROR    asyncio:base_events.py:1890 Unhandled exception in client_connected_cb
+transport: <_SelectorSocketTransport closed fd=33>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_proxy.py", line 94, in handle
+    assert address_type == 0x01
+AssertionError: assert 3 == 1
+WARNING  zendriver.core.proxy:proxy.py:230 proxy request failed: proxy closed the connection: IncompleteReadError('0 bytes read on a total of 4 expected bytes')
+PASSED                                                                   [ 55%]
+tests/core/test_proxy.py::test_create_context_without_credentials_does_not_forward[headless0] 
+-------------------------------- live log setup --------------------------------
+WARNING  zendriver.core.proxy:proxy.py:230 proxy request failed: could not connect to proxy 127.0.0.1:44417: ConnectionRefusedError(111, "Connect call failed ('127.0.0.1', 44417)")
+PASSED                                                                   [ 56%]
+tests/core/test_proxy.py::test_forwarder_connect[http] PASSED            [ 57%]
+tests/core/test_proxy.py::test_forwarder_connect[socks5] PASSED          [ 57%]
+tests/core/test_proxy.py::test_forwarder_rejected_credentials[http] 
+-------------------------------- live log call ---------------------------------
+WARNING  zendriver.core.proxy:proxy.py:230 proxy request failed: proxy refused CONNECT 127.0.0.1:34911: HTTP/1.1 407 Proxy Authentication Required
+PASSED                                                                   [ 58%]
+tests/core/test_proxy.py::test_forwarder_rejected_credentials[socks5] 
+-------------------------------- live log call ---------------------------------
+WARNING  zendriver.core.proxy:proxy.py:230 proxy request failed: SOCKS5 proxy rejected the username or password
+PASSED                                                                   [ 58%]
+tests/core/test_proxy.py::test_upstream_proxy_from_url PASSED            [ 59%]
+tests/core/test_react_controlled_input.py::test_clear_input_does_not_notify_react[headless0] PASSED [ 59%]
+tests/core/test_react_controlled_input.py::test_clear_input_by_deleting_does_not_notify_react[headless0] PASSED [ 60%]
+tests/core/test_react_controlled_input.py::test_fill_react_controlled_input_produces_mixed_value[headless0] PASSED [ 60%]
+tests/core/test_tab.py::test_set_user_agent_sets_navigator_values[headless0] PASSED [ 61%]
+tests/core/test_tab.py::test_set_user_agent_defaults_existing_user_agent[headless0] PASSED [ 61%]
+tests/core/test_tab.py::test_find_finds_element_by_text[headless0] PASSED [ 62%]
+tests/core/test_tab.py::test_find_times_out_if_element_not_found[headless0] PASSED [ 63%]
+tests/core/test_tab.py::test_select[headless0] PASSED                    [ 63%]
+tests/core/test_tab.py::test_call_with_text_searches_by_text PASSED      [ 64%]
+tests/core/test_tab.py::test_call_with_selector_queries_css PASSED       [ 64%]
+tests/core/test_tab.py::test_query_selector_all_include_frames_queries_nested_iframe_documents PASSED [ 65%]
+tests/core/test_tab.py::test_xpath[headless0] PASSED                     [ 65%]
+tests/core/test_tab.py::test_xpath_no_results[headless0] PASSED          [ 66%]
+tests/core/test_tab.py::test_add_handler_type_event[headless0] PASSED    [ 66%]
+tests/core/test_tab.py::test_add_handler_module_event[headless0] PASSED  [ 67%]
+tests/core/test_tab.py::test_add_handler_module_event_receives_events[headless0] PASSED [ 67%]
+tests/core/test_tab.py::test_sync_handlers_are_each_called[headless0] PASSED [ 68%]
+tests/core/test_tab.py::test_remove_handlers[headless0] PASSED           [ 69%]
+tests/core/test_tab.py::test_handler_raising_type_error_is_called_once[headless0] 
+-------------------------------- live log call ---------------------------------
+ERROR    asyncio:base_events.py:1890 Task exception was never retrieved
+future: <Task finished name='Task-1083' coro=<test_handler_raising_type_error_is_called_once.<locals>.handler() done, defined at /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_tab.py:343> exception=TypeError('raised by the handler itself')>
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_tab.py", line 346, in handler
+    raise TypeError("raised by the handler itself")
+TypeError: raised by the handler itself
+PASSED                                                                   [ 69%]
+tests/core/test_tab.py::test_handler_without_connection_argument_receives_event[headless0] PASSED [ 70%]
+tests/core/test_tab.py::test_remove_handlers_for_event_without_handlers[headless0] PASSED [ 70%]
+tests/core/test_tab.py::test_remove_handlers_specific_event[headless0] PASSED [ 71%]
+tests/core/test_tab.py::test_remove_specific_handler[headless0] PASSED   [ 71%]
+tests/core/test_tab.py::test_remove_handlers_without_event[headless0] PASSED [ 72%]
+tests/core/test_tab.py::test_wait_for_ready_state[headless0] PASSED      [ 72%]
+tests/core/test_tab.py::test_wait_for_ready_state_times_out_when_evaluate_hangs PASSED [ 73%]
+tests/core/test_tab.py::test_wait_for_ready_state_accepts_later_state[interactive-complete] PASSED [ 73%]
+tests/core/test_tab.py::test_wait_for_ready_state_accepts_later_state[loading-interactive] PASSED [ 74%]
+tests/core/test_tab.py::test_wait_for_ready_state_accepts_later_state[loading-complete] PASSED [ 75%]
+tests/core/test_tab.py::test_wait_for_ready_state_default_on_complete_page PASSED [ 75%]
+tests/core/test_tab.py::test_wait_for_ready_state_waits_for_earlier_state PASSED [ 76%]
+tests/core/test_tab.py::test_polling_methods_time_out_when_cdp_reply_never_arrives[select] PASSED [ 76%]
+tests/core/test_tab.py::test_polling_methods_time_out_when_cdp_reply_never_arrives[select_include_frames] PASSED [ 77%]
+tests/core/test_tab.py::test_polling_methods_time_out_when_cdp_reply_never_arrives[find] PASSED [ 77%]
+tests/core/test_tab.py::test_polling_methods_time_out_when_cdp_reply_never_arrives[find_all] PASSED [ 78%]
+tests/core/test_tab.py::test_polling_methods_time_out_when_cdp_reply_never_arrives[select_all] PASSED [ 78%]
+tests/core/test_tab.py::test_polling_methods_time_out_when_cdp_reply_never_arrives[wait_for_selector] PASSED [ 79%]
+tests/core/test_tab.py::test_polling_methods_time_out_when_cdp_reply_never_arrives[wait_for_text] PASSED [ 79%]
+tests/core/test_tab.py::test_polling_methods_time_out_when_cdp_reply_never_arrives[call] PASSED [ 80%]
+tests/core/test_tab.py::test_xpath_returns_empty_list_when_cdp_reply_never_arrives[1] PASSED [ 80%]
+tests/core/test_tab.py::test_xpath_returns_empty_list_when_cdp_reply_never_arrives[0] PASSED [ 81%]
+tests/core/test_tab.py::test_xpath_returns_empty_list_when_cdp_reply_never_arrives[-1] PASSED [ 82%]
+tests/core/test_tab.py::test_xpath_with_zero_timeout_makes_one_attempt PASSED [ 82%]
+tests/core/test_tab.py::test_xpath_sleeps_between_attempts PASSED        [ 83%]
+tests/core/test_tab.py::test_polling_methods_with_zero_timeout_make_one_attempt[select] PASSED [ 83%]
+tests/core/test_tab.py::test_polling_methods_with_zero_timeout_make_one_attempt[find] PASSED [ 84%]
+tests/core/test_tab.py::test_polling_methods_with_zero_timeout_make_one_attempt[wait_for] PASSED [ 84%]
+tests/core/test_tab.py::test_polling_methods_make_their_last_attempt_at_the_deadline[select] PASSED [ 85%]
+tests/core/test_tab.py::test_polling_methods_make_their_last_attempt_at_the_deadline[find] PASSED [ 85%]
+tests/core/test_tab.py::test_polling_methods_make_their_last_attempt_at_the_deadline[wait_for] PASSED [ 86%]
+tests/core/test_tab.py::test_expect_request[headless0] PASSED            [ 86%]
+tests/core/test_tab.py::test_expect_response[headless0] PASSED           [ 87%]
+tests/core/test_tab.py::test_expect_response_with_reload[headless0] PASSED [ 88%]
+tests/core/test_tab.py::test_expect_download[headless0] PASSED           [ 88%]
+tests/core/test_tab.py::test_manual_disable_send[headless0] PASSED       [ 89%]
+tests/core/test_tab.py::test_evaluate_complex_object_no_error[headless0] PASSED [ 89%]
+tests/core/test_tab.py::test_evaluate_return_by_value_complex_object[headless0] PASSED [ 90%]
+tests/core/test_tab.py::test_evaluate_return_by_value_simple_json[headless0] PASSED [ 90%]
+tests/core/test_tab.py::test_evaluate_return_by_value_falsy[headless0] PASSED [ 91%]
+tests/core/test_tab.py::test_evaluate_stress_test_complex_objects[headless0] PASSED [ 91%]
+tests/core/test_tab.py::test_awaiting_new_tab_does_not_raise[headless0] PASSED [ 92%]
+tests/core/test_tab.py::test_response_to_cancelled_command_does_not_stop_listener[headless0] PASSED [ 92%]
+tests/core/test_tab.py::test_events_are_not_retained[headless0] PASSED   [ 93%]
+tests/core/test_tab.py::test_set_download_path_creates_directory[headless0] PASSED [ 94%]
+tests/core/test_tab.py::test_is_scrolled_to_bottom[headless0] PASSED     [ 94%]
+tests/core/test_tab.py::test_shadow_children_includes_closed_shadow_root[headless0] PASSED [ 95%]
+tests/core/test_tab.py::test_get_position_abs_includes_scroll_offset[headless0] PASSED [ 95%]
+tests/core/test_tab.py::test_element_get_only_returns_html_attributes[headless0] PASSED [ 96%]
+tests/core/test_tab.py::test_element_get_returns_empty_attribute_value[headless0] PASSED [ 96%]
+tests/core/test_tab.py::test_get_timeout_raises[headless0] PASSED        [ 97%]
+tests/core/test_util.py::test_start_process_does_not_block_a_process_that_writes_a_lot PASSED [ 97%]
+tests/core/test_util.py::test_read_process_stderr_returns_output_of_a_running_process PASSED [ 98%]
+tests/core/test_util.py::test_read_process_stderr_returns_output_of_an_exited_process PASSED [ 98%]
+tests/core/test_util.py::test_read_process_stderr_replaces_bytes_that_are_not_utf8 PASSED [ 99%]
+tests/core/test_util.py::test_start_failure_logs_stderr_of_a_browser_that_is_still_running PASSED [100%]
+
+=========== 183 passed, 1 skipped, 4 deselected in 78.69s (0:01:18) ============

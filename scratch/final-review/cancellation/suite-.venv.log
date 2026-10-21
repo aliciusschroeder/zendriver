@@ -1,0 +1,51 @@
+E
+==================================== ERRORS ====================================
+___ ERROR at setup of test_connection_error_raises_exception_and_logs_stderr ___
+file /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_browser.py, line 36
+  async def test_connection_error_raises_exception_and_logs_stderr(
+      create_browser: type[CreateBrowser],
+      mocker: MockerFixture,
+      caplog: pytest.LogCaptureFixture,
+  ) -> None:
+      mocker.patch(
+          "zendriver.core.browser.Browser.test_connection",
+          return_value=False,
+      )
+      with caplog.at_level("INFO"):
+          with pytest.raises(Exception):
+              async with create_browser(
+                  browser_connection_max_tries=1, browser_connection_timeout=0.1
+              ) as _:
+                  pass
+      assert "Browser stderr" in caplog.text
+E       fixture 'caplog' not found
+>       available fixtures: _asyncio_loop_factory, _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, browser, capfd, capfdbinary, capsys, capsysbinary, capteesys, class_mocker, cov, create_browser, cross_site_iframe_url, doctest_namespace, event_loop_policy, fake_browser, headless, mocker, module_mocker, monkeypatch, no_cover, package_mocker, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, session_mocker, shared_browsers, stub_browser, subtests, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_browser.py:36
+=============================== warnings summary ===============================
+tests/core/test_browser.py:33
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_browser.py:33: PytestUnknownMarkWarning: Unknown pytest.mark.fresh_browser - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = pytest.mark.fresh_browser
+
+tests/core/test_tab.py:724
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_tab.py:724: PytestUnknownMarkWarning: Unknown pytest.mark.external - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.external
+
+tests/core/test_tab.py:743
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_tab.py:743: PytestUnknownMarkWarning: Unknown pytest.mark.external - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.external
+
+tests/core/test_tab.py:767
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_tab.py:767: PytestUnknownMarkWarning: Unknown pytest.mark.external - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.external
+
+tests/core/test_tab.py:806
+  /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/final-review/cancellation/run/tests/core/test_tab.py:806: PytestUnknownMarkWarning: Unknown pytest.mark.external - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.external
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/core/test_browser.py::test_connection_error_raises_exception_and_logs_stderr
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+5 warnings, 1 error in 0.30s
