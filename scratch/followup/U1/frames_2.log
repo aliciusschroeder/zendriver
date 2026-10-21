@@ -1,0 +1,50 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+bringing up nodes...
+bringing up nodes...
+
+........................F............................................... [ 85%]
+............                                                             [100%]
+=================================== FAILURES ===================================
+__________ test_handler_raising_type_error_is_called_once[headless0] ___________
+[gw2] linux -- Python 3.13.16 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/followup/U1/venv313/bin/python
+
+browser = <zendriver.core.browser.Browser object at 0x7fe52166d400>
+
+    async def test_handler_raising_type_error_is_called_once(
+        browser: zd.Browser,
+    ) -> None:
+        tab = await browser.get(sample_file("groceries.html"))
+        calls: list[tuple[Any, ...]] = []
+        called = asyncio.Event()
+    
+        async def handler(*args: Any) -> None:
+            calls.append(args)
+            called.set()
+            raise TypeError("raised by the handler itself")
+    
+        tab.add_handler(zd.cdp.page.LoadEventFired, handler)
+        await tab.reload()
+        await asyncio.wait_for(called.wait(), 5)
+        await tab.wait(0.5)
+    
+>       assert len(calls) == 1
+E       assert 2 == 1
+E        +  where 2 = len([(LoadEventFired(timestamp=MonotonicTime(41648.108976)), <Tab [5C5B2CD081FD90F649D47901CC45766B] [page] [url: file:///...766B] [page] [url: file:///home/user/zendriver/.claude/worktrees/wf_2c9e79a3-fb2-1/tests/sample_data/groceries.html]>)])
+
+tests/core/test_tab.py:353: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    asyncio:base_events.py:1890 Task exception was never retrieved
+future: <Task finished name='Task-96' coro=<test_handler_raising_type_error_is_called_once.<locals>.handler() done, defined at /home/user/zendriver/.claude/worktrees/wf_2c9e79a3-fb2-1/tests/core/test_tab.py:343> exception=TypeError('raised by the handler itself')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/.claude/worktrees/wf_2c9e79a3-fb2-1/tests/core/test_tab.py", line 346, in handler
+    raise TypeError("raised by the handler itself")
+TypeError: raised by the handler itself
+ERROR    asyncio:base_events.py:1890 Task exception was never retrieved
+future: <Task finished name='Task-98' coro=<test_handler_raising_type_error_is_called_once.<locals>.handler() done, defined at /home/user/zendriver/.claude/worktrees/wf_2c9e79a3-fb2-1/tests/core/test_tab.py:343> exception=TypeError('raised by the handler itself')>
+Traceback (most recent call last):
+  File "/home/user/zendriver/.claude/worktrees/wf_2c9e79a3-fb2-1/tests/core/test_tab.py", line 346, in handler
+    raise TypeError("raised by the handler itself")
+TypeError: raised by the handler itself
+=========================== short test summary info ============================
+FAILED tests/core/test_tab.py::test_handler_raising_type_error_is_called_once[headless0]
+1 failed, 83 passed in 10.60s

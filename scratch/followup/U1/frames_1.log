@@ -1,0 +1,64 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [ 85%]
+.......F....                                                             [100%]
+=================================== FAILURES ===================================
+__________ test_element_get_returns_empty_attribute_value[headless0] ___________
+[gw0] linux -- Python 3.13.16 /tmp/claude-0/-home-user-zendriver/b2021b39-94e6-5220-9e66-7f33c0314a80/scratchpad/followup/U1/venv313/bin/python
+
+browser = <zendriver.core.browser.Browser object at 0x7f920d5ad400>
+
+    async def test_element_get_returns_empty_attribute_value(browser: zd.Browser) -> None:
+        tab = await browser.get(sample_file("groceries.html"))
+>       await tab.evaluate("document.querySelector('#download_file').disabled = true")
+
+tests/core/test_tab.py:1022: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Tab [299CADDD422903C383D77F3C0C1ACB0D] [page] [url: file:///home/user/zendriver/.claude/worktrees/wf_2c9e79a3-fb2-1/tests/sample_data/groceries.html]>
+expression = "document.querySelector('#download_file').disabled = true"
+await_promise = False, return_by_value = True
+
+    async def evaluate(
+        self, expression: str, await_promise: bool = False, return_by_value: bool = True
+    ) -> Any:
+        ser: cdp.runtime.SerializationOptions | None = None
+        if not return_by_value:
+            ser = cdp.runtime.SerializationOptions(
+                serialization="deep",
+                max_depth=10,
+                additional_parameters={"maxNodeDepth": 10, "includeShadowTree": "all"},
+            )
+    
+        remote_object, errors = await self.send(
+            cdp.runtime.evaluate(
+                expression=expression,
+                user_gesture=True,
+                await_promise=await_promise,
+                return_by_value=return_by_value,
+                allow_unsafe_eval_blocked_by_csp=True,
+                serialization_options=ser,
+            )
+        )
+        if errors:
+>           raise ProtocolException(errors)
+E           zendriver.core.connection.ProtocolException: 
+E           exceptionId: 1
+E           text: Uncaught
+E           lineNumber: 0
+E           columnNumber: 50
+E           scriptId: 5
+E           exception: 
+E           	type: object
+E           	subtype: error
+E           	className: TypeError
+E           	description: TypeError: Cannot set properties of null (setting 'disabled')
+E               at <anonymous>:1:51
+E           	objectId: -76844038175184821.2.2
+
+zendriver/core/tab.py:928: ProtocolException
+=========================== short test summary info ============================
+FAILED tests/core/test_tab.py::test_element_get_returns_empty_attribute_value[headless0]
+1 failed, 83 passed in 10.35s
