@@ -222,4 +222,10 @@ tests/docs/tutorials/test_account_creation_tutorial.py::test_account_creation_tu
 tests/docs/tutorials/test_account_creation_tutorial.py::test_account_creation_tutorial_2[headless0] PASSED [ 94%]
 tests/docs/tutorials/test_api_responses_tutorial.py::test_api_responses_tutorial_1[headless0] PASSED [ 95%]
 tests/docs/tutorials/test_api_responses_tutorial.py::test_api_responses_tutorial_2[headless0] PASSED [ 96%]
-tests/docs/tutorials/test_cdp_tutorial.py::test_cdp_tutorial_1[headless0] 
+tests/docs/tutorials/test_cdp_tutorial.py::test_cdp_tutorial_1[headless0] PASSED [ 96%]
+tests/docs/tutorials/test_cdp_tutorial.py::test_cdp_tutorial_2[headless0] PASSED [ 97%]
+tests/docs/tutorials/test_infinite_scrolling_tutorial.py::test_infinite_scrolling_tutorial_1[headless0] PASSED [ 98%]
+tests/docs/tutorials/test_infinite_scrolling_tutorial.py::test_infinite_scrolling_tutorial_2[headless0] PASSED [ 99%]
+tests/docs/tutorials/test_infinite_scrolling_tutorial.py::test_infinite_scrolling_tutorial_3[headless0] PASSED [100%]
+
+================== 126 passed, 1 skipped in 64.42s (0:01:04) ===================
