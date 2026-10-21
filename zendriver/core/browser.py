@@ -837,8 +837,8 @@ class Browser:
     async def __aexit__(
         self, exc_type: type[BaseException] | None, exc_val: Any, exc_tb: Any
     ) -> None:
-        if exc_type and exc_val:
-            raise exc_type(exc_val)
+        # returning None lets an exception raised in the block propagate unchanged
+        return None
 
     def __iter__(self) -> Browser:
         main_tab = self.main_tab
