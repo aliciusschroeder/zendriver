@@ -1,0 +1,5 @@
+822610d Merge fix/followup-connection: Keep Connection.send and domain enables consistent when a command never leaves
+3.13 run 1:  224 passed, 1 skipped in 32.21s
+3.13 run 2:  224 passed, 1 skipped in 31.51s
+3.13 run 3:  224 passed, 1 skipped in 31.50s
+822610d Merge fix/followup-connection: Keep Connection.send and domain enables consistent when a command never leaves
