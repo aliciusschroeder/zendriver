@@ -32,6 +32,9 @@ from .proxy import ProxyForwarder, UpstreamProxy
 
 logger = logging.getLogger(__name__)
 
+# seconds stop() waits for each of its steps which a hung browser can block
+STOP_COMMAND_TIMEOUT: float = 5
+
 
 def _user_agent_platform(user_agent: str) -> str | None:
     """
@@ -884,20 +887,44 @@ class Browser:
                     del self._i
 
     async def stop(self) -> None:
+        await self._stop()
+        # only once stopped, so that a stop() which failed or was cancelled
+        # leaves the atexit cleanup in place
         asyncio_atexit.unregister(self._atexit_cleanup)
         util.get_registered_instances().discard(self)
-        await self._stop()
 
     async def _stop(self) -> None:
         if not self.connection and not self._process:
             return
 
-        for target in self.targets:
-            await target.aclose()
+        async def detach_from_targets() -> list[BaseException | None]:
+            # wait_for() is given this coroutine rather than the gather, so that
+            # it runs it in a task, which retrieves the gather's outcome when
+            # stop() is cancelled. python < 3.12 otherwise logs that the
+            # gather's exception was never retrieved
+            return await asyncio.gather(
+                *(target.aclose() for target in self.targets),
+                return_exceptions=True,
+            )
+
+        # the cdp steps are bounded and may fail, so that a browser which is
+        # gone or stopped responding still gets its process terminated below
+        try:
+            results = await asyncio.wait_for(
+                detach_from_targets(), STOP_COMMAND_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            logger.debug("timed out detaching from the targets")
+        else:
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.debug("could not detach from a target: %r", result)
 
         if self.connection and not self.connection.closed:
             try:
-                await self.connection.send(cdp.browser.close())
+                await asyncio.wait_for(
+                    self.connection.send(cdp.browser.close()), STOP_COMMAND_TIMEOUT
+                )
             except Exception:
                 logger.warning(
                     "Could not send the close command when stopping the browser. Likely the browser is already gone. Closing the connection."
@@ -905,33 +932,46 @@ class Browser:
             await self.connection.aclose()
             logger.debug("closed the connection")
 
-        for forwarder in self._proxy_forwarders:
-            await forwarder.close()
-        self._proxy_forwarders.clear()
-
-        if self._process:
+        # a concurrent stop() may set self._process to None while this one waits
+        process = self._process
+        if process:
             try:
-                self._process.terminate()
+                process.terminate()
                 logger.debug("gracefully stopping browser process")
                 # wait 3 seconds for the browser to stop
                 for _ in range(12):
-                    if self._process.poll() is not None:
+                    if process.poll() is not None:
                         break
                     await asyncio.sleep(0.25)
                 else:
                     logger.debug("browser process did not stop. killing it")
-                    self._process.kill()
+                    process.kill()
                     logger.debug("killed browser process")
-
-                await asyncio.to_thread(self._process.wait)
+                    # polled rather than waited for in a thread, because
+                    # asyncio.run shuts the default executor down before the
+                    # atexit cleanup runs
+                    while process.poll() is None:
+                        await asyncio.sleep(0.05)
 
             except ProcessLookupError:
                 # ignore this well known race condition because it only means that
                 # the process was not found while trying to terminate or kill it
                 pass
 
-            self._process = None
-            self._process_pid = None
+            # unless a start() has replaced it in the meantime
+            if self._process is process:
+                self._process = None
+                self._process_pid = None
+
+        # only once the browser is gone, and bounded, because on python >= 3.12.1
+        # closing a forwarder waits until the browser's connections to it are
+        # closed, which a browser which stopped reading from them holds open
+        for forwarder in self._proxy_forwarders:
+            try:
+                await asyncio.wait_for(forwarder.close(), STOP_COMMAND_TIMEOUT)
+            except asyncio.TimeoutError:
+                logger.debug("timed out closing a proxy forwarder")
+        self._proxy_forwarders.clear()
 
         await self._cleanup_temporary_profile()
 
