@@ -5,6 +5,7 @@ import logging
 from typing import TYPE_CHECKING, Optional
 
 from zendriver import cdp, util
+from zendriver.core.connection import ProtocolException
 from zendriver.core.element import Element
 from zendriver.core.tab import _POLL_GRACE, _wait_for
 
@@ -69,11 +70,55 @@ async def cf_find_interactive_challenge(
     return None, None, None
 
 
+async def _cf_get_content_quad(
+    tab: Tab, challenge_iframe: Element
+) -> list[float] | None:
+    """
+    Returns the content box of the challenge iframe, or None while it has no size.
+
+    Right after the challenge page loaded, the iframe is often in the DOM without
+    `display: none`, but not laid out yet, and its content box is 0x0.
+
+    Returns:
+        The (x, y) coordinates of the four corners of the iframe's content box,
+        [x1, y1, x2, y2, x3, y3, x4, y4], or None.
+    """
+    try:
+        # the backend node id stays valid when the document is fetched again,
+        # as tab.query_selector does, the node id does not
+        box_model = await tab.send(
+            cdp.dom.get_box_model(backend_node_id=challenge_iframe.backend_node_id)
+        )
+    except ProtocolException:
+        # e.g. "Could not compute box model." for an iframe that is not rendered
+        return None
+    content_quad = box_model.content
+    x_coords = content_quad[0::2]
+    y_coords = content_quad[1::2]
+    if max(x_coords) - min(x_coords) <= 0 or max(y_coords) - min(y_coords) <= 0:
+        return None
+    return content_quad
+
+
+def _cf_click_point(content_quad: list[float]) -> tuple[float, float]:
+    """the point to click: the checkbox is at the left of the challenge iframe"""
+    x_coords = content_quad[0::2]
+    y_coords = content_quad[1::2]
+    min_x = min(x_coords)
+    max_x = max(x_coords)
+    min_y = min(y_coords)
+    max_y = max(y_coords)
+    return min_x + (max_x - min_x) * 0.15, min_y + (max_y - min_y) / 2
+
+
 async def cf_wait_for_interactive_challenge(
     tab: Tab, timeout: float = 5
 ) -> tuple[Element | None, Element | None, Element | None]:
     """
     Waits for the Cloudflare challenge iframe to appear and be visible.
+
+    The iframe counts as visible once it is laid out with a non-zero size, so
+    that the checkbox inside it can be located.
 
     Args:
         timeout: The maximum time in seconds to wait for the elements.
@@ -96,8 +141,10 @@ async def cf_wait_for_interactive_challenge(
             if challenge_iframe and "display: none" not in challenge_iframe.attrs.get(
                 "style", ""
             ):
-                logger.debug("Cloudflare challenge elements found and visible.")
-                return host_element, shadow_root_element, challenge_iframe
+                if await _cf_get_content_quad(tab, challenge_iframe) is not None:
+                    logger.debug("Cloudflare challenge elements found and visible.")
+                    return host_element, shadow_root_element, challenge_iframe
+                logger.debug("Challenge iframe found, but not laid out yet.")
             await asyncio.sleep(min(0.5, start_time + timeout - loop.time()))
         return None, None, None
 
@@ -211,13 +258,13 @@ async def _cf_click_challenge(
 
     await challenge_iframe.scroll_into_view()
 
-    # To get the element's dimensions, its numeric 'node_id' is needed.
+    # To get the element's dimensions, its numeric 'backend_node_id' is needed.
     # This ID is obtained from the underlying node object.
     logger.debug(
-        f"Getting box model for challenge iframe (node_id: {challenge_iframe.node.node_id})"
+        f"Getting box model for challenge iframe (backend_node_id: {challenge_iframe.backend_node_id})"
     )
     box_model_result = await tab.send(
-        cdp.dom.get_box_model(node_id=challenge_iframe.node.node_id)
+        cdp.dom.get_box_model(backend_node_id=challenge_iframe.backend_node_id)
     )
     # 'content_quad' is a list of 8 numbers representing the (x, y) coordinates
     # of the four corners of the element's "content-box": [x1, y1, x2, y2, x3, y3, x4, y4].
@@ -233,8 +280,7 @@ async def _cf_click_challenge(
     min_y = min(y_coords)
     max_y = max(y_coords)
 
-    click_x = min_x + (max_x - min_x) * 0.15
-    click_y = min_y + (max_y - min_y) / 2
+    click_x, click_y = _cf_click_point(content_quad)
 
     logger.debug(
         f"Checkbox dimensions (content box): width={max_x - min_x}, height={max_y - min_y}"
@@ -303,6 +349,12 @@ async def _cf_click_challenge(
             raise TimeoutError(
                 f"Could not solve the checkbox in {timeout} seconds (timeout during clicks)."
             )
+        # the iframe can still move or resize after it was found. keep the
+        # last click point while it has no size, e.g. as the page navigates
+        # away after the challenge was solved
+        content_quad_now = await _cf_get_content_quad(tab, challenge_iframe)
+        if content_quad_now is not None:
+            click_x, click_y = _cf_click_point(content_quad_now)
         try:
             await tab.mouse_click(click_x, click_y)
             await asyncio.sleep(min(click_delay, start_time + timeout - loop.time()))

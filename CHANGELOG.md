@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tab(text=...)` now searches for text and `tab(selector=...)` for a CSS selector. The two arguments were swapped
 - `Tab.wait_for_ready_state()` now returns when the page is already past the requested state, so the default `until="interactive"` no longer times out on a page that is already `complete`
 - A timeout or cancellation that arrives while zendriver enables a CDP domain for an event handler, or while `Element.mouse_click` flashes the element, is no longer swallowed, so `asyncio.wait_for` and `task.cancel()` take effect
+- `verify_cf` now solves an interactive Turnstile challenge when called right after the challenge page loaded. The challenge iframe is often not laid out yet at that point; `verify_cf` measured it as 0x0 and kept clicking the wrong spot until its timeout. It now waits until the iframe has a size, and measures it again before each click. `cf_is_interactive_challenge_present` likewise only reports a challenge once its iframe has a size
 
 ### Added
 

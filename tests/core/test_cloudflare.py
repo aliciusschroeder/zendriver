@@ -6,6 +6,7 @@ import pytest
 
 import zendriver as zd
 from zendriver.core import cloudflare as cloudflare_module
+from zendriver.core.connection import ProtocolException
 
 
 class _FakeInputElement:
@@ -29,6 +30,11 @@ class _FakeChallengeIframe:
             local_name="iframe",
             node_value="",
         )
+        self.attrs: dict[str, str] = {}
+
+    @property
+    def backend_node_id(self) -> zd.cdp.dom.BackendNodeId:
+        return self.node.backend_node_id
 
     async def scroll_into_view(self) -> None:
         pass
@@ -95,6 +101,137 @@ async def test_verify_cf_clicks_checkbox_when_input_is_document_level(
 
     assert click_calls, "verify_cf() never clicked the checkbox"
     assert query_selector_calls[0] == "input[name=cf-turnstile-response]"
+
+
+def _box_model(x: float, y: float, width: float, height: float) -> zd.cdp.dom.BoxModel:
+    return zd.cdp.dom.BoxModel(
+        content=zd.cdp.dom.Quad(
+            [x, y, x + width, y, x + width, y + height, x, y + height]
+        ),
+        padding=zd.cdp.dom.Quad([]),
+        border=zd.cdp.dom.Quad([]),
+        margin=zd.cdp.dom.Quad([]),
+        width=int(width),
+        height=int(height),
+    )
+
+
+def _tab_with_challenge_boxes(
+    monkeypatch: pytest.MonkeyPatch, boxes: list[Any]
+) -> tuple[zd.Tab, _FakeInputElement, list[dict[str, Any]]]:
+    """
+    a tab on which cf_find_interactive_challenge() finds a challenge iframe
+    right away. each time the iframe is measured, the next of boxes is its
+    box model, or the exception raised, and the last one once they run out
+    """
+    challenge_iframe = _FakeChallengeIframe(node_id=42)
+
+    async def fake_find_challenge(_tab: zd.Tab) -> tuple[Any, Any, Any]:
+        return _HostElementNeverQueried(), object(), challenge_iframe
+
+    monkeypatch.setattr(
+        cloudflare_module, "cf_find_interactive_challenge", fake_find_challenge
+    )
+
+    box_model_params: list[dict[str, Any]] = []
+
+    async def fake_send(cdp_obj: Any, _is_update: bool = False) -> Any:
+        request = next(cdp_obj)
+        assert request["method"] == "DOM.getBoxModel"
+        box_model_params.append(request["params"])
+        box = boxes.pop(0) if len(boxes) > 1 else boxes[0]
+        if isinstance(box, Exception):
+            raise box
+        return box
+
+    tab = zd.Tab.__new__(zd.Tab)
+    monkeypatch.setattr(tab, "send", fake_send)
+
+    input_element = _FakeInputElement()
+
+    async def fake_query_selector(selector: str) -> _FakeInputElement:
+        return input_element
+
+    monkeypatch.setattr(tab, "query_selector", fake_query_selector)
+    return tab, input_element, box_model_params
+
+
+async def test_verify_cf_waits_until_challenge_iframe_is_laid_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # right after the challenge page loaded, the iframe is in the DOM, but
+    # not laid out yet: its content box is 0x0
+    tab, input_element, box_model_params = _tab_with_challenge_boxes(
+        monkeypatch,
+        [_box_model(100, 200, 0, 0), _box_model(100, 200, 300, 65)],
+    )
+    click_calls: list[tuple[float, float]] = []
+
+    async def fake_mouse_click(x: float, y: float) -> None:
+        click_calls.append((x, y))
+        input_element.attrs["value"] = "solved"
+
+    monkeypatch.setattr(tab, "mouse_click", fake_mouse_click)
+
+    await asyncio.wait_for(
+        cloudflare_module.verify_cf(tab, click_delay=0, timeout=5), 10
+    )
+
+    # the checkbox in the laid out iframe, not the 0x0 box at (100, 200)
+    assert click_calls == [(100 + 300 * 0.15, 200 + 65 / 2)]
+    # the node id changes when the document is fetched again, e.g. by
+    # tab.query_selector, the backend node id does not
+    assert all(params == {"backendNodeId": 42} for params in box_model_params)
+
+
+async def test_verify_cf_clicks_where_challenge_iframe_is_now(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    boxes = [_box_model(0, 0, 300, 65)]
+    tab, input_element, _ = _tab_with_challenge_boxes(monkeypatch, boxes)
+    click_calls: list[tuple[float, float]] = []
+
+    async def fake_mouse_click(x: float, y: float) -> None:
+        click_calls.append((x, y))
+        if len(click_calls) == 1:
+            # the page content above the challenge pushes it down
+            boxes[:] = [_box_model(0, 100, 300, 65)]
+        else:
+            input_element.attrs["value"] = "solved"
+
+    monkeypatch.setattr(tab, "mouse_click", fake_mouse_click)
+
+    await asyncio.wait_for(
+        cloudflare_module.verify_cf(tab, click_delay=0, timeout=5), 10
+    )
+
+    assert click_calls == [(45, 32.5), (45, 132.5)]
+
+
+@pytest.mark.parametrize(
+    "box_model",
+    [_box_model(100, 200, 0, 0), ProtocolException("Could not compute box model.")],
+    ids=["0x0", "no box model"],
+)
+async def test_verify_cf_does_not_click_challenge_iframe_that_is_never_laid_out(
+    monkeypatch: pytest.MonkeyPatch, box_model: Any
+) -> None:
+    tab, _, _ = _tab_with_challenge_boxes(monkeypatch, [box_model])
+    click_calls: list[tuple[float, float]] = []
+
+    async def fake_mouse_click(x: float, y: float) -> None:
+        click_calls.append((x, y))
+
+    monkeypatch.setattr(tab, "mouse_click", fake_mouse_click)
+
+    assert not await cloudflare_module.cf_is_interactive_challenge_present(
+        tab, timeout=1
+    )
+    with pytest.raises(TimeoutError, match="checkbox not found or not visible"):
+        await asyncio.wait_for(
+            cloudflare_module.verify_cf(tab, click_delay=0, timeout=1), 5
+        )
+    assert click_calls == []
 
 
 async def _never_answered(*args: Any, **kwargs: Any) -> None:
